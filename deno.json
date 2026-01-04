@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2"
+  },
+  "tasks": {
+    "dev": "supabase functions serve --env-file .env"
+  },
+  "compilerOptions": {
+    "lib": ["deno.ns", "esnext"]
+  }
+}

@@ -1,0 +1,82 @@
+project_id = "ehznqzaumsnjkrntaiox"
+
+[functions.auth-me]
+verify_jwt = true
+
+[functions.users]
+verify_jwt = true
+
+[functions.menu]
+verify_jwt = true
+
+[functions.permissions]
+verify_jwt = true
+
+[functions.r2-upload]
+verify_jwt = true
+
+[functions.r2-view]
+verify_jwt = true
+
+[functions.r2-delete]
+verify_jwt = true
+
+[functions.r2-presign]
+verify_jwt = true
+
+[functions.create-image-row]
+verify_jwt = false
+
+[functions.r2-upload-url]
+verify_jwt = true
+
+[functions.get-product-limit-only]
+verify_jwt = true
+
+[functions.user-menu-items]
+verify_jwt = true
+
+[functions.create-shop]
+verify_jwt = true
+
+[functions.update-shop]
+verify_jwt = true
+
+[functions.delete-shop]
+verify_jwt = true
+
+[functions.update-store-currency-rate]
+verify_jwt = true
+
+[functions.set-base-store-currency]
+verify_jwt = true
+
+[functions.delete-store-currency]
+verify_jwt = true
+
+[functions.get-available-currencies]
+verify_jwt = false
+
+[functions.get-store-products-count]
+verify_jwt = true
+
+[functions.categories]
+verify_jwt = true
+
+[functions.shop-settings-aggregated]
+verify_jwt = true
+
+[functions.update-store-category]
+verify_jwt = true
+
+[functions.user-products-list]
+verify_jwt = true
+
+[functions.store-products-list]
+verify_jwt = true
+
+[functions.user-shops-list]
+verify_jwt = true
+
+[functions.user-activate-tariff]
+verify_jwt = true

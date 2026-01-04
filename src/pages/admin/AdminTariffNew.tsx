@@ -1,0 +1,871 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { PageHeader } from '@/components/PageHeader';
+import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
+import { useI18n } from '@/i18n';
+import { TariffService, type TariffInsert, type Currency, type TariffFeature, type TariffLimit } from '@/lib/tariff-service';
+import { LimitService, type LimitTemplate } from '@/lib/limit-service';
+import { toast } from 'sonner';
+import { ArrowLeft, Save, Plus, Trash2, FileText, Sparkles, Shield, Gift, Infinity, Power } from 'lucide-react';
+import { FullPageLoader } from '@/components/LoadingSkeletons';
+
+interface TariffFormData {
+  name: string;
+  description?: string | null;
+  old_price?: number | null;
+  new_price?: number | null;
+  currency_id: number;
+  currency_code: string;
+  duration_days?: number | null;
+  is_free?: boolean | null;
+  is_lifetime?: boolean | null;
+  is_active?: boolean | null;
+  sort_order?: number | null;
+}
+
+const AdminTariffNew = () => {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const breadcrumbs = useBreadcrumbs();
+  
+  const [activeTab, setActiveTab] = useState('basic');
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [savedTariffId, setSavedTariffId] = useState<number | null>(null);
+  const [features, setFeatures] = useState<TariffFeature[]>([]);
+  const [limits, setLimits] = useState<TariffLimit[]>([]);
+  const [availableLimits, setAvailableLimits] = useState<LimitTemplate[]>([]);
+  const [newFeature, setNewFeature] = useState({ feature_name: '', is_active: true });
+  const [newLimit, setNewLimit] = useState({ 
+    limit_name: '', 
+    template_id: null as number | null,
+    value: 0, 
+    is_active: true 
+  });
+  const [formData, setFormData] = useState<TariffFormData>({
+    name: '',
+    description: '',
+    old_price: null,
+    new_price: null,
+    currency_id: 1,
+    currency_code: 'USD',
+    duration_days: null,
+    is_free: false,
+    is_lifetime: false,
+    is_active: true,
+    sort_order: 0
+  });
+
+  
+
+  const fetchCurrencies = useCallback(async () => {
+    try {
+      setIsInitialLoading(true);
+      const currencyData = await TariffService.getAllCurrencies();
+      setCurrencies(currencyData);
+    } catch (error) {
+      console.error('Error fetching currencies:', error);
+      toast.error(t('failed_load_currencies'));
+    } finally {
+      setIsInitialLoading(false);
+    }
+  }, [t]);
+
+  const fetchAvailableLimits = useCallback(async () => {
+    try {
+      const limitsData = await LimitService.getLimits();
+      setAvailableLimits(limitsData);
+    } catch (error) {
+      console.error('Error loading available limits:', error);
+      toast.error(t('failed_load_limits') || 'Failed to load available limits');
+    }
+  }, [t]);
+
+  useEffect(() => {
+    fetchCurrencies();
+    fetchAvailableLimits();
+  }, [fetchCurrencies, fetchAvailableLimits]);
+
+  const handleInputChange = (field: keyof TariffFormData, value: string | number | boolean | null) => {
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Business rules
+      if (field === 'is_free' && value === true) {
+        // If free tariff is selected, set prices to null
+        newData.old_price = null;
+        newData.new_price = null;
+      }
+      
+      if (field === 'is_lifetime' && value === true) {
+        // If lifetime access is selected, set duration to null
+        newData.duration_days = null;
+      }
+      
+      return newData;
+    });
+  };
+
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      
+      // Validation
+      if (!formData.name.trim()) {
+        toast.error(t('validation_error'));
+        return;
+      }
+      
+      // Use correct field mapping as per actual database schema
+      const tariffData: any = {
+        name: formData.name.trim(),
+        description: formData.description,
+        currency_id: formData.currency_id, // Use currency_id as per actual database schema
+        currency_code: formData.currency_code, // Include currency_code as required field
+        duration_days: formData.duration_days,
+        is_free: formData.is_free,
+        is_lifetime: formData.is_lifetime,
+        is_active: formData.is_active,
+        sort_order: formData.sort_order
+      };
+      
+      // Handle prices based on free tariff status
+      if (formData.is_free) {
+        // For free tariffs, explicitly set prices to null
+        tariffData.old_price = null;
+        tariffData.new_price = null;
+      } else {
+        // For paid tariffs, include prices (can be null or actual values)
+        tariffData.old_price = formData.old_price;
+        tariffData.new_price = formData.new_price;
+      }
+      
+      const createdTariff = await TariffService.createTariff(tariffData);
+      setSavedTariffId(createdTariff.id);
+      toast.success(t('tariff_created'));
+      
+      // Save features and limits if they exist
+      await saveFeatures(createdTariff.id);
+      await saveLimits(createdTariff.id);
+      
+      // Navigate back to tariff management with a flag to indicate fresh data should be loaded
+      navigate('/admin/tariff?refresh=true');
+    } catch (error) {
+      console.error('Error creating tariff:', error);
+      toast.error(t('failed_create_tariff'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getCurrencySymbol = (currencyId: number) => {
+    const currency = currencies.find(c => c.id === currencyId);
+    return currency ? currency.code : 'USD';
+  };
+
+  // Features management
+  const addFeature = () => {
+    if (!newFeature.feature_name.trim()) {
+      toast.error(t('enter_feature_name'));
+      return;
+    }
+    const feature: TariffFeature = {
+      id: Date.now(), // Temporary ID for new features
+      tariff_id: savedTariffId || 0,
+      feature_name: newFeature.feature_name,
+      is_active: newFeature.is_active
+    };
+    setFeatures([...features, feature]);
+    setNewFeature({ feature_name: '', is_active: true });
+  };
+
+  const removeFeature = (index: number) => {
+    setFeatures(features.filter((_, i) => i !== index));
+  };
+
+  const updateFeature = (index: number, field: keyof TariffFeature, value: any) => {
+    const updatedFeatures = [...features];
+    updatedFeatures[index] = { ...updatedFeatures[index], [field]: value };
+    setFeatures(updatedFeatures);
+  };
+
+  // Limits management
+  const addLimit = () => {
+    if (!newLimit.limit_name.trim() || newLimit.value <= 0) {
+      toast.error(t('enter_limit_name'));
+      return;
+    }
+    const limit: TariffLimit = {
+      id: Date.now(), // Temporary ID for new limits
+      tariff_id: savedTariffId || 0,
+      limit_name: newLimit.limit_name,
+      template_id: newLimit.template_id,
+      value: newLimit.value,
+      is_active: newLimit.is_active,
+      code: null,
+      description: null,
+      path: null,
+    };
+    setLimits([...limits, limit]);
+    setNewLimit({ limit_name: '', template_id: null, value: 0, is_active: true });
+  };
+
+  const removeLimit = (index: number) => {
+    setLimits(limits.filter((_, i) => i !== index));
+  };
+
+  const updateLimit = (index: number, field: keyof TariffLimit, value: any) => {
+    const updatedLimits = [...limits];
+    updatedLimits[index] = { ...updatedLimits[index], [field]: value };
+    setLimits(updatedLimits);
+  };
+
+  // Save features and limits to database
+  const saveFeatures = async (tariffId: number) => {
+    for (const feature of features) {
+      if (feature.id > 1000000) { // Temporary ID, needs to be created
+        await TariffService.addTariffFeature({
+          tariff_id: tariffId,
+          feature_name: feature.feature_name,
+          is_active: feature.is_active
+        });
+      }
+    }
+  };
+
+  const saveLimits = async (tariffId: number) => {
+    for (const limit of limits) {
+      if (limit.id > 1000000) { // Temporary ID, needs to be created
+        await TariffService.addTariffLimit({
+          tariff_id: tariffId,
+          limit_name: limit.limit_name,
+          template_id: limit.template_id,
+          value: limit.value,
+          is_active: limit.is_active
+        });
+      }
+    }
+  };
+
+  // Load sample data
+  const loadSampleFeatures = () => {
+    const sampleFeatures: TariffFeature[] = [
+      {
+        id: Date.now() + 1,
+        tariff_id: 0,
+        feature_name: t('xml_files_upload'),
+        is_active: true
+      },
+      {
+        id: Date.now() + 2,
+        tariff_id: 0,
+        feature_name: t('data_processing_cleaning'),
+        is_active: true
+      },
+      {
+        id: Date.now() + 3,
+        tariff_id: 0,
+        feature_name: t('excel_csv_export'),
+        is_active: true
+      }
+    ];
+    setFeatures(sampleFeatures);
+  };
+
+  const loadSampleLimits = () => {
+    const sampleLimits: TariffLimit[] = [
+      {
+        id: Date.now() + 1,
+        tariff_id: 0,
+        limit_name: t('store_count_limit'),
+        template_id: null,
+        value: 3,
+        is_active: true,
+        code: null,
+        description: null,
+        path: null,
+      },
+      {
+        id: Date.now() + 2,
+        tariff_id: 0,
+        limit_name: t('supplier_count_limit'),
+        template_id: null,
+        value: 5,
+        is_active: true,
+        code: null,
+        description: null,
+        path: null,
+      },
+      {
+        id: Date.now() + 3,
+        tariff_id: 0,
+        limit_name: t('product_count_limit'),
+        template_id: null,
+        value: 100,
+        is_active: true,
+        code: null,
+        description: null,
+        path: null,
+      }
+    ];
+    setLimits(sampleLimits);
+  };
+
+  if (isInitialLoading) {
+    return <FullPageLoader title="Завантаження…" subtitle={t('create_new_tariff')} icon={Shield} />;
+  }
+
+  return (
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
+      <PageHeader
+        title={t('create_new_tariff')}
+        description={t('create_tariff_description')}
+        breadcrumbItems={breadcrumbs}
+        actions={
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/admin/tariff')} className="p-2 sm:p-3">
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('back')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={handleSave} disabled={loading} size="sm" className="p-2 sm:p-3">
+                    <Save className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{loading ? t('saving') : t('save')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        }
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('tariff_details') || 'Tariff Details'}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="basic">
+                <FileText className="h-4 w-4 md:hidden" />
+                <span className="hidden md:inline">{t('basic_information') || 'Basic Information'}</span>
+              </TabsTrigger>
+              <TabsTrigger value="features">
+                <Sparkles className="h-4 w-4 md:hidden" />
+                <span className="hidden md:inline">{t('features') || 'Features'}</span>
+              </TabsTrigger>
+              <TabsTrigger value="limits">
+                <Shield className="h-4 w-4 md:hidden" />
+                <span className="hidden md:inline">{t('limits') || 'Limits'}</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="basic" className="space-y-6 mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name">{t('tariff_name')} *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    placeholder={t('enter_tariff_name')}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">{t('currency')}</Label>
+                    <Select
+                      value={formData.currency_id.toString()}
+                      onValueChange={(value) => {
+                        const currencyId = parseInt(value);
+                        const selectedCurrency = currencies.find(c => c.id === currencyId);
+                        handleInputChange('currency_id', currencyId);
+                        if (selectedCurrency) {
+                          handleInputChange('currency_code', selectedCurrency.code);
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((currency) => (
+                          <SelectItem key={currency.id} value={currency.id.toString()}>
+                            {currency.code} - {currency.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="sort_order">{t('sort_order')}</Label>
+                    <Input
+                      id="sort_order"
+                      type="number"
+                      min="0"
+                      value={formData.sort_order || 0}
+                      onChange={(e) => handleInputChange('sort_order', e.target.value ? parseInt(e.target.value) : 0)}
+                      placeholder={t('enter_sort_order')}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">{t('description')}</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description || ''}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  placeholder={t('enter_tariff_description')}
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="old_price">{t('old_price')}</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                      {getCurrencySymbol(formData.currency_id)}
+                    </span>
+                    <Input
+                      id="old_price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="pl-12"
+                      value={formData.old_price || ''}
+                      onChange={(e) => handleInputChange('old_price', e.target.value ? parseFloat(e.target.value) : null)}
+                      disabled={formData.is_free}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="new_price">{t('new_price')}</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">
+                      {getCurrencySymbol(formData.currency_id)}
+                    </span>
+                    <Input
+                      id="new_price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="pl-12"
+                      value={formData.new_price || ''}
+                      onChange={(e) => handleInputChange('new_price', e.target.value ? parseFloat(e.target.value) : null)}
+                      disabled={formData.is_free}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="duration_days">{t('duration_days')}</Label>
+                  <Input
+                    id="duration_days"
+                    type="number"
+                    min="1"
+                    value={formData.duration_days || ''}
+                    onChange={(e) => handleInputChange('duration_days', e.target.value ? parseInt(e.target.value) : null)}
+                    disabled={formData.is_lifetime}
+                    placeholder={t('enter_duration_days')}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="is_free"
+                    checked={formData.is_free}
+                    onCheckedChange={(checked) => handleInputChange('is_free', checked)}
+                  />
+                  <Label htmlFor="is_free" className="flex items-center gap-2">
+                    <Gift className="h-4 w-4 md:hidden" />
+                    <span className="hidden md:inline">{t('free_plan')}</span>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="is_lifetime"
+                    checked={formData.is_lifetime}
+                    onCheckedChange={(checked) => handleInputChange('is_lifetime', checked)}
+                  />
+                  <Label htmlFor="is_lifetime" className="flex items-center gap-2">
+                    <Infinity className="h-4 w-4 md:hidden" />
+                    <span className="hidden md:inline">{t('lifetime_access')}</span>
+                  </Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="is_active"
+                    checked={formData.is_active}
+                    onCheckedChange={(checked) => handleInputChange('is_active', checked)}
+                  />
+                  <Label htmlFor="is_active" className="flex items-center gap-2">
+                    <Power className="h-4 w-4 md:hidden" />
+                    <span className="hidden md:inline">{t('active')}</span>
+                  </Label>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="features" className="space-y-6 mt-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <h3 className="text-lg font-semibold">{t('features') || 'Features'}</h3>
+                <div className="flex flex-wrap gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={loadSampleFeatures} className="p-2">
+                          <span className="text-xs font-medium">📋</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Load Sample</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button onClick={addFeature} size="sm" className="p-2">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t('add_feature')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
+
+              {/* Add new feature form */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-10 gap-4 items-end">
+                    <div className="space-y-2 md:col-span-6">
+                      <Label htmlFor="new-feature-name">{t('feature_name')}</Label>
+                      <Input
+                        id="new-feature-name"
+                        value={newFeature.feature_name}
+                        onChange={(e) => setNewFeature({ ...newFeature, feature_name: e.target.value })}
+                        placeholder={t('enter_feature_name')}
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="new-feature-active" className="block text-center">{t('active')}</Label>
+                      <div className="flex h-10 w-full items-center justify-center">
+                        <Switch
+                          id="new-feature-active"
+                          checked={newFeature.is_active}
+                          onCheckedChange={(checked) => setNewFeature({ ...newFeature, is_active: checked })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-center md:col-span-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button onClick={addFeature} size="sm" className="p-2">
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{t('add_feature')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Features list */}
+              {features.length > 0 && (
+                <Card>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[60%]">{t('feature_name') || 'Feature Name'}</TableHead>
+                          <TableHead className="text-center w-[20%]">{t('status') || 'Status'}</TableHead>
+                          <TableHead className="text-center w-[20%]">{t('tariff_actions') || 'Actions'}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {features.map((feature, index) => (
+                          <TableRow key={feature.id}>
+                            <TableCell className="w-[60%]">
+                              <Input
+                                value={feature.feature_name}
+                                onChange={(e) => updateFeature(index, 'feature_name', e.target.value)}
+                                className="border-none p-0 focus-visible:ring-0 w-full"
+                              />
+                            </TableCell>
+                            <TableCell className="text-center w-[20%]">
+                              <div className="flex justify-center">
+                                <Switch
+                                  checked={feature.is_active || false}
+                                  onCheckedChange={(checked) => updateFeature(index, 'is_active', checked)}
+                                />
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center w-[20%]">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeFeature(index)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+
+              {features.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    {t('features_will_be_configured_after_creating_tariff')}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('save_tariff_first_to_add_features')}
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="limits" className="space-y-6 mt-6">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <h3 className="text-lg font-semibold">{t('limits') || 'Limits'}</h3>
+                <div className="flex flex-wrap gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" onClick={loadSampleLimits} className="p-2">
+                          <span className="text-xs font-medium">📋</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Load Sample</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button onClick={addLimit} size="sm" className="p-2">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t('add_limit')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
+
+              {/* Add new limit form */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-10 gap-4 items-end">
+                    <div className="space-y-2 md:col-span-4">
+                      <Label htmlFor="new-limit-name">{t('limit_name')}</Label>
+                      <Select 
+                        value={newLimit.template_id?.toString() || ''} 
+                        onValueChange={(value) => {
+                          const selectedLimit = availableLimits.find(l => l.id === parseInt(value));
+                          if (selectedLimit) {
+                            setNewLimit({ 
+                              ...newLimit, 
+                              limit_name: selectedLimit.name,
+                              template_id: selectedLimit.id
+                            });
+                          }
+                        }}
+                      >
+                        <SelectTrigger id="new-limit-name">
+                          <SelectValue placeholder={t('select_limit') || 'Виберіть обмеження'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableLimits.map((limit) => (
+                            <SelectItem key={limit.id} value={limit.id.toString()}>
+                              {limit.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="new-limit-value" className="block text-center">{t('limit_value')}</Label>
+                      <Input
+                        id="new-limit-value"
+                        type="number"
+                        min="0"
+                        value={newLimit.value}
+                        onChange={(e) => setNewLimit({ ...newLimit, value: parseInt(e.target.value) || 0 })}
+                        placeholder={t('enter_limit_value')}
+                        className="text-center"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="new-limit-active" className="block text-center">Активний</Label>
+                      <div className="flex h-10 w-full items-center justify-center">
+                        <Switch
+                          id="new-limit-active"
+                          checked={newLimit.is_active}
+                          onCheckedChange={(checked) => setNewLimit({ ...newLimit, is_active: checked })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-center md:col-span-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button onClick={addLimit} size="sm" className="p-2">
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{t('add_limit')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Limits list */}
+              {limits.length > 0 && (
+                <Card>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[40%]">{t('limit_name') || 'Limit Name'}</TableHead>
+                          <TableHead className="text-center w-[20%]">{t('limit_value') || 'Value'}</TableHead>
+                          <TableHead className="text-center w-[20%]">{t('status') || 'Status'}</TableHead>
+                          <TableHead className="text-center w-[20%]">{t('tariff_actions') || 'Actions'}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {limits.map((limit, index) => (
+                          <TableRow key={limit.id}>
+                            <TableCell className="w-[40%]">
+                              <Select 
+                                value={limit.template_id?.toString() || ''} 
+                                onValueChange={(value) => {
+                                  const selectedLimit = availableLimits.find(l => l.id === parseInt(value));
+                                  if (selectedLimit) {
+                                    updateLimit(index, 'limit_name', selectedLimit.name);
+                                    updateLimit(index, 'template_id', selectedLimit.id);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableLimits.map((availableLimit) => (
+                                    <SelectItem key={availableLimit.id} value={availableLimit.id.toString()}>
+                                      {availableLimit.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="text-center w-[20%]">
+                              <Input
+                                type="number"
+                                min="0"
+                                value={limit.value}
+                                onChange={(e) => updateLimit(index, 'value', parseInt(e.target.value) || 0)}
+                                className="border-none p-0 focus-visible:ring-0 text-center w-full"
+                              />
+                            </TableCell>
+                            <TableCell className="text-center w-[20%]">
+                              <div className="flex justify-center">
+                                <Switch
+                                  checked={limit.is_active || false}
+                                  onCheckedChange={(checked) => updateLimit(index, 'is_active', checked)}
+                                />
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center w-[20%]">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeLimit(index)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+
+              {limits.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-4">
+                    {t('limits_will_be_configured_after_creating_tariff')}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('save_tariff_first_to_add_limits')}
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default AdminTariffNew;

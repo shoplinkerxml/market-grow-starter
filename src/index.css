@@ -1,0 +1,275 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Lora&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fira+Code&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+
+    --popover: 210 40% 98.0392%;
+    --popover-foreground: 0 0% 9%;
+
+    --primary: 161 93% 30%;
+    --primary-foreground: 151 80% 95%;
+    --primary-light: 158 65% 95%;
+
+    --secondary: 142 76.6423% 73.1373%;
+    --secondary-foreground: 217 32.5843% 17.451%;
+
+    --muted: 210 40% 98.0392%;
+    --muted-foreground: 0 0% 9%;
+
+    --accent: 166 76% 96%;
+    --accent-foreground: 229 84% 4.902%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 85% 97%;
+
+    --border: 0 0% 83%;
+    --input: 0 0% 83%;
+    --ring: 161 93% 30%;
+
+    --radius: 0.5rem;
+
+    --success: 158 65% 45%;
+    --success-light: 158 65% 92%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(158 65% 45%), hsl(158 60% 40%));
+    --gradient-success: linear-gradient(135deg, hsl(158 65% 45%), hsl(158 55% 38%));
+    --gradient-hero: linear-gradient(180deg, hsl(0 0% 100%), hsl(158 65% 98%));
+
+    --shadow-primary: 0 10px 40px -10px hsl(158 65% 45% / 0.3);
+    --shadow-glow: 0 0 60px hsl(158 65% 45% / 0.4);
+
+    /* Admin Layout Colors */
+    --admin-page-bg: 0 0% 100%;
+    --admin-sidebar-bg: 151.8 81% 95.9%;
+    --admin-header-bg: 0 0% 100%;
+    --admin-content-bg: 0 0% 100%;
+    --chart-1: 158 64% 51%;
+    --chart-2: 141 69% 58%;
+    --chart-3: 172 66% 50%;
+    --chart-4: 82 77% 55%;
+    --chart-5: 149 80.3922% 90%;
+    --sidebar: 0 0% 98%;
+    --sidebar-foreground: 0 0% 9%;
+    --sidebar-primary: 161 93% 30%;
+    --sidebar-primary-foreground: 151 80% 95%;
+    --sidebar-accent: 0 0% 32%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 83%;
+    --sidebar-ring: 161 93% 30%;
+    --font-sans: Roboto, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    --font-serif: Lora, ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
+    --font-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
+  }
+
+  .dark {
+    --background: 0 0% 9%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 14%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 25%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 158 64% 51%;
+    --primary-foreground: 165 91% 9%;
+    --primary-light: 158 65% 25%;
+
+    --secondary: 0 0% 45%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 45%;
+    --muted-foreground: 0 0% 98%;
+
+    --accent: 178 84% 10%;
+    --accent-foreground: 172 66% 50%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 85% 97%;
+
+    --border: 0 0% 32%;
+    --input: 0 0% 32%;
+    --ring: 158 64% 51%;
+
+    --success: 158 65% 54%;
+    --success-light: 158 65% 25%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(158 65% 54%), hsl(158 65% 46%));
+    --gradient-success: linear-gradient(135deg, hsl(158 65% 54%), hsl(158 60% 42%));
+    --gradient-hero: linear-gradient(180deg, hsl(222 47% 11%), hsl(222 47% 14%));
+
+    --shadow-primary: 0 10px 40px -10px hsl(158 65% 54% / 0.5);
+    --shadow-glow: 0 0 80px hsl(158 65% 54% / 0.5);
+
+    /* Admin Layout Colors - Dark Mode */
+    --admin-page-bg: 158 30% 8%;
+    --admin-sidebar-bg: 158 30% 8%;
+    --admin-header-bg: 158 30% 12%;
+    --admin-content-bg: 158 30% 12%;
+    --chart-1: 156 71% 66%;
+    --chart-2: 141 76% 73%;
+    --chart-3: 170 76% 64%;
+    --chart-4: 81 84% 67%;
+    --chart-5: 0 0% 45%;
+    --sidebar: 0 0% 14%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 158 64% 51%;
+    --sidebar-primary-foreground: 165 91% 9%;
+    --sidebar-accent: 172 66% 50%;
+    --sidebar-accent-foreground: 178 84% 10%;
+    --sidebar-border: 0 0% 32%;
+    --sidebar-ring: 158 64% 51%;
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --radius: 0.5rem;
+    --font-sans: Roboto, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    --font-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    --font-serif: Lora, ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Override Chrome autofill blue background to keep inputs consistent */
+  input:-webkit-autofill,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0px 1000px hsl(var(--background)) inset;
+    box-shadow: 0 0 0px 1000px hsl(var(--background)) inset;
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
+    transition: background-color 99999s ease-out;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .bg-gradient-success {
+    background: var(--gradient-success);
+  }
+
+  .shadow-primary {
+    box-shadow: var(--shadow-primary);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .text-primary-light {
+    color: hsl(var(--primary-light));
+  }
+
+  .bg-primary-light {
+    background-color: hsl(var(--primary-light));
+  }
+
+  .text-success {
+    color: hsl(var(--success));
+  }
+
+  .bg-success {
+    background-color: hsl(var(--success));
+  }
+
+  .bg-success-light {
+    background-color: hsl(var(--success-light));
+  }
+
+  .bg-primary-lighter {
+    background-color: hsl(var(--primary-lighter));
+  }
+
+  /* Admin Layout Utilities */
+  .card-elevated {
+    @apply bg-card border border-primary/40 rounded-xl shadow-lg transition-all duration-200 ease-out;
+  }
+
+  .card-elevated-hover {
+    @apply hover:shadow-xl hover:-translate-y-1;
+  }
+
+  .card-elevated-hover:hover {
+    background-color: hsl(var(--primary-light));
+  }
+
+  .bg-admin-page {
+    background-color: hsl(var(--admin-page-bg));
+  }
+
+  .bg-admin-sidebar {
+    background-color: hsl(var(--admin-sidebar-bg));
+  }
+
+  .bg-admin-header {
+    background-color: hsl(var(--admin-header-bg));
+  }
+
+  .bg-admin-content {
+    background-color: hsl(var(--admin-content-bg));
+  }
+
+  /* Hide native scrollbars for a cleaner mobile UX */
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+}
+
+/* Custom styles for dropdown menu items */
+@layer components {
+  .dropdown-item-hover {
+    @apply focus:bg-primary-lighter focus:text-primary-foreground hover:bg-primary-lighter hover:text-primary-foreground;
+  }
+
+  .badge-active {
+    @apply bg-primary-lighter text-primary-foreground;
+  }
+}
