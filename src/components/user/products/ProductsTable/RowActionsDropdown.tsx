@@ -6,12 +6,12 @@ import { Edit, MoreHorizontal, Copy, Loader2, Store, Trash2 } from "lucide-react
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { toast } from "sonner";
-import { ShopService } from "@/lib/shop-service";
 import { ShopCountsService } from "@/lib/shop-counts";
 import { ProductService, type Product } from "@/lib/product-service";
 import type { ShopAggregated } from "@/lib/shop-service";
 import { useSyncStatus } from "@/lib/optimistic-mutation";
 import { useOutletContext } from "react-router-dom";
+import { UserAuthService } from "@/lib/user-auth-service";
 
 type ProductRow = Product & {
   linkedStoreIds?: string[];
@@ -46,8 +46,31 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
       } else {
         setLoadingStores(true);
         try {
-          const data = await ShopService.getShopsAggregated();
-          const arr = data || [];
+          const cachedAuthMe = queryClient.getQueryData<any>(["auth", "me"]);
+          const cachedRows = Array.isArray((cachedAuthMe as any)?.userStores)
+            ? ((cachedAuthMe as any).userStores as Array<{ id: string; store_name: string }>)
+            : null;
+          const authMe = cachedRows && cachedRows.length > 0 ? null : await UserAuthService.fetchAuthMe();
+          const baseIso = new Date(0).toISOString();
+          const rows = cachedRows && cachedRows.length > 0
+            ? cachedRows
+            : Array.isArray((authMe as any)?.userStores)
+              ? ((authMe as any).userStores as Array<{ id: string; store_name: string }>)
+              : [];
+          const arr = rows.map((s) => ({
+            id: String(s.id),
+            user_id: String(uid),
+            store_name: String(s.store_name || ""),
+            store_company: null,
+            store_url: null,
+            template_id: null,
+            xml_config: null,
+            custom_mapping: null,
+            marketplace: undefined,
+            is_active: true,
+            created_at: baseIso,
+            updated_at: baseIso,
+          })) as ShopAggregated[];
           setStores(arr);
           try { queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], arr); } catch { void 0; }
         } finally {
