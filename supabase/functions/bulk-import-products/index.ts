@@ -292,13 +292,11 @@ async function processBatch(
   supabase: any,
   rows: Row[],
   startIndex: number,
-  storeId: string,
   storeIds: string[],
   references: any,
   existingProducts: Map<string, any>,
   existingByExternalId: Map<string, { id: string; store_id: string }>,
-  externalIdSeen: Set<string>,
-  remainingSlots: { count: number }
+  externalIdSeen: Set<string>
 ): Promise<ImportResult> {
   const result: ImportResult = {
     created: 0,
@@ -307,8 +305,7 @@ async function processBatch(
     errors: []
   };
 
-  const toUpdate: Array<{ id: string; data: Record<string, unknown>; params: ParsedParams }> = [];
-  const toCreate: Array<{ data: Record<string, unknown>; params: ParsedParams }> = [];
+  const toUpdate: Array<{ id: string; data: Record<string, unknown>; params: ParsedParams; row: number; external_id: string }> = [];
   const paramsToDelete: string[] = [];
   const paramsToInsert: Array<Record<string, unknown>> = [];
 
@@ -317,23 +314,23 @@ async function processBatch(
     const rowNum = startIndex + i + 1;
     
     try {
-      const productId = String(readCell(d, ["ID", "product_id"])).trim();
-      const externalId = String(readCell(d, ["External ID", "Зовнішній ID"])).trim();
-      const name = String(readCell(d, ["Name", "Назва"])).trim();
+      const productId = String(readCell(d, ["ID", "product_id", "id", "Product ID", "ProductID"])).trim();
+      const externalId = String(readCell(d, ["External ID", "Зовнішній ID", "Внешний ID", "external_id"])).trim();
       
       const parsed = parseProductRow(d, references);
       const productData = parsed.data;
 
-      let mode: "create" | "update" = "create";
-      let effectiveId = productId;
+      let effectiveId = "";
 
       if (productId) {
         const existing = existingProducts.get(productId);
-        if (!existing || !storeIds.includes(existing.store_id)) {
+        if (existing && storeIds.includes(existing.store_id)) {
+          effectiveId = productId;
+        } else {
+          result.errors.push({ row: rowNum, external_id: externalId, error: "Товар з таким ID не знайдено" });
           result.skipped++;
           continue;
         }
-        mode = "update";
       } else if (externalId) {
         if (externalIdSeen.has(externalId)) {
           result.errors.push({ row: rowNum, external_id: externalId, error: "Дублікат External ID" });
@@ -341,64 +338,29 @@ async function processBatch(
           continue;
         }
         externalIdSeen.add(externalId);
+
         const existingByExt = existingByExternalId.get(externalId);
         if (existingByExt && storeIds.includes(existingByExt.store_id)) {
-          mode = "update";
           effectiveId = existingByExt.id;
+        } else {
+          result.errors.push({ row: rowNum, external_id: externalId, error: "Товар з таким External ID не знайдено" });
+          result.skipped++;
+          continue;
         }
+      } else {
+        result.errors.push({ row: rowNum, error: "Потрібен ID або External ID" });
+        result.skipped++;
+        continue;
       }
 
-      const validation = validateProductData(productData, { requireName: mode === "create" });
+      const validation = validateProductData(productData, { requireName: false });
       if (!validation.valid) {
         result.errors.push({ row: rowNum, external_id: externalId, error: validation.error! });
         result.skipped++;
         continue;
       }
 
-      if (mode === "update") {
-        if (!effectiveId) {
-          result.skipped++;
-          continue;
-        }
-
-        toUpdate.push({ id: effectiveId, data: productData, params: parsed.params });
-        result.updated++;
-      } else {
-        if (remainingSlots.count <= 0) {
-          result.errors.push({ 
-            row: rowNum, 
-            external_id: externalId, 
-            error: "Досягнуто ліміту товарів" 
-          });
-          result.skipped++;
-          continue;
-        }
-        
-        if (!externalId || !name) {
-          result.errors.push({ 
-            row: rowNum, 
-            error: "External ID та назва обов'язкові для нових товарів" 
-          });
-          result.skipped++;
-          continue;
-        }
-
-        const createData: Record<string, unknown> = {
-          ...productData,
-          store_id: storeId,
-          external_id: externalId,
-          name,
-        };
-
-        if (createData.currency_code === undefined) createData.currency_code = "UAH";
-        if (createData.available === undefined) createData.available = true;
-        if (createData.stock_quantity === undefined) createData.stock_quantity = 0;
-        if (createData.state === undefined) createData.state = "new";
-
-        toCreate.push({ data: createData, params: parsed.params });
-        remainingSlots.count--;
-        result.created++;
-      }
+      toUpdate.push({ id: effectiveId, data: productData, params: parsed.params, row: rowNum, external_id: externalId });
     } catch (error) {
       result.errors.push({ 
         row: rowNum, 
@@ -408,104 +370,60 @@ async function processBatch(
     }
   }
 
-  try {
-    // Обновления - используем отдельные UPDATE запросы для каждого продукта
-    if (toUpdate.length > 0) {
-      console.log(`Updating ${toUpdate.length} products...`);
-      
-      for (const { id, data, params } of toUpdate) {
-        try {
-          // Формируем данные для обновления (убираем undefined значения)
-          const updateData: Record<string, unknown> = {};
-          for (const [key, value] of Object.entries(data)) {
-            if (value !== undefined) {
-              updateData[key] = value;
-            }
-          }
-          
-          // Обновляем продукт
-          const { error: updateError } = await supabase
-            .from("store_products")
-            .update(updateData)
-            .eq("id", id);
-          
-          if (updateError) {
-            console.error(`Error updating product ${id}:`, updateError);
-            throw updateError;
-          }
-
-          // Обрабатываем параметры если есть
-          if (params.hasParamColumns) {
-            paramsToDelete.push(id);
-            for (const p of params.params) {
-              paramsToInsert.push({ product_id: id, ...p });
-            }
-          }
-        } catch (error) {
-          console.error(`Failed to update product ${id}:`, error);
-          throw error;
+  if (toUpdate.length > 0) {
+    console.log(`Updating ${toUpdate.length} products...`);
+    for (const { id, data, params, row, external_id } of toUpdate) {
+      const updateData: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(data)) {
+        if (value !== undefined) {
+          updateData[key] = value;
         }
       }
-      
-      console.log(`Successfully updated ${toUpdate.length} products`);
-    }
 
-    // Создания
-    if (toCreate.length > 0) {
-      console.log(`Creating ${toCreate.length} products...`);
-      
-      const { data: created, error: createErr } = await supabase
+      const { error: updateError } = await supabase
         .from("store_products")
-        .insert(toCreate.map((x) => x.data))
-        .select("id");
-        
-      if (createErr) {
-        console.error("Create error:", createErr);
-        throw createErr;
-      }
-      
-      if (created && created.length > 0) {
-        console.log(`Successfully created ${created.length} products`);
-        for (let i = 0; i < created.length; i++) {
-          const productId = created[i]?.id;
-          const original = toCreate[i];
-          if (productId && original?.params?.hasParamColumns) {
-            for (const p of original.params.params) {
-              paramsToInsert.push({ product_id: productId, ...p });
-            }
-          }
-        }
-      }
-    }
+        .update(updateData)
+        .eq("id", id);
 
-    // Параметры - сначала удаляем старые
-    if (paramsToDelete.length > 0) {
-      console.log(`Deleting params for ${paramsToDelete.length} products...`);
-      const { error: delErr } = await supabase
-        .from("store_product_params")
-        .delete()
-        .in("product_id", paramsToDelete);
-      if (delErr) {
-        console.error("Delete params error:", delErr);
+      if (updateError) {
+        result.errors.push({ row, external_id, error: getErrorMessage(updateError) });
+        result.skipped++;
+        continue;
       }
-    }
-    
-    // Вставляем новые параметры
-    if (paramsToInsert.length > 0) {
-      console.log(`Inserting ${paramsToInsert.length} params...`);
-      for (let i = 0; i < paramsToInsert.length; i += 100) {
-        const batch = paramsToInsert.slice(i, i + 100);
-        const { error: insErr } = await supabase
-          .from("store_product_params")
-          .insert(batch);
-        if (insErr) {
-          console.error("Insert params error:", insErr);
+
+      result.updated++;
+
+      if (params.hasParamColumns) {
+        paramsToDelete.push(id);
+        for (const p of params.params) {
+          paramsToInsert.push({ product_id: id, ...p });
         }
       }
     }
-  } catch (error) {
-    console.error("Batch processing error:", error);
-    throw error;
+  }
+
+  if (paramsToDelete.length > 0) {
+    console.log(`Deleting params for ${paramsToDelete.length} products...`);
+    const { error: delErr } = await supabase
+      .from("store_product_params")
+      .delete()
+      .in("product_id", paramsToDelete);
+    if (delErr) {
+      console.error("Delete params error:", delErr);
+    }
+  }
+  
+  if (paramsToInsert.length > 0) {
+    console.log(`Inserting ${paramsToInsert.length} params...`);
+    for (let i = 0; i < paramsToInsert.length; i += 100) {
+      const batch = paramsToInsert.slice(i, i + 100);
+      const { error: insErr } = await supabase
+        .from("store_product_params")
+        .insert(batch);
+      if (insErr) {
+        console.error("Insert params error:", insErr);
+      }
+    }
   }
 
   return result;
@@ -659,81 +577,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return jsonResponse({ error: "forbidden" }, 403);
     }
 
-    // Проверка подписки
-    const { data: subsRows, error: subsError } = await supabase
-      .from("user_subscriptions")
-      .select("id,tariff_id,end_date,is_active,start_date")
-      .eq("user_id", userId)
-      .eq("is_active", true)
-      .order("start_date", { ascending: false })
-      .limit(1);
-
-    if (subsError) {
-      console.error("Subscription error:", subsError);
-      throw new Error("Failed to load subscription");
-    }
-
-    let activeSub = (subsRows || [])[0] || null;
-    
-    if (activeSub?.end_date) {
-      try {
-        const endDate = new Date(activeSub.end_date);
-        if (!isNaN(endDate.getTime()) && endDate.getTime() < Date.now()) {
-          await supabase
-            .from("user_subscriptions")
-            .update({ is_active: false })
-            .eq("id", activeSub.id);
-          activeSub = null;
-        }
-      } catch (dateError) {
-        console.error("Date parsing error:", dateError);
-      }
-    }
-    
-    if (!activeSub) {
-      return jsonResponse({ error: "limit_reached" }, 400);
-    }
-
-    const tariffId = Number(activeSub.tariff_id);
-    if (!Number.isFinite(tariffId) || tariffId <= 0) {
-      console.error("Invalid tariff_id:", tariffId);
-      return jsonResponse({ error: "invalid_tariff" }, 400);
-    }
-
-    const { data: limitData, error: limitError } = await supabase
-      .from("tariff_limits")
-      .select("value")
-      .eq("tariff_id", tariffId)
-      .ilike("limit_name", "%товар%")
-      .limit(1)
-      .maybeSingle();
-
-    if (limitError) {
-      console.error("Limit query error:", limitError);
-    }
-
-    const maxProducts = limitData?.value ? Number(limitData.value) : 0;
-    
-    if (!Number.isFinite(maxProducts) || maxProducts <= 0) {
-      console.error("Invalid product limit:", maxProducts);
-      return jsonResponse({ error: "limit_reached" }, 400);
-    }
-
-    let currentCount = 0;
-    if (activeStoreIds.length > 0) {
-      const { count, error: countError } = await supabase
-        .from("store_products")
-        .select("id", { count: "exact", head: true })
-        .in("store_id", activeStoreIds);
-      
-      if (countError) {
-        console.error("Count error:", countError);
-      }
-      currentCount = Number(count || 0);
-    }
-
-    const remainingSlots = { count: Math.max(0, maxProducts - currentCount) };
-
     const { error: jobError } = await supabase
       .from("product_import_jobs")
       .upsert({
@@ -759,7 +602,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const references = await preloadReferences(supabase, userId, activeStoreIds);
     
     const productIds = rows
-      .map(r => readCell(r, ["ID", "product_id"]))
+      .map(r => readCell(r, ["ID", "product_id", "id", "Product ID", "ProductID"]))
       .filter(Boolean);
     const existingProducts = await preloadExistingProducts(supabase, activeStoreIds, productIds);
     
@@ -768,7 +611,6 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const externalIds = Array.from(
       new Set(
         rows
-          .filter((r) => !readCell(r, ["ID", "product_id"]))
           .map((r) => readCell(r, ["External ID", "Зовнішній ID", "Внешний ID", "external_id"]).trim())
           .filter(Boolean),
       ),
@@ -798,13 +640,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
           supabase,
           batch,
           i,
-          targetStoreId,
           activeStoreIds,
           references,
           existingProducts,
           existingByExternalId,
-          externalIdSeen,
-          remainingSlots
+          externalIdSeen
         );
 
         totalResult.created += batchResult.created;
@@ -815,7 +655,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         const processed = Math.min(i + batch.length, rows.length);
         console.log(`Processed: ${processed}/${rows.length}, Created: ${totalResult.created}, Updated: ${totalResult.updated}, Skipped: ${totalResult.skipped}`);
         
-        await supabase
+        const { error: progressUpdateError } = await supabase
           .from("product_import_jobs")
           .update({
             processed_rows: processed,
@@ -824,6 +664,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
             skipped_count: totalResult.skipped
           })
           .eq("id", jobId);
+
+        if (progressUpdateError) {
+          console.error("Progress update error:", progressUpdateError);
+        }
           
       } catch (batchError) {
         console.error(`Batch ${i}-${i + BATCH_SIZE} error:`, batchError);
@@ -834,7 +678,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    await supabase
+    const { error: finalJobUpdateError } = await supabase
       .from("product_import_jobs")
       .update({
         status: "done",
@@ -845,12 +689,35 @@ Deno.serve(async (req: Request): Promise<Response> => {
       })
       .eq("id", jobId);
 
-    console.log(`Import completed: Created: ${totalResult.created}, Updated: ${totalResult.updated}, Skipped: ${totalResult.skipped}, Errors: ${totalResult.errors.length}`);
+    if (finalJobUpdateError) {
+      console.error("Final job update error:", finalJobUpdateError);
+    }
+
+    const { data: jobRow, error: jobFetchError } = await supabase
+      .from("product_import_jobs")
+      .select("created_count,updated_count,skipped_count,processed_rows,total_rows,status")
+      .eq("id", jobId)
+      .maybeSingle();
+
+    if (jobFetchError) {
+      console.error("Job fetch error:", jobFetchError);
+    }
+
+    const responseResult: ImportResult = {
+      created: Number(jobRow?.created_count ?? totalResult.created ?? 0),
+      updated: Number(jobRow?.updated_count ?? totalResult.updated ?? 0),
+      skipped: Number(jobRow?.skipped_count ?? totalResult.skipped ?? 0),
+      errors: totalResult.errors
+    };
+
+    console.log(
+      `Import completed: Created: ${responseResult.created}, Updated: ${responseResult.updated}, Skipped: ${responseResult.skipped}, Errors: ${responseResult.errors.length}`
+    );
 
     return jsonResponse({
       job_id: jobId,
-      ...totalResult,
-      errors: totalResult.errors.slice(0, 10)
+      ...responseResult,
+      errors: responseResult.errors.slice(0, 10)
     });
 
   } catch (error) {

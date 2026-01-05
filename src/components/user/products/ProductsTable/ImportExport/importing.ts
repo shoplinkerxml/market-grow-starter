@@ -240,9 +240,7 @@ export function validateImportRows(rows: Array<Record<string, string>>, t: (k: s
 
     const productId = readProductIdCell(r);
     const externalId = String(readCell(r, ["Зовнішній ID", "External ID", "Внешний ID", "external_id"])).trim();
-    const name = String(readCell(r, ["Name", "Назва", "Название", "name"])).trim();
     if (!productId && !externalId) errors.push(t("import_export_missing_external_id"));
-    if (!productId && !name) errors.push(t("import_export_missing_name"));
 
     out.push({ index: i, data: r, ok: errors.length === 0, errors });
   }

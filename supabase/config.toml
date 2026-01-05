@@ -80,3 +80,6 @@ verify_jwt = true
 
 [functions.user-activate-tariff]
 verify_jwt = true
+
+[functions.bulk-import-products]
+verify_jwt = true

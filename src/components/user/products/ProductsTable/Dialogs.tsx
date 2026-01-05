@@ -8,7 +8,7 @@ import {
   DialogNoOverlayTitle,
 } from "@/components/ui/dialog-no-overlay";
 import { Progress } from "@/components/ui/progress";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, Loader2 } from "lucide-react";
 import type { Product } from "@/lib/product-service";
 
 export function CopyProgressDialog({ open, name, t }: { open: boolean; name: string | null; t: (k: string) => string }) {
@@ -112,6 +112,101 @@ export function ExportProgressDialog({
             </span>
           </div>
         </div>
+      </DialogNoOverlayContent>
+    </DialogNoOverlay>
+  );
+}
+
+export function ImportUpdateProgressDialog({
+  open,
+  progress,
+  title,
+  description,
+  status,
+  summary,
+  labels,
+  closeLabel,
+  onClose,
+}: {
+  open: boolean;
+  progress: number;
+  title: string;
+  description?: string | null;
+  status: "running" | "done" | "error";
+  summary?: { updated: number; skipped: number; errors?: number } | null;
+  labels: { updated: string; skipped: string; errors: string };
+  closeLabel: string;
+  onClose: () => void;
+}) {
+  const pct = Math.max(0, Math.min(100, Math.round(progress)));
+  const showSummary = status !== "running" && summary;
+  return (
+    <DialogNoOverlay open={open} onOpenChange={(next) => (next ? void 0 : onClose())} modal={false}>
+      <DialogNoOverlayContent
+        position="top-right"
+        variant="info"
+        className="p-4 w-[min(26rem,92vw)] border border-sky-200 bg-gradient-to-b from-sky-50 to-background"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        data-testid="user_products_import_progress"
+      >
+        <DialogNoOverlayHeader>
+          <DialogNoOverlayTitle className="text-sm flex items-center gap-2">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+              {status === "done" ? <CheckCircle2 className="h-4 w-4" /> : status === "error" ? <AlertTriangle className="h-4 w-4" /> : <Info className="h-4 w-4" />}
+            </span>
+            {title}
+          </DialogNoOverlayTitle>
+          {description ? (
+            <DialogNoOverlayDescription className="text-xs text-muted-foreground">
+              {description}
+            </DialogNoOverlayDescription>
+          ) : (
+            <DialogNoOverlayDescription className="sr-only">
+              {title}
+            </DialogNoOverlayDescription>
+          )}
+        </DialogNoOverlayHeader>
+        <div className="mt-3 relative">
+          <Progress value={pct} className="h-3" />
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-2">
+            {status === "running" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-700" />
+            ) : status === "done" ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-700" />
+            ) : (
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-700" />
+            )}
+            <span className="tabular-nums text-[10px] leading-none text-foreground/80">
+              {pct}%
+            </span>
+          </div>
+        </div>
+        {showSummary ? (
+          <div className="mt-3 rounded-md border bg-background/60 px-3 py-2 text-xs">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-muted-foreground">{labels.updated}</span>
+                <span className="tabular-nums text-foreground">{summary.updated}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-muted-foreground">{labels.skipped}</span>
+                <span className="tabular-nums text-foreground">{summary.skipped}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-muted-foreground">{labels.errors}</span>
+                <span className="tabular-nums text-foreground">{Number(summary.errors ?? 0)}</span>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {status !== "running" ? (
+          <DialogNoOverlayFooter className="mt-3">
+            <Button variant="outline" onClick={onClose}>
+              {closeLabel}
+            </Button>
+          </DialogNoOverlayFooter>
+        ) : null}
       </DialogNoOverlayContent>
     </DialogNoOverlay>
   );

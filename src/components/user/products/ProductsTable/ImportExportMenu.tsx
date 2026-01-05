@@ -17,12 +17,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Download, File, FileSpreadsheet, FileText, Upload } from "lucide-react";
 import type { ProductRow } from "./columns";
 
-import { ExportProgressDialog } from "./Dialogs";
+import { ExportProgressDialog, ImportUpdateProgressDialog } from "./Dialogs";
 import { ProductService, type ProductAggregated } from "@/lib/product-service";
 import { exportProducts } from "./ImportExport/exporting";
 import { downloadBlob, downloadText } from "./ImportExport/file";
 import { PRODUCTS_SHEET_NAME } from "./ImportExport/constants";
-import { formatTokens } from "./ImportExport/format";
 import { importProducts, readImportFile, validateImportRows } from "./ImportExport/importing";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -82,10 +81,10 @@ export function ImportExportMenu({
   const [importProgressOpen, setImportProgressOpen] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importTitle, setImportTitle] = useState<string>("");
+  const [importStatus, setImportStatus] = useState<"running" | "done" | "error">("running");
+  const [importSummary, setImportSummary] = useState<{ updated: number; skipped: number; errors: number } | null>(null);
   const importProgressChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const filePickPendingRef = useRef(false);
-  const fileSelectedRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -97,19 +96,22 @@ export function ImportExportMenu({
     };
   }, []);
 
-  const closeImportProgress = useCallback(() => {
-    setImportProgress(100);
-    globalThis.setTimeout(() => {
-      const ch = importProgressChannelRef.current;
-      if (ch) {
-        importProgressChannelRef.current = null;
-        supabase.removeChannel(ch).catch(() => void 0);
-      }
-      setImportProgressOpen(false);
-      setImportProgress(0);
-      setImportTitle("");
-    }, 650);
+  const cleanupImportChannel = useCallback(() => {
+    const ch = importProgressChannelRef.current;
+    if (ch) {
+      importProgressChannelRef.current = null;
+      supabase.removeChannel(ch).catch(() => void 0);
+    }
   }, []);
+
+  const closeImportProgress = useCallback(() => {
+    cleanupImportChannel();
+    setImportProgressOpen(false);
+    setImportProgress(0);
+    setImportTitle("");
+    setImportStatus("running");
+    setImportSummary(null);
+  }, [cleanupImportChannel]);
 
   const runExport = useCallback(
     async (format: "csv" | "xlsx") => {
@@ -153,20 +155,25 @@ export function ImportExportMenu({
       importingRef.current = true;
 
       const effectiveStoreId = storeId ? String(storeId) : null;
-      setImportTitle(t("import"));
+      setImportTitle(t("import_export_update_title"));
       setImportProgress(8);
       setImportProgressOpen(true);
+      setImportStatus("running");
+      setImportSummary(null);
 
       try {
         const { products } = await readImportFile(file);
-        setImportProgress(5);
+        setImportProgress(15);
         const validated = validateImportRows(products, t).map((r) => ({
           ...r,
           data: { ...r.data, __sheet: PRODUCTS_SHEET_NAME },
         }));
         const errorsCount = validated.reduce((acc, r) => acc + (r.ok ? 0 : 1), 0);
         if (validated.length === 0 || errorsCount > 0) {
-          toast.error(t("import_export_fix_errors"));
+          cleanupImportChannel();
+          setImportProgress(100);
+          setImportStatus("error");
+          setImportSummary({ updated: 0, skipped: 0, errors: Math.max(1, errorsCount) });
           return;
         }
 
@@ -206,63 +213,39 @@ export function ImportExportMenu({
 
         importProgressChannelRef.current = channel;
 
-        const { created, updated, skipped } = await importProducts({ jobId, rows: validated, effectiveStoreId });
+        const { updated, skipped } = await importProducts({ jobId, rows: validated, effectiveStoreId });
         ProductService.clearAllProductsCaches();
         queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
-        toast.success(formatTokens(t("import_export_import_done"), { created, updated, skipped }));
+        cleanupImportChannel();
+        setImportProgress(100);
+        setImportStatus("done");
+        setImportSummary({ updated: Number(updated || 0), skipped: Number(skipped || 0), errors: 0 });
       } catch {
-        toast.error(t("operation_failed"));
+        cleanupImportChannel();
+        setImportProgress(100);
+        setImportStatus("error");
+        setImportSummary({ updated: 0, skipped: 0, errors: 1 });
         ProductService.clearAllProductsCaches();
         queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
       } finally {
         importingRef.current = false;
-        closeImportProgress();
       }
     },
-    [closeImportProgress, queryClient, storeId, t, uid],
+    [cleanupImportChannel, queryClient, storeId, t, uid],
   );
 
   const openImportFilePicker = useCallback(() => {
     if (importingRef.current || exportingRef.current) return;
-
-    filePickPendingRef.current = true;
-    fileSelectedRef.current = false;
-    setImportTitle(t("import"));
-    setImportProgress(0);
-    setImportProgressOpen(true);
-
-    function handleFocus() {
-      globalThis.setTimeout(() => {
-        if (!fileSelectedRef.current && filePickPendingRef.current) {
-          filePickPendingRef.current = false;
-          importingRef.current = false;
-          setImportProgressOpen(false);
-          setImportProgress(0);
-          setImportTitle("");
-        }
-      }, 150);
-      globalThis.removeEventListener("focus", handleFocus);
-    }
-
-    globalThis.addEventListener("focus", handleFocus);
     globalThis.setTimeout(() => {
       fileInputRef.current?.click();
     }, 0);
-  }, [t]);
+  }, []);
 
   const onFileChange: React.ChangeEventHandler<HTMLInputElement> = useCallback(
     async (e) => {
       const f = e.target.files?.[0] || null;
       e.currentTarget.value = "";
-      fileSelectedRef.current = !!f;
-      filePickPendingRef.current = false;
-      if (!f) {
-        importingRef.current = false;
-        setImportProgressOpen(false);
-        setImportProgress(0);
-        setImportTitle("");
-        return;
-      }
+      if (!f) return;
       await runImportFromFile(f);
     },
     [runImportFromFile],
@@ -334,11 +317,24 @@ export function ImportExportMenu({
         description={exportDescription}
       />
 
-      <ExportProgressDialog
+      <ImportUpdateProgressDialog
         open={importProgressOpen}
         progress={importProgress}
-        title={importTitle || t("import")}
-        description={null}
+        title={importTitle || t("import_export_update_title")}
+        description={importStatus === "error" ? t("operation_failed") : t("import_export_update_description")}
+        status={importStatus}
+        summary={
+          importSummary
+            ? { updated: importSummary.updated, skipped: importSummary.skipped, errors: importSummary.errors }
+            : null
+        }
+        labels={{
+          updated: t("import_export_updated"),
+          skipped: t("import_export_skipped"),
+          errors: t("import_export_errors"),
+        }}
+        closeLabel={t("import_export_close")}
+        onClose={closeImportProgress}
       />
     </>
   );
