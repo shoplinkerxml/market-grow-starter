@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/i18n";
 
@@ -12,22 +12,36 @@ export function HeroSection() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const lastTabClickAtRef = useRef<number>(Date.now());
+  const autoSwitchDisabledRef = useRef<boolean>(false);
 
   useEffect(() => {
     setIsVisible(true);
   }, []);
 
   const handleTabClick = useCallback((next: 'without' | 'with') => {
+    autoSwitchDisabledRef.current = true;
     lastTabClickAtRef.current = Date.now();
     setActiveTab(next);
   }, []);
 
+  const handleTabButtonClick = useCallback(
+    (e: MouseEvent<HTMLButtonElement>) => {
+      const next = e.currentTarget.dataset.tab;
+      if (next !== "without" && next !== "with") return;
+      handleTabClick(next);
+    },
+    [handleTabClick]
+  );
+
+  const handleStartClick = useCallback(() => {
+    navigate("/user-auth");
+  }, [navigate]);
+
   useEffect(() => {
-    const intervalMs = 3_600;
-    const pauseAfterClickMs = 10_000;
+    const intervalMs = 3_000;
     const id = window.setInterval(() => {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-      if (Date.now() - lastTabClickAtRef.current < pauseAfterClickMs) return;
+      if (autoSwitchDisabledRef.current) return;
       setActiveTab((prev) => (prev === "without" ? "with" : "without"));
     }, intervalMs);
     return () => window.clearInterval(id);
@@ -80,7 +94,7 @@ export function HeroSection() {
                   variant="hero"
                   size="lg"
                   className="text-lg px-14 py-7 rounded-lg min-w-[16rem] sm:min-w-[18rem] justify-center group"
-                  onClick={() => navigate('/user-auth')}
+                  onClick={handleStartClick}
                 >
                   {t('hero_cta_start')}
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -118,8 +132,9 @@ export function HeroSection() {
             <div className="flex justify-center gap-4 mb-4">
               <div className="animate-bob will-change-transform [animation-duration:3.6s]">
                 <button
-                  onClick={() => handleTabClick('without')}
-                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-destructive text-destructive-foreground shadow-md hover:shadow-lg ${
+                  data-tab="without"
+                  onClick={handleTabButtonClick}
+                  className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-300 bg-destructive text-destructive-foreground shadow-md hover:shadow-lg min-w-[16rem] sm:min-w-[18rem] ${
                     activeTab === 'without'
                       ? 'ring-2 ring-destructive/50 ring-offset-2 ring-offset-background scale-105'
                       : 'opacity-85 hover:opacity-100'
@@ -130,8 +145,9 @@ export function HeroSection() {
               </div>
               <div className="animate-bob will-change-transform [animation-duration:3.6s] [animation-delay:900ms]">
                 <button
-                  onClick={() => handleTabClick('with')}
-                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-primary text-primary-foreground shadow-md hover:shadow-lg ${
+                  data-tab="with"
+                  onClick={handleTabButtonClick}
+                  className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-300 bg-primary text-primary-foreground shadow-md hover:shadow-lg min-w-[16rem] sm:min-w-[18rem] ${
                     activeTab === 'with'
                       ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background scale-105'
                       : 'opacity-85 hover:opacity-100'

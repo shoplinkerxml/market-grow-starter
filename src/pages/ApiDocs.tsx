@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,21 +8,36 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, Copy, CheckCircle, Download, Edit, Save } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  ChevronDown,
+  Copy,
+  Download,
+  Edit,
+  FileJson,
+  Lock,
+  Save,
+  Send,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Tooltip,
@@ -55,13 +70,37 @@ interface ApiSection {
   pages: ApiPage[];
 }
 
+type SectionKey = "admin" | "user";
+
+const methodColors: Record<ApiEndpoint["method"], string> = {
+  GET: "bg-sky-500 text-white border-transparent hover:bg-sky-500",
+  POST: "bg-emerald-500 text-white border-transparent hover:bg-emerald-500",
+  PATCH: "bg-amber-500 text-white border-transparent hover:bg-amber-500",
+  DELETE: "bg-rose-500 text-white border-transparent hover:bg-rose-500",
+};
+
+const getEndpointKey = (endpoint: ApiEndpoint) => {
+  return `${endpoint.method} ${endpoint.endpoint} :: ${endpoint.name}`;
+};
+
 export default function ApiDocs() {
-  const [openEndpoints, setOpenEndpoints] = useState<Set<string>>(new Set());
   const [customScripts, setCustomScripts] = useState<Record<string, string>>({});
   const [editingScript, setEditingScript] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState<string>('');
-  const [adminEmail, setAdminEmail] = useState<string>('');
-  const [adminPassword, setAdminPassword] = useState<string>('');
+  const [settings, setSettings] = useState<{
+    apiKey: string;
+    accessToken: string;
+    adminEmail: string;
+    adminPassword: string;
+  }>({
+    apiKey: "",
+    accessToken: "",
+    adminEmail: "",
+    adminPassword: "",
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [serverUrl, setServerUrl] = useState(SUPABASE_URL);
   const { toast } = useToast();
   const { t } = useI18n();
 
@@ -74,19 +113,16 @@ export default function ApiDocs() {
       }
       
       const savedApiKey = localStorage.getItem('supabase-apikey');
-      if (savedApiKey) {
-        setApiKey(savedApiKey);
-      }
-      
+      const savedAccessToken = localStorage.getItem('access-token');
       const savedEmail = localStorage.getItem('admin-email');
-      if (savedEmail) {
-        setAdminEmail(savedEmail);
-      }
-      
       const savedPassword = localStorage.getItem('admin-password');
-      if (savedPassword) {
-        setAdminPassword(savedPassword);
-      }
+      
+      setSettings({
+        apiKey: savedApiKey || "",
+        accessToken: savedAccessToken || "",
+        adminEmail: savedEmail || "",
+        adminPassword: savedPassword || "",
+      });
     } catch (e) {
       console.warn('Не удалось загрузить данные из localStorage', e);
     }
@@ -105,85 +141,138 @@ export default function ApiDocs() {
     });
   };
 
-
-  const updateScript = (endpointKey: string, script: string) => {
-    saveScripts(prev => ({ ...prev, [endpointKey]: script }));
-    toast({
-      title: t("script_updated"),
-      description: t("script_saved"),
-      duration: 2000,
-    });
-  };
-
-  const updateApiKey = (newApiKey: string) => {
-    setApiKey(newApiKey);
-    try {
-      localStorage.setItem('supabase-apikey', newApiKey);
+  const updateScript = useCallback(
+    (endpointKey: string, script: string) => {
+      saveScripts((prev) => ({ ...prev, [endpointKey]: script }));
       toast({
-        title: t("api_key_saved"),
-        description: t("api_key_used"),
+        title: t("script_updated"),
+        description: t("script_saved"),
         duration: 2000,
       });
-    } catch (e) {
-      console.warn('Не удалось сохранить API ключ в localStorage', e);
-    }
-  };
+    },
+    [toast, t]
+  );
 
-  const updateAdminEmail = (email: string) => {
-    setAdminEmail(email);
+  const getPostmanScript = useCallback(
+    (endpoint: ApiEndpoint) => {
+      const key = getEndpointKey(endpoint);
+      const legacyKey = `${endpoint.method}-${endpoint.endpoint}`;
+      return customScripts[key] || customScripts[legacyKey] || endpoint.postmanScript || "";
+    },
+    [customScripts]
+  );
+
+  const closeAuthDialog = useCallback(() => setAuthDialogOpen(false), []);
+  const closeExportDialog = useCallback(() => setExportDialogOpen(false), []);
+
+  const copyToClipboard = useCallback(
+    (text: string) => {
+      navigator.clipboard.writeText(text);
+      toast({
+        title: t("copied"),
+        description: t("copied_clipboard"),
+        duration: 2000,
+      });
+    },
+    [toast, t]
+  );
+
+  const handleCopyFromButtonData = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const text = e.currentTarget.dataset.copyText;
+      if (!text) return;
+      copyToClipboard(text);
+    },
+    [copyToClipboard]
+  );
+
+  const handleToggleEditingScript = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const endpointKey = e.currentTarget.dataset.endpointKey;
+      if (!endpointKey) return;
+      setEditingScript((prev) => (prev === endpointKey ? null : endpointKey));
+    },
+    []
+  );
+
+  const handleScriptChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const endpointKey = e.currentTarget.dataset.endpointKey;
+      if (!endpointKey) return;
+      updateScript(endpointKey, e.target.value);
+    },
+    [updateScript]
+  );
+
+  const handleApiKeyChange = useCallback(
+    (value: string) => {
+      setSettings((prev) => ({ ...prev, apiKey: value }));
+      try {
+        localStorage.setItem("supabase-apikey", value);
+        toast({
+          title: t("api_key_saved"),
+          description: t("api_key_used"),
+          duration: 2000,
+        });
+      } catch (e) {
+        console.warn("Не удалось сохранить API ключ в localStorage", e);
+      }
+    },
+    [toast, t]
+  );
+
+  const handleAccessTokenChange = useCallback((value: string) => {
+    setSettings((prev) => ({ ...prev, accessToken: value }));
     try {
-      localStorage.setItem('admin-email', email);
+      localStorage.setItem("access-token", value);
     } catch (e) {
-      console.warn('Не удалось сохранить email в localStorage', e);
+      console.warn("Не удалось сохранить access token в localStorage", e);
     }
-  };
+  }, []);
 
-  const updateAdminPassword = (password: string) => {
-    setAdminPassword(password);
+  const handleAdminEmailChange = useCallback((value: string) => {
+    setSettings((prev) => ({ ...prev, adminEmail: value }));
     try {
-      localStorage.setItem('admin-password', password);
+      localStorage.setItem("admin-email", value);
     } catch (e) {
-      console.warn('Не удалось сохранить password в localStorage', e);
+      console.warn("Не удалось сохранить email в localStorage", e);
     }
-  };
+  }, []);
 
-  const getEndpointKey = (endpoint: ApiEndpoint) => {
-    return `${endpoint.method}-${endpoint.endpoint}`;
-  };
-
-  const getPostmanScript = (endpoint: ApiEndpoint) => {
-    const key = getEndpointKey(endpoint);
-    return customScripts[key] || endpoint.postmanScript || '';
-  };
-
-  const startEditingScript = (endpointKey: string) => {
-    setEditingScript(endpointKey);
-  };
-
-  const stopEditingScript = () => {
-    setEditingScript(null);
-  };
-
-  const toggleEndpoint = (endpoint: string) => {
-    const newOpen = new Set(openEndpoints);
-    if (newOpen.has(endpoint)) {
-      newOpen.delete(endpoint);
-    } else {
-      newOpen.add(endpoint);
+  const handleAdminPasswordChange = useCallback((value: string) => {
+    setSettings((prev) => ({ ...prev, adminPassword: value }));
+    try {
+      localStorage.setItem("admin-password", value);
+    } catch (e) {
+      console.warn("Не удалось сохранить password в localStorage", e);
     }
-    setOpenEndpoints(newOpen);
-  };
+  }, []);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const handleSaveBearerAuth = useCallback(() => {
     toast({
-      title: t("copied"),
-      description: t("copied_clipboard"),
+      title: "Authorization сохранена",
+      description: "Bearer token применён в примерах",
       duration: 2000,
     });
-  };
+  }, [toast]);
 
-  const apiSections: { admin: ApiSection; user: ApiSection } = {
+  const handleSaveSupabaseApiKey = useCallback(() => {
+    toast({
+      title: "Authorization сохранена",
+      description: "API key применён в примерах",
+      duration: 2000,
+    });
+  }, [toast]);
+
+  const handleSaveAdminCredentials = useCallback(() => {
+    toast({
+      title: "Authorization сохранена",
+      description: "Данные админа применены в примерах",
+      duration: 2000,
+    });
+  }, [toast]);
+
+  const apiSections: { admin: ApiSection; user: ApiSection } = useMemo(() => ({
     admin: {
       name: 'Кабинет админа',
       pages: [
@@ -996,52 +1085,80 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
         },
       ],
     },
-  };
+  }), []);
 
-  const methodColors = {
-    GET: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary',
-    POST: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary',
-    PATCH: 'bg-accent/50 text-accent-foreground dark:bg-accent/20 dark:text-accent-foreground',
-    DELETE: 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive'
-  };
+  const visiblePageGroupsBySection = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const build = (sectionKey: SectionKey) => {
+      const section = apiSections[sectionKey];
+      return section.pages
+        .map((page) => {
+          const endpoints = q
+            ? page.endpoints.filter((endpoint) => {
+                const haystack = [
+                  endpoint.name,
+                  endpoint.endpoint,
+                  endpoint.description,
+                  endpoint.method,
+                ]
+                  .filter(Boolean)
+                  .join(" ")
+                  .toLowerCase();
+                return haystack.includes(q);
+              })
+            : page.endpoints;
+          return { pageName: page.name, pageDescription: page.description, endpoints };
+        })
+        .filter((p) => p.endpoints.length > 0);
+    };
+    return {
+      admin: build("admin"),
+      user: build("user"),
+    };
+  }, [apiSections, searchQuery]);
 
-  const generateCurlCommand = (endpoint: ApiEndpoint) => {
-    const baseUrl = SUPABASE_URL;
-    const fullUrl = `${baseUrl}${endpoint.endpoint}`;
-    
-    let curlCmd = `curl -X ${endpoint.method} "${fullUrl}"`;
-    
-    // Добавляем apikey для всех запросов к Supabase API
-    if (endpoint.endpoint.includes('/auth/v1/') || endpoint.endpoint.includes('/rest/v1/')) {
-      const apikeyValue = apiKey || 'YOUR_APIKEY_HERE';
-      curlCmd += ` \\\n  -H "apikey: ${apikeyValue}"`;
-    }
-    
-    if (endpoint.headers) {
-      Object.entries(endpoint.headers).forEach(([key, value]) => {
-        curlCmd += ` \\\n  -H "${key}: ${value.replace('{{access_token}}', 'YOUR_TOKEN_HERE')}"`;
-      });
-    }
-    
-    curlCmd += ` \\\n  -H "Content-Type: application/json"`;
-    
-    if (endpoint.body) {
-      const body = { ...endpoint.body };
-      
-      // Подставляем admin email и password для auth токена
-      if (endpoint.name === 'Get Auth Token') {
-        body.email = adminEmail || "user@example.com";
-        body.password = adminPassword || "your_password";
+  const generateCurlCommand = useCallback(
+    (endpoint: ApiEndpoint) => {
+      const baseUrl = serverUrl;
+      const fullUrl = `${baseUrl}${endpoint.endpoint}`;
+
+      let curlCmd = `curl -X ${endpoint.method} "${fullUrl}"`;
+
+      if (endpoint.endpoint.includes("/auth/v1/") || endpoint.endpoint.includes("/rest/v1/")) {
+        const apikeyValue = settings.apiKey || "YOUR_APIKEY_HERE";
+        curlCmd += ` \\\n  -H "apikey: ${apikeyValue}"`;
       }
-      
-      curlCmd += ` \\\n  -d '${JSON.stringify(body, null, 2)}'`;
-    }
-    
-    return curlCmd;
-  };
 
-  const generatePostmanCollection = () => {
-    const baseUrl = SUPABASE_URL;
+      if (endpoint.headers) {
+        const tokenValue = settings.accessToken || "YOUR_TOKEN_HERE";
+        Object.entries(endpoint.headers).forEach(([key, value]) => {
+          const replaced = value
+            .replace("{{access_token}}", tokenValue)
+            .replace("{{jwt_token}}", tokenValue);
+          curlCmd += ` \\\n  -H "${key}: ${replaced}"`;
+        });
+      }
+
+      curlCmd += ` \\\n  -H "Content-Type: application/json"`;
+
+      if (endpoint.body) {
+        const body = { ...endpoint.body };
+
+        if (endpoint.name === "Get Auth Token") {
+          body.email = settings.adminEmail || "user@example.com";
+          body.password = settings.adminPassword || "your_password";
+        }
+
+        curlCmd += ` \\\n  -d '${JSON.stringify(body, null, 2)}'`;
+      }
+
+      return curlCmd;
+    },
+    [serverUrl, settings.accessToken, settings.adminEmail, settings.adminPassword, settings.apiKey]
+  );
+
+  const generatePostmanCollection = useCallback(() => {
+    const baseUrl = serverUrl;
     
     const collection = {
       info: {
@@ -1102,13 +1219,13 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                 if (endpoint.body) {
                   const body: any = { ...endpoint.body };
                   if (endpoint.name === 'Get Auth Token') {
-                    body.email = adminEmail || 'user@example.com';
-                    body.password = adminPassword || 'your_password';
+                    body.email = settings.adminEmail || 'user@example.com';
+                    body.password = settings.adminPassword || 'your_password';
                   }
                   requestData.body = { mode: 'raw', raw: JSON.stringify(body, null, 2) };
                 }
                 if (endpoint.endpoint.includes('/auth/v1/') || endpoint.endpoint.includes('/rest/v1/')) {
-                  const apikeyValue = apiKey || 'YOUR_APIKEY_HERE';
+                  const apikeyValue = settings.apiKey || 'YOUR_APIKEY_HERE';
                   requestData.header.push({ key: 'apikey', value: apikeyValue });
                 }
                 return {
@@ -1136,357 +1253,660 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
       description: t("collection_ready"),
       duration: 3000,
     });
-  };
+  }, [apiSections, getPostmanScript, serverUrl, settings.adminEmail, settings.adminPassword, settings.apiKey, t, toast]);
+
+  const generateOpenApiSpec = useCallback(() => {
+    const spec: any = {
+      openapi: "3.0.3",
+      info: {
+        title: "MarketGrow API",
+        version: "1.0.0",
+        description:
+          "OpenAPI спецификация, собранная из встроенной документации проекта.",
+      },
+      servers: [{ url: serverUrl }],
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: "http",
+            scheme: "bearer",
+            bearerFormat: "JWT",
+          },
+          supabaseApiKey: {
+            type: "apiKey",
+            in: "header",
+            name: "apikey",
+          },
+        },
+      },
+      paths: {},
+    };
+
+    const addEndpoint = (endpoint: ApiEndpoint) => {
+      const [pathPart, queryString] = endpoint.endpoint.split("?");
+      const method = endpoint.method.toLowerCase();
+
+      const parameters: any[] = [];
+      const pathParamMatches = Array.from(pathPart.matchAll(/\{([^}]+)\}/g));
+      pathParamMatches.forEach((m) => {
+        const name = m[1];
+        parameters.push({
+          in: "path",
+          name,
+          required: true,
+          schema: { type: "string" },
+        });
+      });
+      if (queryString) {
+        const params = new URLSearchParams(queryString);
+        params.forEach((value, name) => {
+          parameters.push({
+            in: "query",
+            name,
+            required: true,
+            schema: { type: "string" },
+            example: value,
+          });
+        });
+      }
+
+      const security: any[] = [];
+      const hasAuthHeader = Boolean(
+        endpoint.headers && Object.keys(endpoint.headers).some((h) => h.toLowerCase() === "authorization")
+      );
+      if (hasAuthHeader) security.push({ bearerAuth: [] });
+      if (endpoint.endpoint.includes("/auth/v1/") || endpoint.endpoint.includes("/rest/v1/")) {
+        security.push({ supabaseApiKey: [] });
+      }
+
+      const operation: any = {
+        summary: endpoint.name,
+        description: endpoint.description,
+        ...(parameters.length ? { parameters } : {}),
+        ...(security.length ? { security } : {}),
+        responses: {
+          "200": {
+            description: "OK",
+            content: {
+              "application/json": {
+                example: endpoint.response,
+              },
+            },
+          },
+        },
+      };
+
+      if (endpoint.body) {
+        operation.requestBody = {
+          required: true,
+          content: {
+            "application/json": {
+              example:
+                endpoint.name === "Get Auth Token"
+                  ? {
+                      ...endpoint.body,
+                      email: "user@example.com",
+                      password: "your_password",
+                    }
+                  : endpoint.body,
+            },
+          },
+        };
+      }
+
+      spec.paths[pathPart] = spec.paths[pathPart] || {};
+      spec.paths[pathPart][method] = operation;
+    };
+
+    (["admin", "user"] as const).forEach((sectionKey) => {
+      apiSections[sectionKey].pages.forEach((page) => {
+        page.endpoints.forEach(addEndpoint);
+      });
+    });
+
+    return spec;
+  }, [apiSections, serverUrl]);
+
+  const downloadJson = useCallback(
+    (filename: string, obj: unknown) => {
+      const dataStr =
+        "data:application/json;charset=utf-8," +
+        encodeURIComponent(JSON.stringify(obj, null, 2));
+      const downloadAnchorNode = document.createElement("a");
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", filename);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    },
+    []
+  );
+
+  const downloadOpenApiSpec = useCallback(() => {
+    const spec = generateOpenApiSpec();
+    downloadJson("openapi.json", spec);
+    toast({
+      title: "Swagger экспорт готов",
+      description: "Файл openapi.json скачан",
+      duration: 3000,
+    });
+  }, [downloadJson, generateOpenApiSpec, toast]);
+
+  const handleExportPostman = useCallback(() => {
+    generatePostmanCollection();
+    closeExportDialog();
+  }, [closeExportDialog, generatePostmanCollection]);
+
+  const handleExportSwagger = useCallback(() => {
+    downloadOpenApiSpec();
+    closeExportDialog();
+  }, [closeExportDialog, downloadOpenApiSpec]);
+
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(e.target.value);
+    },
+    []
+  );
+
+  const swaggerTags = useMemo(() => {
+    const tags: Array<{
+      key: string;
+      name: string;
+      description?: string;
+      endpoints: ApiEndpoint[];
+    }> = [];
+
+    (["admin", "user"] as const).forEach((sectionKey) => {
+      visiblePageGroupsBySection[sectionKey].forEach((page) => {
+        const name = `${sectionKey} / ${page.pageName}`;
+        tags.push({
+          key: `${sectionKey}:${page.pageName}`,
+          name,
+          description: page.pageDescription,
+          endpoints: page.endpoints,
+        });
+      });
+    });
+
+    return tags;
+  }, [visiblePageGroupsBySection]);
+
+  const methodRowStyles: Record<ApiEndpoint["method"], string> = useMemo(
+    () => ({
+      GET: "border-sky-500 bg-sky-50/60 dark:bg-sky-950/20",
+      POST: "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20",
+      PATCH: "border-amber-500 bg-amber-50/60 dark:bg-amber-950/20",
+      DELETE: "border-rose-500 bg-rose-50/60 dark:bg-rose-950/20",
+    }),
+    []
+  );
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-4">
-              API Документация
-            </h1>
-            <p className="text-xl text-muted-foreground mb-6">
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <div className="space-y-8">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-5xl font-semibold tracking-tight text-foreground">
+                MarketGrow API
+              </h1>
+              <span className="inline-flex items-center rounded bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">
+                1.0
+              </span>
+              <span className="inline-flex items-center rounded bg-emerald-600 px-2 py-1 text-xs font-semibold text-white">
+                OAS 3.0
+              </span>
+            </div>
+            <p className="text-muted-foreground">
               REST API для системы управления пользователями и ролевым доступом
             </p>
-            <div className="flex flex-wrap justify-center gap-4 mb-8">
-              <Badge variant="outline" className="text-sm px-3 py-1">
-                Base URL: {SUPABASE_URL}
-              </Badge>
-              <Badge variant="outline" className="text-sm px-3 py-1">
-                Authentication: JWT Bearer Token
-              </Badge>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={generatePostmanCollection}
-                      className="text-sm"
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Скачать Postman коллекцию</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+            <div className="grid gap-2">
+              <div className="text-sm font-semibold text-muted-foreground">
+                Servers
+              </div>
+              <div className="max-w-xl">
+                <Select value={serverUrl} onValueChange={setServerUrl}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SUPABASE_URL}>{SUPABASE_URL}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {/* Поля конфигурации */}
-            <div className="grid gap-6 md:grid-cols-2 mb-8">
-              {/* API ключ */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">API ключ</CardTitle>
-                  <CardDescription>
-                    Supabase API ключ для запросов
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-2 items-end">
-                    <div className="flex-1">
-                      <Label htmlFor="apikey">Supabase API Key (anon)</Label>
+            <div className="flex flex-wrap gap-2 md:justify-end">
+              <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/20"
+                  >
+                    <Lock className="h-4 w-4 mr-2" />
+                    Authorize
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden">
+                  <DialogHeader>
+                    <DialogTitle>Available authorizations</DialogTitle>
+                    <DialogDescription>
+                      Значения сохраняются локально в браузере
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-6 max-h-[65vh] sm:max-h-[70vh] overflow-y-auto pr-2">
+                    <div className="space-y-3 rounded-md border p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded bg-rose-50 px-2 py-1 text-sm font-semibold text-rose-600 dark:bg-rose-950/30">
+                          bearerAuth
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          (http, Bearer)
+                        </span>
+                      </div>
+                      <Label htmlFor="auth-bearer">Value</Label>
                       <Input
-                        id="apikey"
+                        id="auth-bearer"
                         type="text"
-                        value={apiKey}
-                        onChange={(e) => updateApiKey(e.target.value)}
-                        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                        value={settings.accessToken}
+                        onChange={(e) => handleAccessTokenChange(e.target.value)}
+                        placeholder="JWT token"
                         className="font-mono text-sm"
                       />
+                      <div className="flex gap-2">
+                        <Button
+                          className="border-emerald-500 bg-transparent text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/20"
+                          variant="outline"
+                          onClick={handleSaveBearerAuth}
+                        >
+                          Authorize
+                        </Button>
+                        <Button variant="outline" onClick={closeAuthDialog}>
+                          Close
+                        </Button>
+                      </div>
                     </div>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => copyToClipboard(apiKey)}
-                            disabled={!apiKey}
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Копировать API ключ</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </CardContent>
-              </Card>
 
-              {/* Email и Password */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Данные администратора</CardTitle>
-                  <CardDescription>
-                    Email и пароль для получения токена
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="admin-email">Email администратора</Label>
+                    <div className="space-y-3 rounded-md border p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded bg-rose-50 px-2 py-1 text-sm font-semibold text-rose-600 dark:bg-rose-950/30">
+                          supabaseApiKey
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          (apiKey)
+                        </span>
+                      </div>
+                      <Label htmlFor="auth-apikey">Value</Label>
                       <Input
-                        id="admin-email"
-                        type="email"
-                        value={adminEmail}
-                        onChange={(e) => updateAdminEmail(e.target.value)}
-                        placeholder="admin@example.com"
-                        className="text-sm"
+                        id="auth-apikey"
+                        type="text"
+                        value={settings.apiKey}
+                        onChange={(e) => handleApiKeyChange(e.target.value)}
+                        placeholder="Supabase anon key"
+                        className="font-mono text-sm"
                       />
+                      <div className="flex gap-2">
+                        <Button
+                          className="border-emerald-500 bg-transparent text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/20"
+                          variant="outline"
+                          onClick={handleSaveSupabaseApiKey}
+                        >
+                          Authorize
+                        </Button>
+                        <Button variant="outline" onClick={closeAuthDialog}>
+                          Close
+                        </Button>
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="admin-password">Пароль</Label>
-                      <Input
-                        id="admin-password"
-                        type="password"
-                        value={adminPassword}
-                        onChange={(e) => updateAdminPassword(e.target.value)}
-                        placeholder="password"
-                        className="text-sm"
-                      />
+
+                    <div className="space-y-3 rounded-md border p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded bg-rose-50 px-2 py-1 text-sm font-semibold text-rose-600 dark:bg-rose-950/30">
+                          adminCredentials
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          (internal)
+                        </span>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="auth-admin-email">Username</Label>
+                          <Input
+                            id="auth-admin-email"
+                            type="email"
+                            value={settings.adminEmail}
+                            onChange={(e) => handleAdminEmailChange(e.target.value)}
+                            placeholder="admin@example.com"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="auth-admin-password">Password</Label>
+                          <Input
+                            id="auth-admin-password"
+                            type="password"
+                            value={settings.adminPassword}
+                            onChange={(e) => handleAdminPasswordChange(e.target.value)}
+                            placeholder="password"
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          className="border-emerald-500 bg-transparent text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/20"
+                          variant="outline"
+                          onClick={handleSaveAdminCredentials}
+                        >
+                          Authorize
+                        </Button>
+                        <Button variant="outline" onClick={closeAuthDialog}>
+                          Close
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Download className="w-4 h-4" />
+                    Экспорт
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Экспорт</DialogTitle>
+                    <DialogDescription>
+                      Скачайте Swagger/OpenAPI или Postman коллекцию
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-3">
+                    <Button
+                      variant="outline"
+                      className="justify-start gap-3 h-auto py-3"
+                      onClick={handleExportPostman}
+                    >
+                      <Send className="h-5 w-5" />
+                      <div className="text-left">
+                        <div className="font-medium">Postman</div>
+                        <div className="text-xs text-muted-foreground">
+                          Коллекция v2.1 (JSON)
+                        </div>
+                      </div>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="justify-start gap-3 h-auto py-3"
+                      onClick={handleExportSwagger}
+                    >
+                      <FileJson className="h-5 w-5" />
+                      <div className="text-left">
+                        <div className="font-medium">Swagger (OpenAPI)</div>
+                        <div className="text-xs text-muted-foreground">
+                          Спецификация OpenAPI 3.0 (JSON)
+                        </div>
+                      </div>
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
-          <Tabs defaultValue="endpoints" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="endpoints">API Endpoints</TabsTrigger>
-              <TabsTrigger value="workflow">Процесс работы</TabsTrigger>
-              <TabsTrigger value="errors">Коды ошибок</TabsTrigger>
-            </TabsList>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <div className="text-sm font-semibold text-muted-foreground">
+              Filter
+            </div>
+            <Input
+              value={searchQuery}
+              onChange={handleSearchChange}
+              placeholder="Filter"
+              className="max-w-xl"
+            />
+          </div>
 
-            <TabsContent value="endpoints" className="space-y-6">
-              <Tabs defaultValue="admin" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="admin">Кабинет админа</TabsTrigger>
-                  <TabsTrigger value="user">Кабинет пользователя</TabsTrigger>
-                </TabsList>
-                {(['admin','user'] as const).map(sectionKey => (
-                  <TabsContent key={sectionKey} value={sectionKey} className="space-y-6">
-                    {apiSections[sectionKey].pages.map((page, pIdx) => (
-                      <Card key={pIdx}>
-                        <CardHeader>
-                          <CardTitle>{page.name}</CardTitle>
-                          {page.description && (
-                            <CardDescription>{page.description}</CardDescription>
-                          )}
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          {page.endpoints.map((endpoint, index) => {
-                            const endpointKey = `${endpoint.method}-${endpoint.endpoint}`;
-                            const isOpen = openEndpoints.has(endpointKey);
-                            const currentScript = getPostmanScript(endpoint);
-                            const isEditingCurrentScript = editingScript === endpointKey;
-                            return (
-                              <Card key={index}>
-                                <Collapsible open={isOpen} onOpenChange={() => toggleEndpoint(endpointKey)}>
-                                  <CollapsibleTrigger asChild>
-                                    <CardHeader className="cursor-pointer hover:bg-muted/50">
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                          <Badge className={methodColors[endpoint.method]}>{endpoint.method}</Badge>
-                                          <div>
-                                            <CardTitle className="text-lg">{endpoint.name}</CardTitle>
-                                            <CardDescription className="font-mono text-sm">{endpoint.endpoint}</CardDescription>
+          <Accordion type="multiple" className="w-full space-y-4">
+            {swaggerTags.map((tag) => (
+              <AccordionItem
+                key={tag.key}
+                value={tag.key}
+                className="rounded-md border border-border overflow-hidden"
+              >
+                <AccordionTrigger className="group px-4 py-3 hover:no-underline [&>svg]:hidden">
+                  <div className="flex w-full items-center justify-between gap-3 rounded-md">
+                    <div className="flex flex-col items-start gap-1">
+                      <div className="text-2xl font-semibold text-foreground">
+                        {tag.name}
+                      </div>
+                      {tag.description ? (
+                        <div className="text-sm text-muted-foreground">
+                          {tag.description}
+                        </div>
+                      ) : null}
+                    </div>
+                    <ChevronDown className="h-6 w-6 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4 pt-0">
+                  <div className="space-y-2">
+                    <Accordion type="multiple" className="w-full">
+                      {tag.endpoints.map((endpoint) => {
+                        const endpointKey = getEndpointKey(endpoint);
+                        const pathOnly = endpoint.endpoint.split("?")[0];
+                        const script = getPostmanScript(endpoint);
+                        const responseJson = JSON.stringify(endpoint.response, null, 2);
+                        const curlCommand = generateCurlCommand(endpoint);
+                        const isEditing = editingScript === endpointKey;
+                        return (
+                          <AccordionItem key={endpointKey} value={endpointKey}>
+                            <AccordionTrigger className="group hover:no-underline py-0 [&>svg]:hidden">
+                              <div
+                                className={`flex w-full items-center gap-3 rounded-md border border-l-4 px-3 py-2 ${methodRowStyles[endpoint.method]}`}
+                              >
+                                <span
+                                  className={`min-w-[72px] text-center rounded px-2 py-1 text-xs font-bold ${methodColors[endpoint.method]}`}
+                                >
+                                  {endpoint.method}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                    <span className="font-mono text-sm font-semibold text-foreground">
+                                      {pathOnly}
+                                    </span>
+                                    <span className="text-sm text-muted-foreground line-clamp-1">
+                                      {endpoint.description}
+                                    </span>
+                                  </div>
+                                </div>
+                                <ChevronDown className="h-6 w-6 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-3">
+                              <div className="rounded-md border bg-background p-4 space-y-4">
+                                <div className="space-y-1">
+                                  <div className="text-sm font-semibold text-foreground">
+                                    Description
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {endpoint.description}
+                                  </div>
+                                </div>
+
+                                <Separator />
+
+                                <div className="grid gap-4 md:grid-cols-2">
+                                  <div className="space-y-2">
+                                    <div className="text-sm font-semibold text-foreground">
+                                      Request
+                                    </div>
+                                    <div className="space-y-3">
+                                      {endpoint.headers ? (
+                                        <div className="space-y-1">
+                                          <div className="text-xs font-semibold text-muted-foreground">
+                                            Headers
                                           </div>
+                                          <pre className="bg-muted p-3 rounded overflow-x-auto text-xs">
+                                            <code>
+                                              {JSON.stringify(endpoint.headers, null, 2)}
+                                            </code>
+                                          </pre>
                                         </div>
-                                        <ChevronDown className={`h-5 w-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                                      </div>
-                                    </CardHeader>
-                                  </CollapsibleTrigger>
-                                  <CollapsibleContent>
-                                    <CardContent className="pt-0">
-                                      <div className="space-y-6">
-                                        <p className="text-muted-foreground">{endpoint.description}</p>
-                                        <Tabs defaultValue="curl" className="w-full">
-                                          <TabsList>
-                                            <TabsTrigger value="curl">cURL</TabsTrigger>
-                                            <TabsTrigger value="response">Ответ</TabsTrigger>
-                                            <TabsTrigger value="postman">Postman Script</TabsTrigger>
-                                          </TabsList>
-                                          <TabsContent value="curl">
-                                            <div className="relative">
-                                              <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm"><code>{generateCurlCommand(endpoint)}</code></pre>
-                                              <TooltipProvider>
-                                                <Tooltip>
-                                                  <TooltipTrigger asChild>
-                                                    <Button variant="outline" size="sm" className="absolute top-2 right-2" onClick={() => copyToClipboard(generateCurlCommand(endpoint))}><Copy className="w-4 h-4" /></Button>
-                                                  </TooltipTrigger>
-                                                  <TooltipContent><p>Копировать cURL</p></TooltipContent>
-                                                </Tooltip>
-                                              </TooltipProvider>
-                                            </div>
-                                          </TabsContent>
-                                          <TabsContent value="response">
-                                            <div className="relative">
-                                              <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm"><code>{JSON.stringify(endpoint.response, null, 2)}</code></pre>
-                                              <TooltipProvider>
-                                                <Tooltip>
-                                                  <TooltipTrigger asChild>
-                                                    <Button variant="outline" size="sm" className="absolute top-2 right-2" onClick={() => copyToClipboard(JSON.stringify(endpoint.response, null, 2))}><Copy className="w-4 h-4" /></Button>
-                                                  </TooltipTrigger>
-                                                  <TooltipContent><p>Копировать ответ</p></TooltipContent>
-                                                </Tooltip>
-                                              </TooltipProvider>
-                                            </div>
-                                          </TabsContent>
-                                          <TabsContent value="postman">
-                                            <div className="space-y-4">
-                                              <div className="flex items-center justify-between">
-                                                <Label htmlFor={`script-${sectionKey}-${pIdx}-${index}`} className="text-sm font-medium">Postman Test Script</Label>
-                                                <Button variant="outline" size="sm" onClick={() => isEditingCurrentScript ? stopEditingScript() : startEditingScript(endpointKey)}>{isEditingCurrentScript ? (<><Save className="w-4 h-4 mr-2" />Готово</>) : (<><Edit className="w-4 h-4 mr-2" />Редактировать</>)}</Button>
-                                              </div>
-                                              {isEditingCurrentScript ? (
-                                                <div className="space-y-2">
-                                                  <Textarea id={`script-${sectionKey}-${pIdx}-${index}`} value={currentScript} onChange={(e) => updateScript(endpointKey, e.target.value)} placeholder="Введите Postman тест скрипт..." className="min-h-[200px] font-mono text-sm" />
-                                                  <p className="text-xs text-muted-foreground">Здесь вы можете написать JavaScript код для тестирования ответа и сохранения переменных в Postman коллекции.</p>
-                                                </div>
-                                              ) : (
-                                                <div className="relative">
-                                                  <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm min-h-[100px]"><code>{currentScript || '// Postman скрипт не задан'}</code></pre>
-                                                  <TooltipProvider>
-                                                    <Tooltip>
-                                                      <TooltipTrigger asChild>
-                                                        <Button variant="outline" size="sm" className="absolute top-2 right-2" onClick={() => copyToClipboard(currentScript)} disabled={!currentScript}><Copy className="w-4 h-4" /></Button>
-                                                      </TooltipTrigger>
-                                                      <TooltipContent><p>Копировать скрипт</p></TooltipContent>
-                                                    </Tooltip>
-                                                  </TooltipProvider>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </TabsContent>
-                                        </Tabs>
-                                      </div>
-                                    </CardContent>
-                                  </CollapsibleContent>
-                                </Collapsible>
-                              </Card>
-                            );
-                          })}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </TabsContent>
-                ))}
-              </Tabs>
-            </TabsContent>
+                                      ) : null}
+                                      {endpoint.body ? (
+                                        <div className="space-y-1">
+                                          <div className="text-xs font-semibold text-muted-foreground">
+                                            Body
+                                          </div>
+                                          <pre className="bg-muted p-3 rounded overflow-x-auto text-xs">
+                                            <code>
+                                              {JSON.stringify(endpoint.body, null, 2)}
+                                            </code>
+                                          </pre>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
 
-            <TabsContent value="workflow" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Процесс создания пользователя</CardTitle>
-                  <CardDescription>
-                    Правильная последовательность действий для создания нового пользователя
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Badge className="bg-primary/10 text-primary shrink-0">1</Badge>
-                      <div>
-                        <h4 className="font-medium">Получить токен администратора</h4>
-                        <p className="text-sm text-muted-foreground">POST /auth/v1/token?grant_type=password с данными админа</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-3">
-                      <Badge className="bg-primary/10 text-primary shrink-0">2</Badge>
-                      <div>
-                        <h4 className="font-medium">Зарегистрировать пользователя</h4>
-                        <p className="text-sm text-muted-foreground">POST /auth/v1/signup с email и паролем нового пользователя</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-3">
-                      <Badge className="bg-primary/10 text-primary shrink-0">3</Badge>
-                      <div>
-                        <h4 className="font-medium">Обновить профиль</h4>
-                        <p className="text-sm text-muted-foreground">PATCH /rest/v1/profiles?id=eq.{'{{manager_id}}'} с дополнительными данными</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-6 p-4 bg-accent/10 rounded-lg border">
-                    <h5 className="font-medium mb-2">Важно!</h5>
-                    <p className="text-sm text-muted-foreground">
-                      Создание пользователей через endpoint /functions/v1/users требует прав администратора. 
-                      Для публичной регистрации используйте /auth/v1/signup.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                                  <div className="space-y-2">
+                                    <div className="text-sm font-semibold text-foreground">
+                                      Responses
+                                    </div>
+                                    <div className="relative">
+                                      <pre className="bg-muted rounded overflow-x-auto text-xs px-3 pb-3 pt-12">
+                                        <code>
+                                          {responseJson}
+                                        </code>
+                                      </pre>
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="absolute top-2 right-2 border-emerald-200 bg-emerald-100 text-emerald-900 shadow-sm transition hover:bg-emerald-200 hover:shadow-md hover:scale-[1.03] active:scale-100"
+                                              data-copy-text={responseJson}
+                                              onClick={handleCopyFromButtonData}
+                                            >
+                                              <Copy className="w-4 h-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Копировать ответ</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
+                                  </div>
+                                </div>
 
-            <TabsContent value="errors" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Коды состояния HTTP</CardTitle>
-                  <CardDescription>
-                    Стандартные коды ответов API
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-primary">Успешные ответы</h4>
-                      <div className="space-y-1 text-sm">
-                        <div><code className="bg-muted px-1 py-0.5 rounded">200</code> OK - Запрос выполнен успешно</div>
-                        <div><code className="bg-muted px-1 py-0.5 rounded">201</code> Created - Ресурс создан</div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-destructive">Ошибки клиента</h4>
-                      <div className="space-y-1 text-sm">
-                        <div><code className="bg-muted px-1 py-0.5 rounded">400</code> Bad Request - Неверный запрос</div>
-                        <div><code className="bg-muted px-1 py-0.5 rounded">401</code> Unauthorized - Не авторизован</div>
-                        <div><code className="bg-muted px-1 py-0.5 rounded">403</code> Forbidden - Доступ запрещен</div>
-                        <div><code className="bg-muted px-1 py-0.5 rounded">404</code> Not Found - Ресурс не найден</div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                                <div className="space-y-2">
+                                  <div className="text-sm font-semibold text-foreground">
+                                    cURL
+                                  </div>
+                                  <div className="relative">
+                                    <pre className="bg-muted rounded overflow-x-auto text-xs px-3 pb-3 pt-12">
+                                      <code>{curlCommand}</code>
+                                    </pre>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="absolute top-2 right-2 border-emerald-200 bg-emerald-100 text-emerald-900 shadow-sm transition hover:bg-emerald-200 hover:shadow-md hover:scale-[1.03] active:scale-100"
+                                            data-copy-text={curlCommand}
+                                            onClick={handleCopyFromButtonData}
+                                          >
+                                            <Copy className="w-4 h-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Копировать cURL</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </div>
+                                </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Примеры ошибок</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <h5 className="font-medium mb-2">401 Unauthorized</h5>
-                      <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
-{`{
-  "error": "Unauthorized",
-  "message": "JWT token is required"
-}`}
-                      </pre>
-                    </div>
-                    
-                    <div>
-                      <h5 className="font-medium mb-2">403 Forbidden</h5>
-                      <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
-{`{
-  "error": "Forbidden - Admin access required"
-}`}
-                      </pre>
-                    </div>
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="text-sm font-semibold text-foreground">
+                                      Postman Test Script
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      data-endpoint-key={endpointKey}
+                                      onClick={handleToggleEditingScript}
+                                    >
+                                      {isEditing ? (
+                                        <>
+                                          <Save className="w-4 h-4 mr-2" />
+                                          Готово
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Edit className="w-4 h-4 mr-2" />
+                                          Редактировать
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+
+                                  {isEditing ? (
+                                    <Textarea
+                                      value={script}
+                                      data-endpoint-key={endpointKey}
+                                      onChange={handleScriptChange}
+                                      placeholder="Введите Postman тест скрипт..."
+                                      className="min-h-[180px] font-mono text-sm"
+                                    />
+                                  ) : (
+                                    <div className="relative">
+                                      <pre className="bg-muted rounded overflow-x-auto text-xs min-h-[120px] px-3 pb-3 pt-12">
+                                        <code>{script || "// Postman скрипт не задан"}</code>
+                                      </pre>
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="absolute top-2 right-2 border-emerald-200 bg-emerald-100 text-emerald-900 shadow-sm transition hover:bg-emerald-200 hover:shadow-md hover:scale-[1.03] active:scale-100"
+                                              data-copy-text={script}
+                                              onClick={handleCopyFromButtonData}
+                                              disabled={!script}
+                                            >
+                                              <Copy className="w-4 h-4" />
+                                            </Button>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p>Копировать скрипт</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        );
+                      })}
+                    </Accordion>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </div>
     </div>
