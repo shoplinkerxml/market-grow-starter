@@ -567,4 +567,78 @@ export const commonDictionary: Dictionary = {
   xml_loaded: { uk: "XML завантажено", en: "XML loaded" },
   xml_structure: { uk: "Структура XML", en: "XML structure" },
   xml_url: { uk: "URL XML", en: "XML URL" },
+  
+  // New Hero Section translations
+  hero_live_banner: { 
+    uk: "Запустіться сьогодні — почніть продавати вже завтра!", 
+    en: "Launch today — start selling tomorrow!" 
+  },
+  hero_title_create: { 
+    uk: "Зробіть свій бізнес", 
+    en: "Make your business" 
+  },
+  hero_title_visible: { 
+    uk: "видимим", 
+    en: "visible" 
+  },
+  hero_title_everywhere: { 
+    uk: "на всіх маркетплейсах", 
+    en: "on all marketplaces" 
+  },
+  hero_subtitle_new: { 
+    uk: "Автоматизуйте обробку прайсів від постачальників та експортуйте товари на маркетплейси. Без ручної роботи, помилок та втрати часу.", 
+    en: "Automate supplier price list processing and export products to marketplaces. No manual work, errors, or wasted time." 
+  },
+  hero_cta_start: { 
+    uk: "Почати", 
+    en: "Get started" 
+  },
+  hero_cta_how_it_works: { 
+    uk: "Дізнатися, як це працює", 
+    en: "Learn how it works" 
+  },
+  hero_social_proof_prefix: { 
+    uk: "Нам довіряють понад", 
+    en: "Trusted by over" 
+  },
+  hero_social_proof_suffix: { 
+    uk: "компаній та підприємців", 
+    en: "companies and entrepreneurs" 
+  },
+  hero_tab_without: { 
+    uk: "Без MarketGrow", 
+    en: "Without MarketGrow" 
+  },
+  hero_tab_with: { 
+    uk: "З MarketGrow", 
+    en: "With MarketGrow" 
+  },
+  hero_efficiency_rating: { 
+    uk: "Рейтинг ефективності", 
+    en: "Efficiency rating" 
+  },
+  hero_without_1: { 
+    uk: "Маркетплейси не бачать ваші товари через неякісні дані", 
+    en: "Marketplaces can't find your products due to poor data" 
+  },
+  hero_without_2: { 
+    uk: "Ручне завантаження займає години і містить помилки", 
+    en: "Manual uploads take hours and contain errors" 
+  },
+  hero_without_3: { 
+    uk: "Втрачаєте продажі через застарілі ціни та залишки", 
+    en: "Losing sales due to outdated prices and stock" 
+  },
+  hero_with_1: { 
+    uk: "Товари відображаються у пошуку та рекомендаціях", 
+    en: "Products appear in search and recommendations" 
+  },
+  hero_with_2: { 
+    uk: "Автоматичний імпорт та експорт за хвилини", 
+    en: "Automatic import and export in minutes" 
+  },
+  hero_with_3: { 
+    uk: "Актуальні дані на всіх маркетплейсах 24/7", 
+    en: "Up-to-date data on all marketplaces 24/7" 
+  },
 };
