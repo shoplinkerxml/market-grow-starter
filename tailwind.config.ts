@@ -162,14 +162,22 @@ export default {
     					transform: 'translateX(140%)'
     				}
     			},
-    			float: {
-    				'0%, 100%': {
-    					transform: 'translate3d(0, 0, 0)'
-    				},
-    				'50%': {
-    					transform: 'translate3d(0, -10px, 0)'
-    				}
-    			}
+			float: {
+				'0%, 100%': {
+					transform: 'translate3d(0, 0, 0)'
+				},
+				'50%': {
+					transform: 'translate3d(0, -10px, 0)'
+				}
+			},
+			'bob': {
+				'0%, 100%': {
+					transform: 'translateY(0)'
+				},
+				'50%': {
+					transform: 'translateY(-4px)'
+				}
+			}
     		},
     		animation: {
     			'accordion-down': 'accordion-down 0.2s ease-out',
@@ -180,10 +188,11 @@ export default {
     			'blob-slow': 'blob 18s ease-in-out infinite',
     			'blob-slower': 'blob 26s ease-in-out infinite',
     			'blob-slowest': 'blob 34s ease-in-out infinite',
-    			'shimmer-slow': 'shimmer 2.6s ease-in-out infinite',
-    			'float-slow': 'float 6s ease-in-out infinite',
-    			'float-slower': 'float 8s ease-in-out infinite'
-    		},
+			'shimmer-slow': 'shimmer 2.6s ease-in-out infinite',
+			'float-slow': 'float 6s ease-in-out infinite',
+			'float-slower': 'float 8s ease-in-out infinite',
+			'bob': 'bob 2s ease-in-out infinite'
+		},
     		boxShadow: {
     			'2xs': 'var(--shadow-2xs)',
     			xs: 'var(--shadow-xs)',

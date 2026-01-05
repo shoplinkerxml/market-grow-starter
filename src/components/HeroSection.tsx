@@ -33,7 +33,7 @@ export function HeroSection() {
           {/* Left Content */}
           <div className="flex-1 flex flex-col items-start text-left max-w-2xl">
             {/* Top Banner */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur-md mb-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur-md mb-6 animate-bob">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
@@ -110,7 +110,7 @@ export function HeroSection() {
             <div className="flex justify-center gap-2 mb-4">
               <button
                 onClick={() => setActiveTab('without')}
-                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-destructive text-destructive-foreground shadow-md hover:shadow-lg animate-pulse ${
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-destructive text-destructive-foreground shadow-md hover:shadow-lg animate-bob ${
                   activeTab === 'without'
                     ? 'ring-2 ring-destructive/50 ring-offset-2 ring-offset-background scale-105'
                     : 'opacity-85 hover:opacity-100'
@@ -120,7 +120,7 @@ export function HeroSection() {
               </button>
               <button
                 onClick={() => setActiveTab('with')}
-                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-primary text-primary-foreground shadow-md hover:shadow-lg animate-pulse ${
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-primary text-primary-foreground shadow-md hover:shadow-lg animate-bob ${
                   activeTab === 'with'
                     ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background scale-105'
                     : 'opacity-85 hover:opacity-100'
