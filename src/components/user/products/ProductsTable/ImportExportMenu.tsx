@@ -284,11 +284,11 @@ export function ImportExportMenu({
             <DropdownMenuSubContent>
               <DropdownMenuItem onClick={() => void runExport("xlsx")} data-testid="user_products_export_xlsx">
                 <FileSpreadsheet className="h-4 w-4" />
-                <span>XLSX</span>
+                <span>xlsx</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => void runExport("csv")} data-testid="user_products_export_csv">
                 <FileText className="h-4 w-4" />
-                <span>CSV</span>
+                <span>csv</span>
               </DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
