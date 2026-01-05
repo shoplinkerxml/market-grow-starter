@@ -4,23 +4,34 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { TrendingUp, Menu, X, Globe, FileText } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/i18n";
+
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const {
     t,
     lang,
     setLang
   } = useI18n();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const toggleLanguage = () => {
     setLang(lang === 'uk' ? 'en' : 'uk');
   };
   return (
     <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-      <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60">
+      <header className={`sticky top-0 z-50 w-full bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60 transition-[border-color] duration-300 ${isScrolled ? 'border-b border-border' : 'border-b border-transparent'}`}>
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center justify-center gap-2">
             <div className="bg-gradient-success p-2 rounded-lg shadow-glow ring-1 ring-white/10">
