@@ -64,11 +64,18 @@ export class SupplierService {
     return { rows: cached.data, expiresAt };
   }
 
-  private static async fetchSuppliersFromApi(): Promise<Supplier[]> {
+  private static async fetchSuppliersFromApi(opts?: { signal?: AbortSignal }): Promise<Supplier[]> {
     try {
-      const payload = await invokeEdgeWithAuth<{ suppliers?: Supplier[] }>("suppliers-list", {});
+      const payload = await invokeEdgeWithAuth<{ suppliers?: Supplier[] }>(
+        "suppliers-list",
+        {},
+        { signal: opts?.signal, timeoutMs: 20_000, maxRetries: 1 },
+      );
       return Array.isArray(payload?.suppliers) ? payload.suppliers! : [];
-    } catch {
+    } catch (error) {
+      if (opts?.signal && (error as { name?: string } | null)?.name === "AbortError") {
+        throw error;
+      }
       return [];
     }
   }
@@ -107,7 +114,7 @@ export class SupplierService {
   }
 
   /** Отримання списку постачальників поточного користувача */
-  static async getSuppliers(): Promise<Supplier[]> {
+  static async getSuppliers(opts?: { signal?: AbortSignal }): Promise<Supplier[]> {
     const sessionValidation = await requireValidSession({ requireAccessToken: false });
     const userId = sessionValidation.user?.id ? String(sessionValidation.user.id) : "";
     const cached = userId ? SupplierService.getCachedSuppliers(userId) : null;
@@ -129,7 +136,7 @@ export class SupplierService {
     }
     const inflightKey = userId || "current";
     return await SupplierService.deduplicator.dedupe(inflightKey, async () => {
-      const rows = await SupplierService.fetchSuppliersFromApi();
+      const rows = await SupplierService.fetchSuppliersFromApi({ signal: opts?.signal });
       if (userId) {
         SupplierService.setSuppliersCache(userId, rows);
       }

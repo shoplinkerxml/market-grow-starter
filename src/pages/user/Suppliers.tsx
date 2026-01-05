@@ -35,9 +35,7 @@ export const Suppliers = () => {
 
   const { data: suppliersData } = useQuery<Supplier[]>({
     queryKey: suppliersQueryKey,
-    queryFn: async () => {
-      return await SupplierService.getSuppliers();
-    },
+    queryFn: async ({ signal }) => await SupplierService.getSuppliers({ signal }),
     staleTime: 900_000,
     gcTime: 86_400_000,
     refetchOnMount: false,
@@ -113,7 +111,10 @@ export const Suppliers = () => {
                   variant="ghost"
                   size="icon"
                   title={t('refresh') || 'Оновити'}
-                  onClick={() => window.location.reload()}
+                  onClick={() => {
+                    SupplierService.clearSuppliersCache();
+                    void queryClient.invalidateQueries({ queryKey: suppliersQueryKey });
+                  }}
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>

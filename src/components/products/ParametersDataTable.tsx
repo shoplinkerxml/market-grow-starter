@@ -18,6 +18,9 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -30,11 +33,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MoreHorizontal, Columns as ColumnsIcon, ChevronDown, Trash2, Pencil, Plus, Upload, Download, Search } from "lucide-react";
+import { MoreHorizontal, Columns as ColumnsIcon, ChevronDown, Trash2, Pencil, Plus, Upload, Download, Search, FileSpreadsheet, FileText, File } from "lucide-react";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useI18n } from "@/i18n";
+import { buildXlsxBlobFromRows, readXlsxToRows } from "@/components/user/products/ProductsTable/ImportExport/xlsx";
 
 // Keep local type consistent with ProductFormTabs
 export interface ProductParam {
@@ -221,8 +225,31 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
     ].join(","));
     return [header, ...payload].join("\n");
   };
+  const buildNdjson = (rows: ProductParam[]) => {
+    return rows
+      .map((r, idx) =>
+        JSON.stringify({
+          name: String(r.name || ""),
+          value: String(r.value || ""),
+          paramid: r.paramid ? String(r.paramid) : "",
+          valueid: r.valueid ? String(r.valueid) : "",
+          order_index: typeof r.order_index === "number" ? r.order_index : idx,
+        }),
+      )
+      .join("\n");
+  };
   const downloadText = (text: string, filename: string, mime: string) => {
     const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+  const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -237,12 +264,27 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
     downloadText(csv, "product-params.csv", "text/csv;charset=utf-8");
   };
   const handleExportJson = () => {
-    const json = JSON.stringify(data);
+    const json = buildNdjson(data);
     downloadText(json, "product-params.json", "application/json;charset=utf-8");
   };
-  const triggerImport = () => {
-    fileInputRef.current?.click();
+  const handleExportXlsx = () => {
+    const columns = ["name", "value", "paramid", "valueid", "order_index"] as const;
+    const rows = (data || []).map((r, idx) => ({
+      name: String(r.name || ""),
+      value: String(r.value || ""),
+      paramid: r.paramid ? String(r.paramid) : "",
+      valueid: r.valueid ? String(r.valueid) : "",
+      order_index: typeof r.order_index === "number" ? r.order_index : idx,
+    }));
+    const blob = buildXlsxBlobFromRows(rows, columns, "params");
+    downloadBlob(blob, "product-params.xlsx");
   };
+  const triggerImport = React.useCallback((accept: string) => {
+    const el = fileInputRef.current;
+    if (!el) return;
+    el.accept = accept;
+    el.click();
+  }, []);
   const openPreview = (rows: ProductParam[], filename: string) => {
     setPreviewRows(rows);
     setPreviewFilename(filename);
@@ -262,28 +304,63 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
     setPreviewFilename("");
   };
   const processFile = async (file: File) => {
-    const text = await file.text();
     const name = (file.name || "").toLowerCase();
     let rows: ProductParam[] = [];
-    if (name.endsWith('.json')) {
+    if (name.endsWith(".xlsx")) {
+      const sheetRows = await readXlsxToRows(file);
+      rows = (sheetRows || [])
+        .map((r, idx) => {
+          const normalized: Record<string, string> = {};
+          for (const k of Object.keys(r || {})) normalized[String(k).toLowerCase().trim()] = String((r as any)[k] ?? "");
+          const orderRaw = normalized["order_index"] ?? normalized["order"] ?? "";
+          const orderIndex = Number(orderRaw);
+          return {
+            name: String(normalized["name"] ?? ""),
+            value: String(normalized["value"] ?? ""),
+            paramid: String(normalized["paramid"] ?? ""),
+            valueid: String(normalized["valueid"] ?? ""),
+            order_index: Number.isFinite(orderIndex) ? orderIndex : idx,
+          };
+        })
+        .filter((r) => (r.name || "").trim().length > 0 || (r.value || "").trim().length > 0);
+    } else if (name.endsWith(".json") || name.endsWith(".jsonl") || name.endsWith(".ndjson")) {
+      const text = await file.text();
+      const trimmed = text.trim();
       try {
-        const parsed = JSON.parse(text);
-        if (Array.isArray(parsed)) {
-          rows = parsed.map((p: unknown, idx: number) => {
-            const obj = p as Record<string, unknown>;
-            return {
-              name: String(obj?.name ?? ""),
-              value: String(obj?.value ?? ""),
-              paramid: obj?.paramid ? String(obj.paramid as string) : "",
-              valueid: obj?.valueid ? String(obj.valueid as string) : "",
-              order_index: typeof obj?.order_index === 'number' ? (obj.order_index as number) : idx,
-            };
-          });
+        if (trimmed.startsWith("[")) {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            rows = parsed.map((p: unknown, idx: number) => {
+              const obj = p as Record<string, unknown>;
+              return {
+                name: String(obj?.name ?? ""),
+                value: String(obj?.value ?? ""),
+                paramid: obj?.paramid ? String(obj.paramid as string) : "",
+                valueid: obj?.valueid ? String(obj.valueid as string) : "",
+                order_index: typeof obj?.order_index === "number" ? (obj.order_index as number) : idx,
+              };
+            });
+          }
+        } else {
+          const lines = trimmed.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+          rows = lines
+            .map((line, idx) => {
+              const obj = JSON.parse(line) as Record<string, unknown>;
+              return {
+                name: String(obj?.name ?? ""),
+                value: String(obj?.value ?? ""),
+                paramid: obj?.paramid ? String(obj.paramid as string) : "",
+                valueid: obj?.valueid ? String(obj.valueid as string) : "",
+                order_index: typeof obj?.order_index === "number" ? (obj.order_index as number) : idx,
+              };
+            })
+            .filter((r) => (r.name || "").trim().length > 0 || (r.value || "").trim().length > 0);
         }
       } catch {
         rows = [];
       }
-    } else if (name.endsWith('.csv')) {
+    } else if (name.endsWith(".csv")) {
+      const text = await file.text();
       const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
       if (lines.length > 0) {
         const header = parseCsvRow(lines[0]).map(h => h.toLowerCase());
@@ -399,23 +476,6 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
           )}
           {onReplaceData && (
             <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    onClick={triggerImport}
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-transparent"
-                    data-testid="parametersDataTable_import"
-                    aria-label={t('upload')}
-                  >
-                    <Download className="h-4 w-4 transition-colors" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">{t('upload')}</TooltipContent>
-              </Tooltip>
-
               <DropdownMenu>
                 <Tooltip>
                   <DropdownMenuTrigger asChild>
@@ -425,21 +485,60 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 hover:bg-transparent"
-                        data-testid="parametersDataTable_export"
-                        aria-label={t('export_section')}
+                        data-testid="parametersDataTable_importExport"
+                        aria-label={`${t('upload')} / ${t('export_section')}`}
                       >
-                        <Upload className="h-4 w-4 transition-colors" />
+                        <MoreHorizontal className="h-4 w-4 transition-colors" />
                       </Button>
                     </TooltipTrigger>
                   </DropdownMenuTrigger>
-                  <TooltipContent side="bottom">{t('export_section')}</TooltipContent>
+                  <TooltipContent side="bottom">{`${t("upload")} / ${t("export_section")}`}</TooltipContent>
                 </Tooltip>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleExportCsv} data-testid="parametersDataTable_export_csv">CSV</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportJson} data-testid="parametersDataTable_export_json">JSON</DropdownMenuItem>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger data-testid="parametersDataTable_import_sub">
+                      <Upload className="h-4 w-4 mr-2" />
+                      {t("upload")}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => triggerImport(".xlsx")} data-testid="parametersDataTable_import_xlsx">
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        xlsx
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => triggerImport(".csv")} data-testid="parametersDataTable_import_csv">
+                        <FileText className="h-4 w-4 mr-2" />
+                        csv
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => triggerImport(".json,.jsonl,.ndjson")} data-testid="parametersDataTable_import_json">
+                        <File className="h-4 w-4 mr-2" />
+                        json
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger data-testid="parametersDataTable_export_sub">
+                      <Download className="h-4 w-4 mr-2" />
+                      {t("export_section")}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={handleExportXlsx} data-testid="parametersDataTable_export_xlsx">
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        xlsx
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExportCsv} data-testid="parametersDataTable_export_csv">
+                        <FileText className="h-4 w-4 mr-2" />
+                        csv
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExportJson} data-testid="parametersDataTable_export_json">
+                        <File className="h-4 w-4 mr-2" />
+                        json
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <input ref={fileInputRef} className="hidden" type="file" accept=".csv,.json" onChange={handleFileChange} />
+              <input ref={fileInputRef} className="hidden" type="file" accept=".xlsx,.csv,.json,.jsonl,.ndjson" onChange={handleFileChange} />
             </>
           )}
           {(() => {

@@ -21,6 +21,7 @@ export type RetryOptions = {
   timeoutMs?: number;
   retryDelayMs?: number;
   backoff?: RetryBackoff;
+  signal?: AbortSignal;
   shouldRetryError?: (error: unknown, attempt: number) => boolean;
   onRetry?: (attempt: number, error: unknown) => void;
 };
@@ -48,6 +49,12 @@ function isAbortLikeError(err: unknown): boolean {
   );
 }
 
+function createAbortError(message: string = "aborted"): Error {
+  const err = new Error(message);
+  (err as any).name = "AbortError";
+  return err;
+}
+
 export async function withRetryResult<T>(
   operation: (ctx: { attempt: number; signal: AbortSignal }) => Promise<{ value: T; retry: boolean }>,
   opts?: RetryOptions,
@@ -56,16 +63,38 @@ export async function withRetryResult<T>(
   const timeoutMs = Math.max(0, opts?.timeoutMs ?? 0);
   const baseDelay = Math.max(250, opts?.retryDelayMs ?? 500);
   const backoff = opts?.backoff ?? "linear";
-  const shouldRetryError = opts?.shouldRetryError ?? (() => true);
+  const shouldRetryError = opts?.shouldRetryError ?? ((error) => !isAbortLikeError(error));
+  const outerSignal = opts?.signal;
 
   let attempt = 0;
   while (true) {
+    if (outerSignal?.aborted) {
+      throw createAbortError();
+    }
     const controller = new AbortController();
     const timer = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    const onOuterAbort = () => controller.abort();
+    if (outerSignal) {
+      try {
+        outerSignal.addEventListener("abort", onOuterAbort, { once: true });
+      } catch {
+        void 0;
+      }
+    }
     try {
       const out = await operation({ attempt, signal: controller.signal });
       if (timer) clearTimeout(timer);
+      if (outerSignal) {
+        try {
+          outerSignal.removeEventListener("abort", onOuterAbort);
+        } catch {
+          void 0;
+        }
+      }
       if (out.retry && attempt < maxRetries) {
+        if (outerSignal?.aborted) {
+          throw createAbortError();
+        }
         attempt += 1;
         opts?.onRetry?.(attempt, out.value);
         const delay =
@@ -76,6 +105,16 @@ export async function withRetryResult<T>(
       return out.value;
     } catch (error) {
       if (timer) clearTimeout(timer);
+      if (outerSignal) {
+        try {
+          outerSignal.removeEventListener("abort", onOuterAbort);
+        } catch {
+          void 0;
+        }
+      }
+      if (outerSignal?.aborted) {
+        throw createAbortError();
+      }
       if (attempt < maxRetries && shouldRetryError(error, attempt)) {
         attempt += 1;
         opts?.onRetry?.(attempt, error);
@@ -92,13 +131,15 @@ export async function withRetryResult<T>(
 export async function invokeSupabaseFunctionWithRetry<T>(
   invoke: SupabaseFunctionInvoke,
   fnName: string,
-  init: { body?: unknown; headers?: Record<string, string> },
+  init: { body?: unknown; headers?: Record<string, string>; signal?: AbortSignal },
   opts?: RetryOptions,
 ): Promise<EdgeFunctionResponse<T>> {
+  const mergedSignal = init.signal ?? opts?.signal;
   const effectiveOpts: RetryOptions = {
     timeoutMs: 20_000,
     maxRetries: 0,
     ...opts,
+    signal: mergedSignal,
   };
   return await withRetryResult(
     async ({ signal }) => {

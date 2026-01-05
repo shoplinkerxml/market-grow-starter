@@ -36,9 +36,7 @@ export const SuppliersList = ({
   const uid = user?.id ? String(user.id) : "current";
   const { data: suppliersData, isLoading: loading } = useQuery<Supplier[]>({
     queryKey: ['user', uid, 'suppliers', 'list'],
-    queryFn: async () => {
-      return await SupplierService.getSuppliers();
-    },
+    queryFn: async ({ signal }) => await SupplierService.getSuppliers({ signal }),
     staleTime: 900_000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,

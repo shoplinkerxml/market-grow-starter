@@ -13,7 +13,7 @@
 
 import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
-import { invokeSupabaseFunctionWithRetry } from "@/lib/request-handler";
+import { invokeSupabaseFunctionWithRetry, type RetryOptions } from "@/lib/request-handler";
 
 export interface SessionValidationResult {
   isValid: boolean;
@@ -690,13 +690,13 @@ export async function withValidSession<T>(
   return await fn({ session: v.session as Session, user: v.user as User, accessToken: v.accessToken as string });
 }
 
-export async function invokeEdgeWithAuth<T>(name: string, body: unknown): Promise<T> {
+export async function invokeEdgeWithAuth<T>(name: string, body: unknown, opts?: RetryOptions): Promise<T> {
   return await withValidSession(async ({ accessToken }) => {
     const { data, error } = await invokeSupabaseFunctionWithRetry<T | string>(
       supabase.functions.invoke.bind(supabase.functions) as any,
       name,
-      { body, headers: { Authorization: `Bearer ${accessToken}` } },
-      { timeoutMs: 12_000, maxRetries: 0 },
+      { body, headers: { Authorization: `Bearer ${accessToken}` }, signal: opts?.signal },
+      { timeoutMs: 12_000, maxRetries: 0, ...opts },
     );
     if (error) {
       const status =
