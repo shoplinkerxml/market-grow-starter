@@ -32,7 +32,6 @@ export const authDictionary: Dictionary = {
     uk: "Перегляд і редагування налаштувань вашого профілю",
     en: "View and edit your profile settings",
   },
-  nav_login: { uk: "Увійти", en: "Log in" },
   nav_get_started: { uk: "Почати безкоштовно", en: "Get started free" },
   facebook_signup: { uk: "Facebook", en: "Facebook" },
   google_signin: { uk: "Google", en: "Google" },

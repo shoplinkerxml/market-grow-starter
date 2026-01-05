@@ -54,13 +54,15 @@ export function Header() {
               <span className="sr-only">{t("toggle_language")}</span>
             </Button>
             <ThemeToggle />
-            <Button 
-              size="lg" 
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
-              onClick={() => navigate('/user-auth')}
-            >
-              {t('nav_login')}
-            </Button>
+            <div className="animate-bob will-change-transform [animation-duration:3.6s]">
+              <Button
+                size="lg"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                onClick={() => navigate('/user-auth')}
+              >
+                {t('hero_cta_start')}
+              </Button>
+            </div>
           </div>
 
           <div className="flex md:hidden items-center gap-0.5 pr-1">
@@ -87,12 +89,18 @@ export function Header() {
           <SheetTitle>Menu</SheetTitle>
         </SheetHeader>
         <nav className="mt-10 flex flex-col gap-3">
-          <Button variant="outline" className="w-full" onClick={() => {
-            setIsMenuOpen(false);
-            navigate('/user-auth');
-          }}>
-            {t('nav_login')}
-          </Button>
+          <div className="animate-bob will-change-transform [animation-duration:3.6s]">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setIsMenuOpen(false);
+                navigate('/user-auth');
+              }}
+            >
+              {t('hero_cta_start')}
+            </Button>
+          </div>
         </nav>
       </SheetContent>
     </Sheet>

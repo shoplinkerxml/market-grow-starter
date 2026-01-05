@@ -15,7 +15,7 @@ export const buttonVariants = cva(
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 hover:text-secondary-foreground",
         ghost: "hover:bg-transparent",
         link: "text-primary underline-offset-4 hover:bg-transparent hover:border-transparent hover:underline",
-        hero: "bg-gradient-success text-white shadow-primary hover:bg-gradient-success hover:text-white hover:shadow-glow hover:scale-105 transition-all duration-300",
+        hero: "bg-gradient-success bg-[length:200%_200%] animate-gradient-shift text-white shadow-primary hover:bg-gradient-success hover:text-white hover:shadow-glow hover:scale-105 transition-all duration-300",
       },
       size: {
         default: "h-9 px-4 py-2",

@@ -593,10 +593,6 @@ export const commonDictionary: Dictionary = {
     uk: "Почати", 
     en: "Get started" 
   },
-  hero_cta_how_it_works: { 
-    uk: "Дізнатися, як це працює", 
-    en: "Learn how it works" 
-  },
   hero_social_proof_prefix: { 
     uk: "Нам довіряють понад", 
     en: "Trusted by over" 

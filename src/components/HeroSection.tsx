@@ -2,18 +2,35 @@
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Check, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/i18n";
 
 export function HeroSection() {
   const [isVisible, setIsVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<'without' | 'with'>('with');
+  const [activeTab, setActiveTab] = useState<'without' | 'with'>('without');
   const { t } = useI18n();
   const navigate = useNavigate();
+  const lastTabClickAtRef = useRef<number>(Date.now());
 
   useEffect(() => {
     setIsVisible(true);
+  }, []);
+
+  const handleTabClick = useCallback((next: 'without' | 'with') => {
+    lastTabClickAtRef.current = Date.now();
+    setActiveTab(next);
+  }, []);
+
+  useEffect(() => {
+    const intervalMs = 3_600;
+    const pauseAfterClickMs = 10_000;
+    const id = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      if (Date.now() - lastTabClickAtRef.current < pauseAfterClickMs) return;
+      setActiveTab((prev) => (prev === "without" ? "with" : "without"));
+    }, intervalMs);
+    return () => window.clearInterval(id);
   }, []);
 
   return (
@@ -58,26 +75,17 @@ export function HeroSection() {
 
             {/* CTA Buttons */}
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Button 
-                variant="hero" 
-                size="lg" 
-                className="text-lg px-8 py-7 rounded-lg group" 
-                onClick={() => navigate('/user-auth')}
-              >
-                {t('hero_cta_start')}
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="text-lg px-8 py-7 rounded-lg border-border/60 bg-background/50 backdrop-blur-sm hover:bg-background/80"
-                onClick={() => {
-                  const element = document.getElementById('features');
-                  element?.scrollIntoView({ behavior: 'smooth' });
-                }}
-              >
-                {t('hero_cta_how_it_works')}
-              </Button>
+              <div className="animate-bob will-change-transform [animation-duration:3.6s] [animation-delay:450ms]">
+                <Button
+                  variant="hero"
+                  size="lg"
+                  className="text-lg px-14 py-7 rounded-lg min-w-[16rem] sm:min-w-[18rem] justify-center group"
+                  onClick={() => navigate('/user-auth')}
+                >
+                  {t('hero_cta_start')}
+                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </div>
             </div>
 
             {/* Social Proof */}
@@ -107,27 +115,31 @@ export function HeroSection() {
           {/* Right Content - Comparison Cards */}
           <div className="flex-1 w-full max-w-xl">
             {/* Tabs */}
-            <div className="flex justify-center gap-2 mb-4">
-              <button
-                onClick={() => setActiveTab('without')}
-                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-destructive text-destructive-foreground shadow-md hover:shadow-lg animate-bob ${
-                  activeTab === 'without'
-                    ? 'ring-2 ring-destructive/50 ring-offset-2 ring-offset-background scale-105'
-                    : 'opacity-85 hover:opacity-100'
-                }`}
-              >
-                {t('hero_tab_without')}
-              </button>
-              <button
-                onClick={() => setActiveTab('with')}
-                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-primary text-primary-foreground shadow-md hover:shadow-lg animate-bob ${
-                  activeTab === 'with'
-                    ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background scale-105'
-                    : 'opacity-85 hover:opacity-100'
-                }`}
-              >
-                {t('hero_tab_with')}
-              </button>
+            <div className="flex justify-center gap-4 mb-4">
+              <div className="animate-bob will-change-transform [animation-duration:3.6s]">
+                <button
+                  onClick={() => handleTabClick('without')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-destructive text-destructive-foreground shadow-md hover:shadow-lg ${
+                    activeTab === 'without'
+                      ? 'ring-2 ring-destructive/50 ring-offset-2 ring-offset-background scale-105'
+                      : 'opacity-85 hover:opacity-100'
+                  }`}
+                >
+                  {t('hero_tab_without')}
+                </button>
+              </div>
+              <div className="animate-bob will-change-transform [animation-duration:3.6s] [animation-delay:900ms]">
+                <button
+                  onClick={() => handleTabClick('with')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-primary text-primary-foreground shadow-md hover:shadow-lg ${
+                    activeTab === 'with'
+                      ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background scale-105'
+                      : 'opacity-85 hover:opacity-100'
+                  }`}
+                >
+                  {t('hero_tab_with')}
+                </button>
+              </div>
             </div>
 
             {/* Comparison Card */}
