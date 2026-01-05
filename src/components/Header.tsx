@@ -20,7 +20,7 @@ export function Header() {
   };
   return (
     <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-      <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center justify-center gap-2">
             <div className="bg-gradient-success p-2 rounded-lg shadow-glow ring-1 ring-white/10">
@@ -43,7 +43,11 @@ export function Header() {
               <span className="sr-only">{t("toggle_language")}</span>
             </Button>
             <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={() => navigate('/user-auth')}>
+            <Button 
+              size="lg" 
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+              onClick={() => navigate('/user-auth')}
+            >
               {t('nav_login')}
             </Button>
           </div>

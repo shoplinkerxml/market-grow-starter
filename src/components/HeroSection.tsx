@@ -62,7 +62,7 @@ export function HeroSection() {
                 variant="hero" 
                 size="lg" 
                 className="text-lg px-8 py-7 rounded-lg group" 
-                onClick={() => navigate('/user-register')}
+                onClick={() => navigate('/user-auth')}
               >
                 {t('hero_cta_start')}
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -98,7 +98,7 @@ export function HeroSection() {
               </div>
               <p className="text-sm text-muted-foreground">
                 {t('hero_social_proof_prefix')}{" "}
-                <span className="font-bold text-foreground">250+</span>{" "}
+                <span className="font-bold text-foreground">1750+</span>{" "}
                 {t('hero_social_proof_suffix')}
               </p>
             </div>
@@ -110,20 +110,20 @@ export function HeroSection() {
             <div className="flex justify-center gap-2 mb-4">
               <button
                 onClick={() => setActiveTab('without')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-destructive text-destructive-foreground shadow-md hover:shadow-lg animate-pulse ${
                   activeTab === 'without'
-                    ? 'bg-destructive/10 text-destructive border border-destructive/30'
-                    : 'bg-muted/50 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                    ? 'ring-2 ring-destructive/50 ring-offset-2 ring-offset-background scale-105'
+                    : 'opacity-85 hover:opacity-100'
                 }`}
               >
                 {t('hero_tab_without')}
               </button>
               <button
                 onClick={() => setActiveTab('with')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 bg-primary text-primary-foreground shadow-md hover:shadow-lg animate-pulse ${
                   activeTab === 'with'
-                    ? 'bg-primary/10 text-primary border border-primary/30'
-                    : 'bg-muted/50 text-muted-foreground hover:bg-muted/80 border border-transparent'
+                    ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background scale-105'
+                    : 'opacity-85 hover:opacity-100'
                 }`}
               >
                 {t('hero_tab_with')}
