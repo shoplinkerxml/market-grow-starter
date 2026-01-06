@@ -91,15 +91,15 @@ interface ShopResponse {
 
 export class ShopServiceCore {
   protected static deduplicator = RequestDeduplicatorFactory.create("shop-service", {
-    ttl: 30_000,
+    ttl: 120_000, // Increased TTL for better hit rate
     maxSize: 200,
     enableMetrics: true,
     errorStrategy: "remove",
   });
 
   protected static cache = UnifiedCacheManager.create("shop-service", {
-    mode: "memory",
-    defaultTtlMs: 30_000,
+    mode: "auto", // Use localStorage/sessionStorage for persistence
+    defaultTtlMs: 300_000, // 5 min cache for faster subsequent loads
     maxSize: 300,
   });
 

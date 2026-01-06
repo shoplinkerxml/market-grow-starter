@@ -256,11 +256,8 @@ export class RequestDeduplicator<T = unknown> {
         const cur = this.cache.get(key);
         if (cur?.promise !== promise) return;
         cur.status = "fulfilled";
-        if (this.errorStrategy === "keep") {
-          cur.expiresAt = finishedAt + this.ttlMs;
-        } else {
-          this.cache.delete(key);
-        }
+        // Always cache successful responses with TTL
+        cur.expiresAt = finishedAt + this.ttlMs;
       })
       .catch(() => {
         const finishedAt = Date.now();
@@ -270,11 +267,8 @@ export class RequestDeduplicator<T = unknown> {
         const cur = this.cache.get(key);
         if (cur?.promise !== promise) return;
         cur.status = "rejected";
-        if (this.errorStrategy === "keep") {
-          cur.expiresAt = finishedAt + this.ttlMs;
-        } else {
-          this.cache.delete(key);
-        }
+        // Remove failed requests immediately for retry
+        this.cache.delete(key);
       });
 
     return promise;
@@ -358,13 +352,29 @@ export class DeduplicationMonitor {
 
   static startMonitoring(intervalMs: number = 60_000): () => void {
     this.stopMonitoring();
-    this.monitoringInterval = setInterval(() => {
-      try {
-        this.printReport();
-      } catch {
-        void 0;
-      }
-    }, Math.max(250, intervalMs));
+    // Use requestIdleCallback for non-blocking metrics printing
+    const scheduleNext = () => {
+      this.monitoringInterval = setTimeout(() => {
+        if (typeof requestIdleCallback !== "undefined") {
+          requestIdleCallback(() => {
+            try {
+              this.printReport();
+            } catch {
+              void 0;
+            }
+            scheduleNext();
+          }, { timeout: 100 });
+        } else {
+          try {
+            this.printReport();
+          } catch {
+            void 0;
+          }
+          scheduleNext();
+        }
+      }, Math.max(5000, intervalMs));
+    };
+    scheduleNext();
     return () => {
       this.stopMonitoring();
     };

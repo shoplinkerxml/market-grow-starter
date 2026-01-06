@@ -170,7 +170,7 @@ export class ProductService {
       categoriesCount: number;
     }>
   >("product-service:userStores", {
-    ttl: 30_000,
+    ttl: 180_000, // 3 min TTL for store list
     maxSize: 20,
     enableMetrics: true,
     errorStrategy: "remove",
