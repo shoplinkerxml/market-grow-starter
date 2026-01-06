@@ -73,9 +73,8 @@ export const ShopDetail = () => {
     queryFn: async () => await ShopService.getShopsAggregated({ force: true, forceCounts: true }),
     enabled: true,
     retry: false,
-    staleTime: 900_000,
-    gcTime: 86_400_000,
-    refetchOnMount: false,
+    staleTime: 30_000,
+    refetchOnMount: "always",
     refetchOnWindowFocus: false,
     placeholderData: (prev) => (prev || []) as ShopAggregated[],
   });
