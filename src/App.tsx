@@ -136,6 +136,17 @@ const App = () => {
         event === "SIGNED_OUT" ||
         (event === "SIGNED_IN" && userChanged) ||
         (event === "USER_UPDATED" && userChanged);
+      
+      // Cancel any in-progress prefetch on sign out or user change
+      if (event === "SIGNED_OUT" || userChanged) {
+        try {
+          const { PrefetchService } = await import("@/lib/prefetch-service");
+          PrefetchService.cancelPrefetch();
+        } catch {
+          void 0;
+        }
+      }
+      
       if (shouldClear) {
         try {
           SessionValidator.clearCache();
@@ -232,6 +243,20 @@ const App = () => {
           void 0;
         }
       }
+      
+      // Prefetch user data on successful login (after caches are cleared)
+      if (event === "SIGNED_IN" && currentUserId) {
+        // Use setTimeout to ensure prefetch happens after initial auth flow completes
+        setTimeout(async () => {
+          try {
+            const { PrefetchService } = await import("@/lib/prefetch-service");
+            await PrefetchService.prefetchUserData();
+          } catch {
+            void 0;
+          }
+        }, 100);
+      }
+      
       lastAuthUserId = currentUserId;
     });
     return () => data.subscription.unsubscribe();
