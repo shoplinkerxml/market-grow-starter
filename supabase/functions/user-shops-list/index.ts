@@ -19,6 +19,12 @@ const SHOP_CONFIG_TTL_SECONDS = Math.max(
 )
 const SHOP_CONFIG_KEY_PREFIX =
   Deno.env.get('SHOP_CONFIG_KEY_PREFIX') || 'shop:config:'
+const SHOP_LIST_TTL_SECONDS = Math.max(
+  5,
+  Number(Deno.env.get('SHOP_LIST_TTL_SECONDS') || '30') || 30
+)
+const SHOP_LIST_KEY_PREFIX =
+  Deno.env.get('SHOP_LIST_KEY_PREFIX') || 'shop:list:'
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY')
@@ -109,6 +115,35 @@ async function redisPipeline(commands: any[]): Promise<any[] | null> {
 
 function buildCountsKey(storeId: string): string {
   return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`
+}
+
+function buildShopsListKey(userId: string): string {
+  return `${SHOP_LIST_KEY_PREFIX}${userId}`
+}
+
+async function getShopsListFromRedis(userId: string): Promise<any | null> {
+  const uid = String(userId || '').trim()
+  if (!uid) return null
+  const resp = await redisPipeline([['GET', buildShopsListKey(uid)]])
+  const raw = resp?.[0]?.result
+  if (!raw) return null
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    if (!parsed || typeof parsed !== 'object') return null
+    if (!Array.isArray((parsed as any).shops)) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+async function setShopsListToRedis(userId: string, body: any): Promise<void> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return
+  const uid = String(userId || '').trim()
+  if (!uid) return
+  await redisPipeline([
+    ['SET', buildShopsListKey(uid), JSON.stringify(body), 'EX', SHOP_LIST_TTL_SECONDS],
+  ])
 }
 
 async function getCountsFromRedis(storeIds: string[]): Promise<Map<string, ShopCounts>> {
@@ -279,6 +314,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const finalIncludeConfig = includeConfig === true || (includeConfig == null && !!storeId)
     const includeLimit = !storeId
 
+    if (!storeId && !forceCounts && includeConfig !== true) {
+      try {
+        const cached = await getShopsListFromRedis(user.id)
+        if (cached) return jsonResponse(cached)
+      } catch {
+        void 0
+      }
+    }
+
     const baseSelect = 'id, user_id, store_name, store_company, store_url, template_id, is_active, created_at, updated_at'
 
     // Получение магазинов с фильтрацией по user_id
@@ -437,10 +481,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     console.log('Shops fetched successfully', { count: aggregated.length })
 
-    return jsonResponse({
+    const responseBody = {
       shops: aggregated,
       ...(includeLimit ? { totalShops: aggregated.length, limit } : {}),
-    })
+    }
+
+    if (!storeId && !forceCounts && includeConfig !== true) {
+      try {
+        await setShopsListToRedis(user.id, responseBody)
+      } catch {
+        void 0
+      }
+    }
+
+    return jsonResponse(responseBody)
 
   } catch (error) {
     console.error('Unexpected error:', error)

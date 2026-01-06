@@ -14,6 +14,8 @@ const SHOP_CONFIG_KEY_PREFIX =
   Deno.env.get("SHOP_CONFIG_KEY_PREFIX") || "shop:config:"
 const SHOP_COUNTS_KEY_PREFIX =
   Deno.env.get("SHOP_COUNTS_KEY_PREFIX") || "shop:counts:"
+const SHOP_LIST_KEY_PREFIX =
+  Deno.env.get("SHOP_LIST_KEY_PREFIX") || "shop:list:"
 
 async function redisPipeline(commands: any[]): Promise<any[] | null> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
@@ -43,11 +45,22 @@ function buildCountsKey(storeId: string): string {
   return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`
 }
 
+function buildShopListKey(userId: string): string {
+  return `${SHOP_LIST_KEY_PREFIX}${userId}`
+}
+
 async function deleteShopFromRedis(storeId: string): Promise<void> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return
   const sid = String(storeId || "").trim()
   if (!sid) return
   await redisPipeline([["DEL", buildConfigKey(sid)], ["DEL", buildCountsKey(sid)]])
+}
+
+async function deleteShopListFromRedis(userId: string): Promise<void> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return
+  const uid = String(userId || "").trim()
+  if (!uid) return
+  await redisPipeline([["DEL", buildShopListKey(uid)]])
 }
 
 Deno.serve(async (req) => {
@@ -109,6 +122,11 @@ Deno.serve(async (req) => {
     }
     try {
       await deleteShopFromRedis(id)
+    } catch {
+      void 0
+    }
+    try {
+      await deleteShopListFromRedis(userId)
     } catch {
       void 0
     }
