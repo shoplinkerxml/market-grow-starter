@@ -42,6 +42,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isAbortLikeError(err: unknown): boolean {
+  const e = err as { name?: string; message?: string } | null;
+  const name = e?.name || "";
+  const message = e?.message || "";
+  return (
+    name === "AbortError" ||
+    message.includes("AbortError") ||
+    message.includes("The user aborted a request") ||
+    message.includes("net::ERR_ABORTED")
+  );
+}
+
 function evictOldestKeys<K, V>(cache: Map<K, V>, maxSize: number): number {
   if (!(maxSize > 0)) return 0;
   let evicted = 0;
@@ -202,6 +214,7 @@ export class RequestDeduplicator<T = unknown> {
       try {
         return await fn({ attempt });
       } catch (error) {
+        if (isAbortLikeError(error)) throw error;
         if (attempt >= this.maxRetries) throw error;
         attempt += 1;
         this.bump("retries", 1);

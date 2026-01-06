@@ -105,6 +105,17 @@ export class ShopServiceCore {
 
   protected static lastUserId: string | null = null;
 
+  protected static createCorrelationId(): string {
+    try {
+      if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+        return crypto.randomUUID();
+      }
+    } catch {
+      void 0;
+    }
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
   protected static isOffline(): boolean {
     return typeof navigator !== "undefined" && !navigator.onLine;
   }
@@ -251,8 +262,8 @@ export class ShopServiceCore {
     try {
       const response = await this.invokeEdge<ShopsListResponse>(
         "user-shops-list",
-        { includeConfig: false },
-        { maxRetries: 2, retryDelayMs: 500, backoff: "exponential", timeoutMs: 12_000 },
+        { includeConfig: false, correlationId: this.createCorrelationId() },
+        { maxRetries: 1, retryDelayMs: 250, backoff: "exponential", timeoutMs: 8_000 },
       );
       const shops = response.shops || [];
       return shops as ShopAggregated[];
@@ -271,7 +282,10 @@ export class ShopServiceCore {
     await this.ensureSession();
 
     try {
-      const response = await this.invokeEdge<ShopLimitOnlyResponse>("user-shops-list", { limitOnly: true });
+      const response = await this.invokeEdge<ShopLimitOnlyResponse>("user-shops-list", {
+        limitOnly: true,
+        correlationId: this.createCorrelationId(),
+      });
       const current = Math.max(0, Number(response.totalShops) || 0);
       const max = Math.max(3, Number(response.limit) || 0);
       const info = { current, max, canCreate: current < max };
@@ -312,7 +326,10 @@ export class ShopServiceCore {
 
     await this.ensureSession();
 
-    const response = await this.invokeEdge<ShopsListResponse>("user-shops-list", { includeConfig: false });
+    const response = await this.invokeEdge<ShopsListResponse>("user-shops-list", {
+      includeConfig: false,
+      correlationId: this.createCorrelationId(),
+    });
     return response.shops || [];
   }
 
@@ -335,8 +352,8 @@ export class ShopServiceCore {
       try {
         const response = await this.invokeEdge<ShopsListResponse>(
           "user-shops-list",
-          { includeConfig: false, forceCounts },
-          { maxRetries: 2, retryDelayMs: 500, backoff: "exponential", timeoutMs: 12_000 },
+          { includeConfig: false, forceCounts, correlationId: this.createCorrelationId() },
+          { maxRetries: 1, retryDelayMs: 250, backoff: "exponential", timeoutMs: 8_000 },
         );
         const shops = response.shops || [];
         const limit = Number(response.limit ?? NaN);
@@ -365,6 +382,7 @@ export class ShopServiceCore {
       return await this.invokeEdge<ShopsListResponse>("user-shops-list", {
         store_id: id,
         includeConfig: true,
+        correlationId: this.createCorrelationId(),
       });
     });
 
@@ -392,6 +410,7 @@ export class ShopServiceCore {
       return await this.invokeEdge<ShopsListResponse>("user-shops-list", {
         store_id: id,
         includeConfig: false,
+        correlationId: this.createCorrelationId(),
       });
     });
 
@@ -607,6 +626,7 @@ export class ShopServiceCore {
         store_id: storeId,
         includeConfig: false,
         forceCounts: true,
+        correlationId: this.createCorrelationId(),
       });
     });
 

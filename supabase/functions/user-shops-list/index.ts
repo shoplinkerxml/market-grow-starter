@@ -51,6 +51,7 @@ type RequestBody = {
   store_id?: string
   limitOnly?: boolean
   forceCounts?: boolean
+  correlationId?: string
 }
 
 type ShopCounts = { productsCount: number; categoriesCount: number }
@@ -245,6 +246,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   try {
+    const startedAt = Date.now()
+
+    let body: RequestBody = {}
+    try {
+      body = await req.json()
+    } catch {
+      body = {}
+    }
+
+    const correlationId =
+      typeof (body as any)?.correlationId === 'string' && String((body as any).correlationId).trim().length > 0
+        ? String((body as any).correlationId).trim()
+        : crypto.randomUUID()
+
     const authHeader = req.headers.get('Authorization')
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -272,38 +287,52 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (userError || !user) {
       console.log('User authentication failed', {
+        correlationId,
         error: userError?.message,
       })
       return jsonResponse({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('User authenticated successfully', {
-      userId: user.id,
-    })
+    const { limitOnly = false, store_id: storeId, includeConfig, forceCounts = false } = body
+    const timings: Record<string, number> = {}
 
-    // Парсинг body
-    let body: RequestBody = {}
-    try {
-      body = await req.json()
-    } catch {
-      // Если body пустой или невалидный, используем дефолтные значения
+    const timed = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
+      const t0 = Date.now()
+      try {
+        return await fn()
+      } finally {
+        timings[name] = Date.now() - t0
+      }
     }
 
-    const { limitOnly = false, store_id: storeId, includeConfig, forceCounts = false } = body
+    console.log('[user-shops-list] start', {
+      correlationId,
+      userId: user.id,
+      storeId: storeId ?? null,
+      includeConfig: includeConfig ?? null,
+      forceCounts,
+      limitOnly,
+    })
 
     if (limitOnly) {
-      const { count, error: countError } = await supabaseClient
-        .from('user_stores')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_active', true)
+      const { count, error: countError } = await timed('limitOnlyCount', async () => {
+        return await supabaseClient
+          .from('user_stores')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+      })
 
       if (countError) {
         console.log('Count error', { error: countError.message })
         return jsonResponse({ error: 'Failed to count shops' }, { status: 500 })
       }
 
-      const limit = await getLimitForUser(user.id)
+      const limit = await timed('limitOnlyLimit', async () => await getLimitForUser(user.id))
+      const totalMs = Date.now() - startedAt
+      if (totalMs > 5000) {
+        console.warn('[user-shops-list] slow', { correlationId, totalMs, timings })
+      }
 
       return jsonResponse({
         totalShops: count ?? 0,
@@ -337,7 +366,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       storesQuery = storesQuery.eq('id', storeId)
     }
 
-    const { data: stores, error: storesError } = await storesQuery
+    const { data: stores, error: storesError } = await timed('storesQuery', async () => await storesQuery)
 
     if (storesError) {
       console.log('Stores fetch error', { error: storesError.message })
@@ -363,15 +392,25 @@ Deno.serve(async (req: Request): Promise<Response> => {
     )
 
     const [cachedConfig, { data: templates }, cachedCounts, limit] = await Promise.all([
-      finalIncludeConfig ? getConfigFromRedis(storeIdsStrings) : Promise.resolve(new Map<string, ShopConfig>()),
-      templateIds.length > 0
-        ? supabaseClient
-            .from('store_templates')
-            .select('id, marketplace')
-            .in('id', templateIds)
-        : Promise.resolve({ data: [] }),
-      forceCounts ? Promise.resolve(new Map<string, ShopCounts>()) : getCountsFromRedis(storeIdsStrings),
-      includeLimit ? getLimitForUser(user.id) : Promise.resolve(0),
+      timed(
+        'configRedis',
+        async () =>
+          finalIncludeConfig
+            ? await getConfigFromRedis(storeIdsStrings)
+            : new Map<string, ShopConfig>()
+      ),
+      timed('templatesQuery', async () => {
+        if (templateIds.length === 0) return { data: [] }
+        return await supabaseClient
+          .from('store_templates')
+          .select('id, marketplace')
+          .in('id', templateIds)
+      }),
+      timed(
+        'countsRedis',
+        async () => (forceCounts ? new Map<string, ShopCounts>() : await getCountsFromRedis(storeIdsStrings))
+      ),
+      timed('limitQuery', async () => (includeLimit ? await getLimitForUser(user.id) : 0)),
     ])
 
     const templatesMap = new Map<string, string>()
@@ -390,12 +429,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
       : []
 
     if (finalIncludeConfig && missingConfigStoreIds.length > 0) {
-      const { data: cfgRows, error: cfgErr } = await supabaseClient
-        .from('user_stores')
-        .select('id, xml_config, custom_mapping')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .in('id', missingConfigStoreIds)
+      const { data: cfgRows, error: cfgErr } = await timed('missingConfigQuery', async () => {
+        return await supabaseClient
+          .from('user_stores')
+          .select('id, xml_config, custom_mapping')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .in('id', missingConfigStoreIds)
+      })
 
       if (!cfgErr && Array.isArray(cfgRows) && cfgRows.length > 0) {
         const toWrite: Array<{ storeId: string; config: ShopConfig }> = []
@@ -406,7 +447,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
           configsByStore.set(sid, config)
           toWrite.push({ storeId: sid, config })
         }
-        await setConfigToRedis(toWrite)
+        await timed('configRedisSet', async () => await setConfigToRedis(toWrite))
       }
     }
 
@@ -414,13 +455,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const missingStoreIds = storeIdsStrings.filter((id) => !countsByStore.has(id))
 
     if (missingStoreIds.length > 0) {
-      const { data: links } = await supabaseClient
-        .from('store_product_links')
-        .select(
-          'store_id, is_active, product_id, custom_category_id, store_products!inner(category_id,category_external_id)'
-        )
-        .in('store_id', missingStoreIds)
-        .eq('is_active', true)
+      const { data: links } = await timed('countsLinksQuery', async () => {
+        return await supabaseClient
+          .from('store_product_links')
+          .select(
+            'store_id, is_active, product_id, custom_category_id, store_products!inner(category_id,category_external_id)'
+          )
+          .in('store_id', missingStoreIds)
+          .eq('is_active', true)
+      })
 
       const productsCountByStore = new Map<string, number>()
       const categoriesSets = new Map<string, Set<string>>()
@@ -456,7 +499,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         countsByStore.set(sid, counts)
         toWrite.push({ storeId: sid, counts })
       }
-      await setCountsToRedis(toWrite)
+      await timed('countsRedisSet', async () => await setCountsToRedis(toWrite))
     }
 
     const aggregated = stores.map((store: any) => {
@@ -479,7 +522,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     })
 
-    console.log('Shops fetched successfully', { count: aggregated.length })
+    console.log('Shops fetched successfully', { correlationId, count: aggregated.length })
 
     const responseBody = {
       shops: aggregated,
@@ -488,10 +531,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     if (!storeId && !forceCounts && includeConfig !== true) {
       try {
-        await setShopsListToRedis(user.id, responseBody)
+        await timed('shopsListRedisSet', async () => await setShopsListToRedis(user.id, responseBody))
       } catch {
         void 0
       }
+    }
+
+    const totalMs = Date.now() - startedAt
+    if (totalMs > 5000) {
+      console.warn('[user-shops-list] slow', {
+        correlationId,
+        totalMs,
+        timings,
+        storeId: storeId ?? null,
+        shopsCount: aggregated.length,
+        includeConfig: finalIncludeConfig,
+        forceCounts,
+      })
     }
 
     return jsonResponse(responseBody)
