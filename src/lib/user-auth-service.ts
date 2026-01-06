@@ -31,8 +31,8 @@ type AuthMeData = {
 
 export class UserAuthService {
   private static authMeDeduplicator = RequestDeduplicatorFactory.create<AuthMeData>("user-auth-service:authMe", {
-    ttl: 30_000,
-    maxSize: 200,
+    ttl: 300_000, // 5 min TTL - authMe data is stable
+    maxSize: 20,
     enableMetrics: true,
     errorStrategy: "remove",
     maxRetries: 0,

@@ -37,16 +37,16 @@ export interface SupplierLimitInfo {
 
 export class SupplierService {
   private static deduplicator = RequestDeduplicatorFactory.create<Supplier[]>("supplier-service:suppliers", {
-    ttl: 30_000,
+    ttl: 180_000, // 3 min TTL for better deduplication
     maxSize: 50,
     enableMetrics: true,
     errorStrategy: "remove",
   });
-  private static readonly SOFT_REFRESH_THRESHOLD_MS = 120_000;
+  private static readonly SOFT_REFRESH_THRESHOLD_MS = 300_000; // 5 min soft refresh
 
   private static cache = UnifiedCacheManager.create("rq:suppliers", {
     mode: "auto",
-    defaultTtlMs: CACHE_TTL.suppliersList,
+    defaultTtlMs: 600_000, // 10 min cache for suppliers (rarely changes)
   });
 
   private static getSuppliersCacheKey(userId: string): string {
