@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { invokeEdgeWithAuth, requireValidSession } from "./session-validation";
 import { UnifiedCacheManager } from "./cache-utils";
-import type { RequireAtLeastOne } from "./request-handler";
+import type { RequireAtLeastOne, RetryOptions } from "./request-handler";
 import { RequestDeduplicatorFactory } from "./request-deduplicator";
 
 export interface Shop {
@@ -161,9 +161,13 @@ export class ShopServiceCore {
     throw new Error(message);
   }
 
-  protected static async invokeEdge<T>(functionName: string, body: Record<string, unknown> = {}): Promise<T> {
+  protected static async invokeEdge<T>(
+    functionName: string,
+    body: Record<string, unknown> = {},
+    opts?: RetryOptions,
+  ): Promise<T> {
     try {
-      return await invokeEdgeWithAuth<T>(functionName, body);
+      return await invokeEdgeWithAuth<T>(functionName, body, opts);
     } catch (error) {
       this.handleEdgeError(error, functionName);
     }
@@ -245,7 +249,11 @@ export class ShopServiceCore {
 
   protected static async getShopsFallback(): Promise<ShopAggregated[]> {
     try {
-      const response = await this.invokeEdge<ShopsListResponse>("user-shops-list", { includeConfig: false });
+      const response = await this.invokeEdge<ShopsListResponse>(
+        "user-shops-list",
+        { includeConfig: false },
+        { maxRetries: 2, retryDelayMs: 500, backoff: "exponential", timeoutMs: 12_000 },
+      );
       const shops = response.shops || [];
       return shops as ShopAggregated[];
     } catch {
@@ -325,7 +333,11 @@ export class ShopServiceCore {
     const requestKey = forceCounts ? `${cacheKey}:forceCounts` : cacheKey;
     return this.deduplicateRequest(requestKey, async () => {
       try {
-        const response = await this.invokeEdge<ShopsListResponse>("user-shops-list", { includeConfig: false, forceCounts });
+        const response = await this.invokeEdge<ShopsListResponse>(
+          "user-shops-list",
+          { includeConfig: false, forceCounts },
+          { maxRetries: 2, retryDelayMs: 500, backoff: "exponential", timeoutMs: 12_000 },
+        );
         const shops = response.shops || [];
         const limit = Number(response.limit ?? NaN);
         if (Number.isFinite(limit)) {
