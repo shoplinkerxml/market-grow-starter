@@ -194,7 +194,10 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
                                       {
                                         const idStr = String(id);
                                         const added = Math.max(0, Number(addedByStore?.[idStr] ?? 1) || 0);
-                                        if (added > 0) ShopCountsService.bumpProducts(queryClient, uid, idStr, added);
+                                        if (added > 0) {
+                                          ShopCountsService.suppressRealtimeProductsDelta(uid, idStr, added);
+                                          ShopCountsService.bumpProducts(queryClient, uid, idStr, added);
+                                        }
                                         const cats = categoryNamesByStore?.[idStr];
                                         if (Array.isArray(cats)) {
                                           const cnt = cats.length;
@@ -216,7 +219,10 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
                                       {
                                         const idStr = String(id);
                                         const deleted = Math.max(0, Number(deletedByStore?.[idStr] ?? 1) || 0);
-                                        if (deleted > 0) ShopCountsService.bumpProducts(queryClient, uid, idStr, -deleted);
+                                        if (deleted > 0) {
+                                          ShopCountsService.suppressRealtimeProductsDelta(uid, idStr, -deleted);
+                                          ShopCountsService.bumpProducts(queryClient, uid, idStr, -deleted);
+                                        }
                                         const cats = categoryNamesByStore?.[idStr];
                                         if (Array.isArray(cats)) {
                                           const cnt = cats.length;

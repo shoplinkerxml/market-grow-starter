@@ -70,7 +70,7 @@ export const ShopDetail = () => {
 
   const { data: shopsList, isLoading, isError } = useQuery<ShopAggregated[]>({
     queryKey: ["user", uid, "shops"],
-    queryFn: async () => await ShopService.getShopsAggregated({ force: true, forceCounts: true }),
+    queryFn: async () => await ShopService.getShopsAggregated({ force: true }),
     enabled: true,
     retry: false,
     staleTime: 30_000,
@@ -121,6 +121,7 @@ export const ShopDetail = () => {
               ? cats.length
               : baseCategoriesCount;
 
+        if (deleted > 0) ShopCountsService.suppressRealtimeProductsDelta(uid, shopId, -deleted);
         ShopCountsService.set(queryClient, uid, shopId, {
           productsCount: nextProductsCount,
           categoriesCount: nextCategoriesCount,

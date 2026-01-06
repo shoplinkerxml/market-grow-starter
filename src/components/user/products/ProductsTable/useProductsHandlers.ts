@@ -155,6 +155,7 @@ export function useProductsHandlers({
           if (correction !== 0) applyOptimistic(correction);
         }
         if (deleted > 0) {
+          ShopCountsService.suppressRealtimeProductsDelta(uid, sid, -deleted);
           ShopCountsService.bumpProducts(queryClient, uid, sid, -deleted);
         }
         const cats = categoryNamesByStore?.[sid];

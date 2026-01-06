@@ -51,6 +51,12 @@ const extractObjectKeyFromUrl = (url: string) => {
 // ENV и клиенты один раз
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? ""
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+const REDIS_REST_URL =
+  Deno.env.get("UPSTASH_REDIS_REST_URL") || Deno.env.get("REDIS_REST_URL") || ""
+const REDIS_REST_TOKEN =
+  Deno.env.get("UPSTASH_REDIS_REST_TOKEN") || Deno.env.get("REDIS_REST_TOKEN") || ""
+const SHOP_COUNTS_KEY_PREFIX =
+  Deno.env.get("SHOP_COUNTS_KEY_PREFIX") || "shop:counts:"
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
   throw new Error("Missing Supabase configuration")
@@ -62,6 +68,36 @@ const accessKeyId = Deno.env.get("R2_ACCESS_KEY_ID") ?? ""
 const secretAccessKey = Deno.env.get("R2_SECRET_ACCESS_KEY") ?? ""
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+
+async function redisPipeline(commands: any[]): Promise<any[] | null> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
+  try {
+    const base = REDIS_REST_URL.replace(/\/+$/, "")
+    const res = await fetch(`${base}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(commands),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return Array.isArray(json) ? json : null
+  } catch {
+    return null
+  }
+}
+
+function buildCountsKey(storeId: string): string {
+  return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`
+}
+
+async function invalidateCounts(storeIds: string[]): Promise<void> {
+  const ids = Array.from(new Set((storeIds || []).map((v) => String(v || "").trim()).filter(Boolean)))
+  if (ids.length === 0) return
+  await redisPipeline(ids.map((id) => ["DEL", buildCountsKey(id)]))
+}
 
 const s3 =
   accountId && bucket && accessKeyId && secretAccessKey
@@ -274,6 +310,7 @@ serve(async (req) => {
 
     await supabase.from("store_products").delete().in("id", productIds)
 
+    await invalidateCounts(storeIds)
     return new Response(
       JSON.stringify({
         success: true,

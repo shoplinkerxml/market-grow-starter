@@ -165,7 +165,10 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                               {
                                 const idStr = String(id);
                                 const added = Math.max(0, Number(addedByStore?.[idStr] ?? 1) || 0);
-                                if (added > 0) ShopCountsService.bumpProducts(queryClient, uid, idStr, added);
+                                if (added > 0) {
+                                  ShopCountsService.suppressRealtimeProductsDelta(uid, idStr, added);
+                                  ShopCountsService.bumpProducts(queryClient, uid, idStr, added);
+                                }
                                 const cats = categoryNamesByStore?.[idStr];
                                 if (Array.isArray(cats)) {
                                   const cnt = cats.length;
@@ -182,7 +185,10 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                               {
                                 const idStr = String(id);
                                 const deleted = Math.max(0, Number(deletedByStore?.[idStr] ?? 1) || 0);
-                                if (deleted > 0) ShopCountsService.bumpProducts(queryClient, uid, idStr, -deleted);
+                                if (deleted > 0) {
+                                  ShopCountsService.suppressRealtimeProductsDelta(uid, idStr, -deleted);
+                                  ShopCountsService.bumpProducts(queryClient, uid, idStr, -deleted);
+                                }
                                 const cats = categoryNamesByStore?.[idStr];
                                 if (Array.isArray(cats)) {
                                   const cnt = cats.length;
@@ -300,7 +306,10 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                                       {
                                         const sidStr = String(sid);
                                         const added = Math.max(0, Number(addedByStore?.[sidStr] ?? 1) || 0);
-                                        if (added > 0) ShopCountsService.bumpProducts(queryClient, uid, sidStr, added);
+                                        if (added > 0) {
+                                          ShopCountsService.suppressRealtimeProductsDelta(uid, sidStr, added);
+                                          ShopCountsService.bumpProducts(queryClient, uid, sidStr, added);
+                                        }
                                         const cats = categoryNamesByStore?.[sidStr];
                                         if (Array.isArray(cats)) {
                                           const cnt = cats.length;
@@ -317,7 +326,10 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                                       {
                                         const sidStr = String(sid);
                                         const deleted = Math.max(0, Number(deletedByStore?.[sidStr] ?? 1) || 0);
-                                        if (deleted > 0) ShopCountsService.bumpProducts(queryClient, uid, sidStr, -deleted);
+                                        if (deleted > 0) {
+                                          ShopCountsService.suppressRealtimeProductsDelta(uid, sidStr, -deleted);
+                                          ShopCountsService.bumpProducts(queryClient, uid, sidStr, -deleted);
+                                        }
                                         const cats = categoryNamesByStore?.[sidStr];
                                         if (Array.isArray(cats)) {
                                           const cnt = cats.length;

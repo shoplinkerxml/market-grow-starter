@@ -56,7 +56,7 @@ export const ShopsList = ({
   const { data: shopsData, isLoading, isFetching } = useQuery<ShopWithMarketplace[]>({
     queryKey: ["user", uid, "shops"],
     queryFn: async () => {
-      const rows = await ShopService.getShopsAggregated({ force: true, forceCounts: true });
+      const rows = await ShopService.getShopsAggregated({ force: true });
       return rows as ShopWithMarketplace[];
     },
     retry: false,
@@ -125,6 +125,7 @@ export const ShopsList = ({
     const updateProductsCount = (storeId: string, delta: number) => {
       const sid = String(storeId || "").trim();
       if (!sid) return;
+      if (ShopCountsService.consumeRealtimeProductsDelta(uid, sid, delta)) return;
       ShopCountsService.bumpProducts(queryClient, uid, sid, delta);
     };
 

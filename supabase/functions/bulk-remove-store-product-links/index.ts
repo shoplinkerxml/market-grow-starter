@@ -7,6 +7,43 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json',
 }
 
+const REDIS_REST_URL =
+  Deno.env.get('UPSTASH_REDIS_REST_URL') || Deno.env.get('REDIS_REST_URL') || ''
+const REDIS_REST_TOKEN =
+  Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || Deno.env.get('REDIS_REST_TOKEN') || ''
+const SHOP_COUNTS_KEY_PREFIX =
+  Deno.env.get('SHOP_COUNTS_KEY_PREFIX') || 'shop:counts:'
+
+async function redisPipeline(commands: any[]): Promise<any[] | null> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
+  try {
+    const base = REDIS_REST_URL.replace(/\/+$/, '')
+    const res = await fetch(`${base}/pipeline`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(commands),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return Array.isArray(json) ? json : null
+  } catch {
+    return null
+  }
+}
+
+function buildCountsKey(storeId: string): string {
+  return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`
+}
+
+async function invalidateCounts(storeIds: string[]): Promise<void> {
+  const ids = Array.from(new Set((storeIds || []).map(String).filter(Boolean)))
+  if (ids.length === 0) return
+  await redisPipeline(ids.map((id) => ['DEL', buildCountsKey(id)]))
+}
+
 type RequestBody = {
   product_ids?: string[]
   store_ids?: string[]
@@ -69,6 +106,7 @@ Deno.serve(async (req) => {
       throw new Error(`RPC call failed: ${error.message}`)
     }
 
+    await invalidateCounts(storeIds)
     return new Response(
       JSON.stringify(data || { deleted: 0, deletedByStore: {}, categoryNamesByStore: {} }),
       { status: 200, headers: CORS_HEADERS }

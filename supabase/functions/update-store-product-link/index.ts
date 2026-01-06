@@ -55,12 +55,48 @@ type Body = {
 // ENV и клиент один раз
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? ""
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+const REDIS_REST_URL =
+  Deno.env.get("UPSTASH_REDIS_REST_URL") || Deno.env.get("REDIS_REST_URL") || ""
+const REDIS_REST_TOKEN =
+  Deno.env.get("UPSTASH_REDIS_REST_TOKEN") || Deno.env.get("REDIS_REST_TOKEN") || ""
+const SHOP_COUNTS_KEY_PREFIX =
+  Deno.env.get("SHOP_COUNTS_KEY_PREFIX") || "shop:counts:"
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
   throw new Error("Missing Supabase configuration")
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+
+async function redisPipeline(commands: any[]): Promise<any[] | null> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
+  try {
+    const base = REDIS_REST_URL.replace(/\/+$/, "")
+    const res = await fetch(`${base}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(commands),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return Array.isArray(json) ? json : null
+  } catch {
+    return null
+  }
+}
+
+function buildCountsKey(storeId: string): string {
+  return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`
+}
+
+async function invalidateCounts(storeId: string): Promise<void> {
+  const sid = String(storeId || "").trim()
+  if (!sid) return
+  await redisPipeline([["DEL", buildCountsKey(sid)]])
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -181,6 +217,7 @@ serve(async (req) => {
         )
       }
 
+      await invalidateCounts(storeId)
       return new Response(JSON.stringify({ link: inserted }), {
         status: 200,
         headers: jsonHeaders,
@@ -205,6 +242,7 @@ serve(async (req) => {
       )
     }
 
+    await invalidateCounts(storeId)
     return new Response(JSON.stringify({ link: updated }), {
       status: 200,
       headers: jsonHeaders,

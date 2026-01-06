@@ -3,6 +3,19 @@ import { ShopService } from "./shop-service";
 import type { ShopAggregated } from "./shop-service";
 import type { ShopCounts } from "@/types/shop";
 
+const suppressionTtlMs = 15_000;
+const realtimeDeltaSuppressions = new Map<string, { delta: number; ts: number }>();
+
+function suppressionKey(userId: string, storeId: string) {
+  return `${userId ? String(userId) : "current"}:${String(storeId)}`;
+}
+
+function cleanupSuppressions(now: number) {
+  for (const [k, v] of realtimeDeltaSuppressions) {
+    if (now - v.ts > suppressionTtlMs) realtimeDeltaSuppressions.delete(k);
+  }
+}
+
 export const ShopCountsService = {
   key(userId: string, storeId: string) {
     return ["user", userId ? String(userId) : "current", "shopCounts", storeId] as const;
@@ -12,6 +25,34 @@ export const ShopCountsService = {
   },
   shopDetailKey(userId: string, storeId: string) {
     return ["user", userId ? String(userId) : "current", "shopDetail", storeId] as const;
+  },
+  suppressRealtimeProductsDelta(userId: string, storeId: string, delta: number) {
+    const d = Number(delta) || 0;
+    if (!d) return;
+    const now = Date.now();
+    cleanupSuppressions(now);
+    const k = suppressionKey(userId, storeId);
+    const prev = realtimeDeltaSuppressions.get(k);
+    const nextDelta = (prev?.delta ?? 0) + d;
+    realtimeDeltaSuppressions.set(k, { delta: nextDelta, ts: now });
+  },
+  consumeRealtimeProductsDelta(userId: string, storeId: string, delta: number): boolean {
+    const d = Number(delta) || 0;
+    if (!d) return false;
+    const now = Date.now();
+    cleanupSuppressions(now);
+    const k = suppressionKey(userId, storeId);
+    const current = realtimeDeltaSuppressions.get(k);
+    if (!current?.delta) return false;
+    if (Math.sign(current.delta) !== Math.sign(d)) return false;
+    if (Math.abs(current.delta) < Math.abs(d)) return false;
+    const next = current.delta - d;
+    if (!next) {
+      realtimeDeltaSuppressions.delete(k);
+      return true;
+    }
+    realtimeDeltaSuppressions.set(k, { delta: next, ts: now });
+    return true;
   },
   set(queryClient: QueryClient, userId: string, storeId: string, counts: ShopCounts) {
     queryClient.setQueryData<ShopCounts>(this.key(userId, storeId), counts);

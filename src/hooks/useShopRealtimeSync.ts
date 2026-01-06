@@ -19,12 +19,16 @@ export const useShopRealtimeSync = ({ shopId, userId, enabled = true }: UseShopR
 
     const handleInsert = (payload: any) => {
       const { store_id, is_active } = payload.new;
-      if (String(store_id) === shopId && is_active !== false) ShopCountsService.bumpProducts(queryClient, uid, shopId, +1);
+      if (String(store_id) !== shopId || is_active === false) return;
+      if (ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, +1)) return;
+      ShopCountsService.bumpProducts(queryClient, uid, shopId, +1);
     };
 
     const handleDelete = (payload: any) => {
       const { store_id, is_active } = payload.old;
-      if (String(store_id) === shopId && is_active !== false) ShopCountsService.bumpProducts(queryClient, uid, shopId, -1);
+      if (String(store_id) !== shopId || is_active === false) return;
+      if (ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, -1)) return;
+      ShopCountsService.bumpProducts(queryClient, uid, shopId, -1);
     };
 
     const handleUpdate = (payload: any) => {
@@ -37,13 +41,23 @@ export const useShopRealtimeSync = ({ shopId, userId, enabled = true }: UseShopR
 
       if (sidOld === sidNew && sidNew === shopId) {
         if (wasActive !== isActive) {
-          ShopCountsService.bumpProducts(queryClient, uid, shopId, isActive ? +1 : -1);
+          const delta = isActive ? +1 : -1;
+          if (ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, delta)) return;
+          ShopCountsService.bumpProducts(queryClient, uid, shopId, delta);
         }
         return;
       }
 
-      if (sidOld === shopId && wasActive) ShopCountsService.bumpProducts(queryClient, uid, shopId, -1);
-      if (sidNew === shopId && isActive) ShopCountsService.bumpProducts(queryClient, uid, shopId, +1);
+      if (sidOld === shopId && wasActive) {
+        if (!ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, -1)) {
+          ShopCountsService.bumpProducts(queryClient, uid, shopId, -1);
+        }
+      }
+      if (sidNew === shopId && isActive) {
+        if (!ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, +1)) {
+          ShopCountsService.bumpProducts(queryClient, uid, shopId, +1);
+        }
+      }
     };
 
     const client = supabase as SupabaseClient;

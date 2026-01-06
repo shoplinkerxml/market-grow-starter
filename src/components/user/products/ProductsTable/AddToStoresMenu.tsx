@@ -70,6 +70,7 @@ async function updateStoreCounts(
     for (const sid of uniqueIds) {
       const delta = Number(deltas[String(sid)] ?? 0) || 0;
       if (delta !== 0) {
+        ShopCountsService.suppressRealtimeProductsDelta(userId, String(sid), delta);
         ShopCountsService.bumpProducts(queryClient, userId, String(sid), delta);
       }
     }

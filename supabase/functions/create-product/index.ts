@@ -50,6 +50,43 @@ const decodeJwtSub = (authHeader: string | null) => {
   }
 };
 
+const REDIS_REST_URL =
+  Deno.env.get("UPSTASH_REDIS_REST_URL") || Deno.env.get("REDIS_REST_URL") || "";
+const REDIS_REST_TOKEN =
+  Deno.env.get("UPSTASH_REDIS_REST_TOKEN") || Deno.env.get("REDIS_REST_TOKEN") || "";
+const SHOP_COUNTS_KEY_PREFIX =
+  Deno.env.get("SHOP_COUNTS_KEY_PREFIX") || "shop:counts:";
+
+async function redisPipeline(commands: any[]): Promise<any[] | null> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null;
+  try {
+    const base = REDIS_REST_URL.replace(/\/+$/, "");
+    const res = await fetch(`${base}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(commands),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return Array.isArray(json) ? json : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildCountsKey(storeId: string): string {
+  return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`;
+}
+
+async function invalidateCounts(storeIds: string[]): Promise<void> {
+  const ids = Array.from(new Set((storeIds || []).map((v) => String(v || "").trim()).filter(Boolean)));
+  if (ids.length === 0) return;
+  await redisPipeline(ids.map((id) => ["DEL", buildCountsKey(id)]));
+}
+
 function extractObjectKeyFromUrl(url: string): string | null {
   try {
     const u = new URL(url);
@@ -288,6 +325,7 @@ serve(async (req) => {
       if (links.length) {
         const mapped = links.map((l) => ({ product_id: String(created.id), store_id: String(l.store_id), is_active: l.is_active ?? true, custom_price: l.custom_price ?? null, custom_price_promo: l.custom_price_promo ?? null, custom_stock_quantity: l.custom_stock_quantity ?? null, custom_available: l.custom_available ?? null, custom_name: l.custom_name ?? null, custom_description: l.custom_description ?? null, custom_category_id: l.custom_category_id ?? null }));
         await supabase.from("store_product_links").insert(mapped);
+        await invalidateCounts([storeId, ...mapped.map((m) => m.store_id)]);
       }
     } catch (subErr) {
       try {

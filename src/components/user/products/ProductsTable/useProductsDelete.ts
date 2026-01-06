@@ -84,7 +84,10 @@ export function useProductsDelete({
               const correction = -removedCount - -ids.length;
               if (correction !== 0) patchTotal(correction);
               try {
-                if (removedCount > 0) ShopCountsService.bumpProducts(queryClient, uid, sid, -removedCount);
+                if (removedCount > 0) {
+                  ShopCountsService.suppressRealtimeProductsDelta(uid, sid, -removedCount);
+                  ShopCountsService.bumpProducts(queryClient, uid, sid, -removedCount);
+                }
                 const cats = categoryNamesByStore?.[sid];
                 if (Array.isArray(cats)) {
                   const cnt = cats.length;

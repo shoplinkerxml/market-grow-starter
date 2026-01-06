@@ -14,6 +14,21 @@ declare module "npm:@aws-sdk/client-s3" {
   export class PutObjectCommand {
     constructor(cfg: any)
   }
+  export class GetObjectCommand {
+    constructor(cfg: any)
+  }
+  export class CopyObjectCommand {
+    constructor(cfg: any)
+  }
+  export class DeleteObjectCommand {
+    constructor(cfg: any)
+  }
+  export class DeleteObjectsCommand {
+    constructor(cfg: any)
+  }
+  export class ListObjectsV2Command {
+    constructor(cfg: any)
+  }
 }
 
 declare type ImageData = { data: Uint8ClampedArray; width: number; height: number }
