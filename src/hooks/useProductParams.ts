@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import type { ProductParam } from '@/components/ProductFormTabs/types';
 
 export function useProductParams(preloadedParams?: ProductParam[], onChange?: (params: ProductParam[]) => void) {
-  const [parameters, setParameters] = useState<ProductParam[]>(preloadedParams || []);
+  const dirtyRef = useRef(false);
+  const [parameters, setParametersState] = useState<ProductParam[]>(() => (Array.isArray(preloadedParams) ? preloadedParams : []));
   const [isParamModalOpen, setIsParamModalOpen] = useState(false);
   const [editingParamIndex, setEditingParamIndex] = useState<number | null>(null);
   const [paramForm, setParamForm] = useState<{ name: string; value: string; paramid?: string; valueid?: string }>({
@@ -12,6 +14,20 @@ export function useProductParams(preloadedParams?: ProductParam[], onChange?: (p
     valueid: ''
   });
   const [selectedParamRows, setSelectedParamRows] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (dirtyRef.current) return;
+    const incoming = Array.isArray(preloadedParams) ? preloadedParams : [];
+    if (incoming.length === 0) return;
+    if (parameters.length === 0) {
+      setParametersState(incoming);
+    }
+  }, [parameters.length, preloadedParams]);
+
+  const setParameters = useCallback<Dispatch<SetStateAction<ProductParam[]>>>((next) => {
+    dirtyRef.current = true;
+    setParametersState(next);
+  }, []);
 
   const openAddParamModal = useCallback(() => {
     setEditingParamIndex(null);
@@ -34,12 +50,14 @@ export function useProductParams(preloadedParams?: ProductParam[], onChange?: (p
     if (!name || !value) return;
     if (editingParamIndex === null) {
       const newParams = [...parameters, { name, value, paramid, valueid, order_index: parameters.length }];
-      setParameters(newParams);
+      dirtyRef.current = true;
+      setParametersState(newParams);
       onChange?.(newParams);
     } else {
       const updated = [...parameters];
       updated[editingParamIndex] = { ...updated[editingParamIndex], name, value, paramid, valueid };
-      setParameters(updated);
+      dirtyRef.current = true;
+      setParametersState(updated);
       onChange?.(updated);
     }
     setIsParamModalOpen(false);
@@ -47,14 +65,16 @@ export function useProductParams(preloadedParams?: ProductParam[], onChange?: (p
 
   const deleteParam = useCallback((index: number) => {
     const newParams = parameters.filter((_, i) => i !== index).map((p, i) => ({ ...p, order_index: i }));
-    setParameters(newParams);
+    dirtyRef.current = true;
+    setParametersState(newParams);
     onChange?.(newParams);
   }, [parameters, onChange]);
 
   const deleteSelectedParams = useCallback((indexes: number[]) => {
     if (!indexes || indexes.length === 0) return;
     const keep = parameters.filter((_, i) => !indexes.includes(i)).map((p, i) => ({ ...p, order_index: i }));
-    setParameters(keep);
+    dirtyRef.current = true;
+    setParametersState(keep);
     onChange?.(keep);
   }, [parameters, onChange]);
 

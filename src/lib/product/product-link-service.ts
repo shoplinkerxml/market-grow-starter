@@ -102,6 +102,11 @@ export class ProductLinkService {
 
     try {
       const { ShopService } = await import("@/lib/shop-service");
+      const deletedByStore = out.deletedByStore || {};
+      for (const sid of Object.keys(deletedByStore)) {
+        const removed = Math.max(0, Number(deletedByStore[sid] ?? 0) || 0);
+        if (removed > 0) ShopService.bumpProductsCountInCache(String(sid), -removed);
+      }
       const catsByStore = out.categoryNamesByStore || {};
       for (const sid of Object.keys(catsByStore)) {
         const cnt = Array.isArray(catsByStore[sid]) ? catsByStore[sid].length : 0;
@@ -139,6 +144,11 @@ export class ProductLinkService {
 
     try {
       const { ShopService } = await import("@/lib/shop-service");
+      const addedByStore = out.addedByStore || {};
+      for (const sid of Object.keys(addedByStore)) {
+        const added = Math.max(0, Number(addedByStore[sid] ?? 0) || 0);
+        if (added > 0) ShopService.bumpProductsCountInCache(String(sid), added);
+      }
       const catsByStore = out.categoryNamesByStore || {};
       for (const sid of Object.keys(catsByStore)) {
         const cnt = Array.isArray(catsByStore[sid]) ? catsByStore[sid].length : 0;

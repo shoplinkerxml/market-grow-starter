@@ -308,8 +308,9 @@ export class ShopServiceCore {
     return response.shops || [];
   }
 
-  static async getShopsAggregated(options?: { force?: boolean }): Promise<ShopAggregated[]> {
+  static async getShopsAggregated(options?: { force?: boolean; forceCounts?: boolean }): Promise<ShopAggregated[]> {
     const force = options?.force === true;
+    const forceCounts = options?.forceCounts === true;
     const cacheKey = "shops-aggregated";
 
     if (!force) {
@@ -321,9 +322,10 @@ export class ShopServiceCore {
 
     await this.ensureSession();
 
-    return this.deduplicateRequest(cacheKey, async () => {
+    const requestKey = forceCounts ? `${cacheKey}:forceCounts` : cacheKey;
+    return this.deduplicateRequest(requestKey, async () => {
       try {
-        const response = await this.invokeEdge<ShopsListResponse>("user-shops-list", { includeConfig: false });
+        const response = await this.invokeEdge<ShopsListResponse>("user-shops-list", { includeConfig: false, forceCounts });
         const shops = response.shops || [];
         const limit = Number(response.limit ?? NaN);
         if (Number.isFinite(limit)) {
@@ -619,4 +621,3 @@ export class ShopServiceCore {
     return Math.max(0, Number(found?.productsCount ?? 0));
   }
 }
-

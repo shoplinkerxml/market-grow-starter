@@ -70,10 +70,11 @@ export const ShopDetail = () => {
 
   const { data: shopsList, isLoading, isError } = useQuery<ShopAggregated[]>({
     queryKey: ["user", uid, "shops"],
-    queryFn: async () => await ShopService.getShopsAggregated(),
+    queryFn: async () => await ShopService.getShopsAggregated({ force: true, forceCounts: true }),
     enabled: true,
     retry: false,
     staleTime: 900_000,
+    gcTime: 86_400_000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     placeholderData: (prev) => (prev || []) as ShopAggregated[],

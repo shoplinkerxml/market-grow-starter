@@ -23,6 +23,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
   const queryClient = useQueryClient();
   const productsBaseKey = useMemo(() => ["user", uid, "products", storeId ?? "all"] as const, [uid, storeId]);
   const productsQueryKey = useMemo(() => [...productsBaseKey, "pageSize", pageSize] as const, [productsBaseKey, pageSize]);
+  const shopsMenuKey = useMemo(() => ["user", uid, "shops", "menu"] as const, [uid]);
 
   const mapUserStoresToAgg = useCallback((rows: Array<{ id: string; store_name: string }>) => {
     const baseIso = new Date(0).toISOString();
@@ -137,7 +138,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
   useProductsRealtime(storeId, uid, queryClient);
 
   const storesQuery = useQuery<ShopAggregated[]>({
-    queryKey: ["user", uid, "shops"],
+    queryKey: shopsMenuKey,
     queryFn: async () => {
       const cachedAuthMe = queryClient.getQueryData<any>(["auth", "me"]);
       const cachedRows = Array.isArray((cachedAuthMe as any)?.userStores)
@@ -160,8 +161,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
   const stores = useMemo(() => (Array.isArray(storesQuery.data) ? storesQuery.data : []), [storesQuery.data]);
 
   const loadStoresForMenu = useCallback(async () => {
-    const key = ["user", uid, "shops"] as const;
-    const cachedAgg = queryClient.getQueryData<ShopAggregated[]>(key) || [];
+    const cachedAgg = queryClient.getQueryData<ShopAggregated[]>(shopsMenuKey) || [];
     if (cachedAgg.length > 0) return;
 
     const cachedAuthMe = queryClient.getQueryData<any>(["auth", "me"]);
@@ -170,12 +170,12 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
       : null;
     if (cachedRows && cachedRows.length > 0) {
       const mapped = mapUserStoresToAgg(cachedRows);
-      queryClient.setQueryData<ShopAggregated[]>(key, mapped);
+      queryClient.setQueryData<ShopAggregated[]>(shopsMenuKey, mapped);
       return;
     }
 
     await queryClient.fetchQuery({
-      queryKey: key,
+      queryKey: shopsMenuKey,
       queryFn: async () => {
         const authMe = await UserAuthService.fetchAuthMe();
         const rows = Array.isArray((authMe as any)?.userStores)
@@ -185,7 +185,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
       },
       staleTime: 900_000,
     });
-  }, [mapUserStoresToAgg, queryClient, uid]);
+  }, [mapUserStoresToAgg, queryClient, shopsMenuKey]);
 
   return {
     queryClient,

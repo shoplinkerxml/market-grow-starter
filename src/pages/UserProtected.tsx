@@ -204,10 +204,7 @@ const UserProtected = () => {
   const prefetchData = useCallback(async () => {
     try {
       const path = location.pathname.toLowerCase();
-      const shouldPrefetchSuppliers =
-        path.startsWith("/user/suppliers") ||
-        path.includes("/user/products/new") ||
-        path.includes("/user/products/edit");
+      const shouldPrefetchSuppliers = path.startsWith("/user/suppliers");
 
       const tasks: Promise<unknown>[] = [];
       if (shouldPrefetchSuppliers) {

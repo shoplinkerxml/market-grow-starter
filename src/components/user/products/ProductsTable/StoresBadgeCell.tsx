@@ -169,14 +169,9 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                                 const cats = categoryNamesByStore?.[idStr];
                                 if (Array.isArray(cats)) {
                                   const cnt = cats.length;
-                                  queryClient.setQueryData(ShopCountsService.key(uid, idStr), (old: any) => {
-                                    const prevProducts = Number(old?.productsCount ?? 0) || 0;
-                                    return { productsCount: prevProducts, categoriesCount: cnt };
-                                  });
-                                  queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], (prev) => {
-                                    if (!Array.isArray(prev)) return prev;
-                                    return prev.map((s) => (String(s.id) === idStr ? { ...s, categoriesCount: cnt } : s));
-                                  });
+                                  const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, idStr));
+                                  const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
+                                  ShopCountsService.set(queryClient, uid, idStr, { productsCount: prevProducts, categoriesCount: cnt });
                                 }
                               }
                               try { /* keep menu open */ setOpen(true); } catch { void 0; }
@@ -191,14 +186,9 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                                 const cats = categoryNamesByStore?.[idStr];
                                 if (Array.isArray(cats)) {
                                   const cnt = cats.length;
-                                  queryClient.setQueryData(ShopCountsService.key(uid, idStr), (old: any) => {
-                                    const prevProducts = Number(old?.productsCount ?? 0) || 0;
-                                    return { productsCount: prevProducts, categoriesCount: cnt };
-                                  });
-                                  queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], (prev) => {
-                                    if (!Array.isArray(prev)) return prev;
-                                    return prev.map((s) => (String(s.id) === idStr ? { ...s, categoriesCount: cnt } : s));
-                                  });
+                                  const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, idStr));
+                                  const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
+                                  ShopCountsService.set(queryClient, uid, idStr, { productsCount: prevProducts, categoriesCount: cnt });
                                 }
                               }
                               try { setOpen(true); } catch { void 0; }
@@ -314,14 +304,9 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                                         const cats = categoryNamesByStore?.[sidStr];
                                         if (Array.isArray(cats)) {
                                           const cnt = cats.length;
-                                          queryClient.setQueryData(ShopCountsService.key(uid, sidStr), (old: any) => {
-                                            const prevProducts = Number(old?.productsCount ?? 0) || 0;
-                                            return { productsCount: prevProducts, categoriesCount: cnt };
-                                          });
-                                          queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], (prev) => {
-                                            if (!Array.isArray(prev)) return prev;
-                                            return prev.map((s) => (String(s.id) === sidStr ? { ...s, categoriesCount: cnt } : s));
-                                          });
+                                          const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, sidStr));
+                                          const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
+                                          ShopCountsService.set(queryClient, uid, sidStr, { productsCount: prevProducts, categoriesCount: cnt });
                                         }
                                       }
                                       try { setBadgeOpenId(String(id)); } catch { void 0; }
@@ -336,14 +321,9 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                                         const cats = categoryNamesByStore?.[sidStr];
                                         if (Array.isArray(cats)) {
                                           const cnt = cats.length;
-                                          queryClient.setQueryData(ShopCountsService.key(uid, sidStr), (old: any) => {
-                                            const prevProducts = Number(old?.productsCount ?? 0) || 0;
-                                            return { productsCount: prevProducts, categoriesCount: cnt };
-                                          });
-                                          queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], (prev) => {
-                                            if (!Array.isArray(prev)) return prev;
-                                            return prev.map((s) => (String(s.id) === sidStr ? { ...s, categoriesCount: cnt } : s));
-                                          });
+                                          const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, sidStr));
+                                          const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
+                                          ShopCountsService.set(queryClient, uid, sidStr, { productsCount: prevProducts, categoriesCount: cnt });
                                         }
                                       }
                                       try { setBadgeOpenId(String(id)); } catch { void 0; }

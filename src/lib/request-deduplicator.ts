@@ -188,14 +188,7 @@ export class RequestDeduplicator<T = unknown> {
     }
     let pruned = 0;
     for (const [k, v] of this.cache) {
-      if (v.expiresAt <= now) {
-        if (v.status === "pending") {
-          try {
-            v.controller.abort();
-          } catch {
-            void 0;
-          }
-        }
+      if (v.status !== "pending" && v.expiresAt <= now) {
         this.cache.delete(k);
         pruned += 1;
       }
@@ -246,7 +239,7 @@ export class RequestDeduplicator<T = unknown> {
       promise,
       controller,
       createdAt: now,
-      expiresAt: now + this.ttlMs,
+      expiresAt: Number.POSITIVE_INFINITY,
       status: "pending",
     };
 
@@ -263,7 +256,11 @@ export class RequestDeduplicator<T = unknown> {
         const cur = this.cache.get(key);
         if (cur?.promise !== promise) return;
         cur.status = "fulfilled";
-        if (this.errorStrategy === "remove" || this.errorStrategy === "retry") this.cache.delete(key);
+        if (this.errorStrategy === "keep") {
+          cur.expiresAt = finishedAt + this.ttlMs;
+        } else {
+          this.cache.delete(key);
+        }
       })
       .catch(() => {
         const finishedAt = Date.now();
@@ -273,7 +270,11 @@ export class RequestDeduplicator<T = unknown> {
         const cur = this.cache.get(key);
         if (cur?.promise !== promise) return;
         cur.status = "rejected";
-        if (this.errorStrategy === "remove" || this.errorStrategy === "retry") this.cache.delete(key);
+        if (this.errorStrategy === "keep") {
+          cur.expiresAt = finishedAt + this.ttlMs;
+        } else {
+          this.cache.delete(key);
+        }
       });
 
     return promise;

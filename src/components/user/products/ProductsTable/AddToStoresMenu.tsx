@@ -79,21 +79,10 @@ async function updateStoreCounts(
     if (categoryStoreIds.length > 0) {
       for (const sid of categoryStoreIds) {
         const cnt = Array.isArray(categoriesByStore[sid]) ? categoriesByStore[sid].length : 0;
-        queryClient.setQueryData(ShopCountsService.key(userId, String(sid)), (old: any) => {
-          const prevProducts = Number(old?.productsCount ?? 0) || 0;
-          return { productsCount: prevProducts, categoriesCount: cnt };
-        });
+        const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(userId, String(sid)));
+        const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
+        ShopCountsService.set(queryClient, userId, String(sid), { productsCount: prevProducts, categoriesCount: cnt });
       }
-
-      queryClient.setQueryData<StoreAgg[]>(["user", userId ? String(userId) : "current", "shops"], (prev) => {
-        if (!Array.isArray(prev)) return prev;
-        return prev.map((s) => {
-          const sid = String((s as any).id);
-          if (!Object.prototype.hasOwnProperty.call(categoriesByStore, sid)) return s;
-          const cnt = Array.isArray(categoriesByStore[sid]) ? categoriesByStore[sid].length : 0;
-          return { ...(s as any), categoriesCount: cnt };
-        }) as any;
-      });
     }
 
     try {

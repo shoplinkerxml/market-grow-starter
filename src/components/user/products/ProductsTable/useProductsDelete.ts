@@ -5,8 +5,6 @@ import { ShopCountsService } from "@/lib/shop-counts";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Table as TanTable } from "@tanstack/react-table";
 import type { ProductRow } from "./columns";
-import type { ShopAggregated } from "@/lib/shop-service";
-import type { ShopCounts } from "@/types/shop";
 
 export function useProductsDelete({
   t,
@@ -90,18 +88,9 @@ export function useProductsDelete({
                 const cats = categoryNamesByStore?.[sid];
                 if (Array.isArray(cats)) {
                   const cnt = cats.length;
-                  queryClient.setQueryData<ShopCounts>(ShopCountsService.key(uid, sid), (old) => {
-                    const prevProducts = Number(old?.productsCount ?? 0) || 0;
-                    return { productsCount: prevProducts, categoriesCount: cnt };
-                  });
-                  queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], (prev) => {
-                    if (!Array.isArray(prev)) return prev;
-                    return prev.map((s) => (String(s.id) === sid ? { ...s, categoriesCount: cnt } : s));
-                  });
-                  queryClient.setQueryData<ShopAggregated | null>(["user", uid, "shopDetail", sid], (prev) => {
-                    if (!prev) return prev;
-                    return { ...prev, categoriesCount: cnt };
-                  });
+                  const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, sid));
+                  const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
+                  ShopCountsService.set(queryClient, uid, sid, { productsCount: prevProducts, categoriesCount: cnt });
                 }
               } catch {
                 void 0;

@@ -6,9 +6,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { useI18n } from '@/i18n';
 import { ProductFormTabs } from '@/components/ProductFormTabs';
 import { ProductService, type Product, type ProductParam, type ProductAggregated } from '@/lib/product-service';
-import { CategoryService } from '@/lib/category-service';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from 'sonner';
 
 type LookupCategory = {
@@ -67,17 +66,6 @@ export const ProductEdit = () => {
     });
   }, [queryClient, uid]);
 
-  const lookupsQuery = useQuery({
-    queryKey: ["user", uid, "lookups"],
-    queryFn: async () => {
-      return await ProductService.getUserLookups();
-    },
-    staleTime: 900_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: false,
-    placeholderData: (prev) => prev as any,
-  });
-
   useEffect(() => {
     const loadProductAgg = async () => {
       if (!id) {
@@ -91,17 +79,15 @@ export const ProductEdit = () => {
         preloadedImagesRef.current = (agg.images || []) as Array<{ id?: string; url: string; order_index: number; is_main: boolean; alt_text?: string }>;
         preloadedParamsRef.current = (agg.params || []) as Array<{ id?: string; name: string; value: string; order_index: number; paramid?: string; valueid?: string }>;
         if (agg.categoryName) setCategoryName(agg.categoryName);
-        if (agg.suppliers || agg.currencies || agg.supplierCategoriesMap) {
-          const nextLookups: UserLookups = {
-            suppliers: Array.isArray(agg.suppliers) ? agg.suppliers : [],
-            currencies: Array.isArray(agg.currencies) ? agg.currencies : [],
-            supplierCategoriesMap: agg.supplierCategoriesMap || {},
-          };
-          setLookups(nextLookups);
-          supplierCategoriesMapRef.current = nextLookups.supplierCategoriesMap || {};
-          const sid = agg.product?.supplier_id != null ? String(agg.product.supplier_id) : "";
-          setSupplierCategories(sid ? (nextLookups.supplierCategoriesMap?.[sid] || []) : []);
-        }
+        const nextLookups: UserLookups = {
+          suppliers: Array.isArray(agg.suppliers) ? agg.suppliers : [],
+          currencies: Array.isArray(agg.currencies) ? agg.currencies : [],
+          supplierCategoriesMap: agg.supplierCategoriesMap || {},
+        };
+        setLookups(nextLookups);
+        supplierCategoriesMapRef.current = nextLookups.supplierCategoriesMap || {};
+        const sid = agg.product?.supplier_id != null ? String(agg.product.supplier_id) : "";
+        setSupplierCategories(sid ? (nextLookups.supplierCategoriesMap?.[sid] || []) : []);
       } catch (error) {
         console.error('Failed to load product:', error);
         toast.error(t('failed_load_products'));
@@ -112,18 +98,6 @@ export const ProductEdit = () => {
     loadProductAgg();
   }, [id, t]);
 
-  useEffect(() => {
-    const data = lookupsQuery.data as any;
-    if (!data) return;
-    const nextLookups: UserLookups = {
-      suppliers: Array.isArray(data.suppliers) ? data.suppliers : [],
-      currencies: Array.isArray(data.currencies) ? data.currencies : [],
-      supplierCategoriesMap: data.supplierCategoriesMap || {},
-    };
-    setLookups(nextLookups);
-    supplierCategoriesMapRef.current = nextLookups.supplierCategoriesMap || {};
-  }, [lookupsQuery.data]);
-
   const supplierId = useMemo(() => {
     return product?.supplier_id != null ? String(product.supplier_id) : "";
   }, [product?.supplier_id]);
@@ -132,27 +106,6 @@ export const ProductEdit = () => {
     const map = lookups?.supplierCategoriesMap || {};
     setSupplierCategories(supplierId ? (map[supplierId] || []) : []);
   }, [lookups?.supplierCategoriesMap, supplierId]);
-
-  useEffect(() => {
-    if (categoryName) return;
-    const loadCategoryName = async () => {
-      if (!product) return;
-      try {
-        if (product.category_id) {
-          const cat = await CategoryService.getById(product.category_id);
-          setCategoryName(cat?.name || '');
-          return;
-        }
-        if (product.supplier_id && product.category_external_id) {
-          const cat = await CategoryService.getByExternalId(String(product.supplier_id), product.category_external_id);
-          setCategoryName(cat?.name || '');
-        }
-      } catch (e) {
-        setCategoryName('');
-      }
-    };
-    loadCategoryName();
-  }, [product, categoryName]);
 
   const handleCancel = () => {
     navigate('/user/products');

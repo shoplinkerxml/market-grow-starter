@@ -56,13 +56,15 @@ export const ShopsList = ({
   const { data: shopsData, isLoading, isFetching } = useQuery<ShopWithMarketplace[]>({
     queryKey: ["user", uid, "shops"],
     queryFn: async () => {
-      const rows = await ShopService.getShopsAggregated();
+      const rows = await ShopService.getShopsAggregated({ force: true, forceCounts: true });
       return rows as ShopWithMarketplace[];
     },
     retry: false,
     staleTime: 900_000,
+    gcTime: 86_400_000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev as ShopWithMarketplace[] | undefined,
   });
 
   const shops: ShopWithMarketplace[] = useMemo(

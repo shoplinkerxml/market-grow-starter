@@ -5,8 +5,6 @@ import { ProductService, type Product } from "@/lib/product-service";
 import { runOptimisticOperation } from "@/lib/optimistic-mutation";
 import type { QueryClient } from "@tanstack/react-query";
 import type { ProductRow } from "./columns";
-import type { ShopAggregated } from "@/lib/shop-service";
-import type { ShopCounts } from "@/types/shop";
 
 export type ProductsHandlersArgs = {
   t: (k: string) => string;
@@ -162,14 +160,9 @@ export function useProductsHandlers({
         const cats = categoryNamesByStore?.[sid];
         if (Array.isArray(cats)) {
           const cnt = cats.length;
-          queryClient.setQueryData<ShopCounts>(ShopCountsService.key(uid, sid), (old) => {
-            const prevProducts = Number(old?.productsCount ?? 0) || 0;
-            return { productsCount: prevProducts, categoriesCount: cnt } as ShopCounts;
-          });
-          queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], (prev) => {
-            if (!Array.isArray(prev)) return prev;
-            return prev.map((s) => (String(s.id) === sid ? { ...s, categoriesCount: cnt } : s));
-          });
+          const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, sid));
+          const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
+          ShopCountsService.set(queryClient, uid, sid, { productsCount: prevProducts, categoriesCount: cnt });
         }
         toast.success(t("product_removed_from_store"));
       } catch {

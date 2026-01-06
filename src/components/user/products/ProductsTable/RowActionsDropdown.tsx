@@ -198,14 +198,9 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
                                         const cats = categoryNamesByStore?.[idStr];
                                         if (Array.isArray(cats)) {
                                           const cnt = cats.length;
-                                          queryClient.setQueryData(ShopCountsService.key(uid, idStr), (old: any) => {
-                                            const prevProducts = Number(old?.productsCount ?? 0) || 0;
-                                            return { productsCount: prevProducts, categoriesCount: cnt };
-                                          });
-                                          queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], (prev) => {
-                                            if (!Array.isArray(prev)) return prev;
-                                            return prev.map((s) => (String(s.id) === idStr ? { ...s, categoriesCount: cnt } : s));
-                                          });
+                                          const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, idStr));
+                                          const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
+                                          ShopCountsService.set(queryClient, uid, idStr, { productsCount: prevProducts, categoriesCount: cnt });
                                         }
                                         try {
                                           const updated = queryClient.getQueryData<ShopAggregated[]>(["user", uid, "shops"]) || [];
@@ -225,14 +220,9 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
                                         const cats = categoryNamesByStore?.[idStr];
                                         if (Array.isArray(cats)) {
                                           const cnt = cats.length;
-                                          queryClient.setQueryData(ShopCountsService.key(uid, idStr), (old: any) => {
-                                            const prevProducts = Number(old?.productsCount ?? 0) || 0;
-                                            return { productsCount: prevProducts, categoriesCount: cnt };
-                                          });
-                                          queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], (prev) => {
-                                            if (!Array.isArray(prev)) return prev;
-                                            return prev.map((s) => (String(s.id) === idStr ? { ...s, categoriesCount: cnt } : s));
-                                          });
+                                          const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, idStr));
+                                          const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
+                                          ShopCountsService.set(queryClient, uid, idStr, { productsCount: prevProducts, categoriesCount: cnt });
                                         }
                                         try {
                                           const updated = queryClient.getQueryData<ShopAggregated[]>(["user", uid, "shops"]) || [];

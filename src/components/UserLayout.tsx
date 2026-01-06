@@ -221,17 +221,17 @@ const UserMenuProvider: React.FC<{
     // Handle static routes (negative IDs) differently from database routes
     if (item.id < 0) {
       // Static routes already have the correct path format
-      navigate(`/user${item.path}`, {
-        replace: false
-      });
+      const target = `/user${item.path}`;
+      if (location.pathname === target) return;
+      navigate(target, { replace: false });
     } else {
       // Database routes should not have leading slash
       const cleanPath = item.path.startsWith('/') ? item.path.substring(1) : item.path;
-      navigate(`/user/${cleanPath}`, {
-        replace: false
-      });
+      const target = `/user/${cleanPath}`;
+      if (location.pathname === target) return;
+      navigate(target, { replace: false });
     }
-  }, [navigate, setActiveMenuItem]);
+  }, [location.pathname, navigate, setActiveMenuItem]);
 
   // Subscription access is provided via props; reactive updates handled higher up
 
