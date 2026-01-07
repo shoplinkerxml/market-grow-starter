@@ -97,7 +97,7 @@ export const Products = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 h-full min-h-0 flex flex-col gap-6">
       <PageHeader
         title={t('products_title')}
         description={t('products_description')}
@@ -113,8 +113,7 @@ export const Products = () => {
         }
       />
 
-      <div className="relative">
-
+      <div className="relative flex-1 min-h-0">
         <ProductsTable
           onEdit={handleEdit}
           onDelete={handleDelete}

@@ -121,7 +121,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
   };
 
   return (
-    <div className={cn("space-y-1", type === 'dashboard' && "mb-4")}> 
+    <div className={cn("space-y-1", !collapsed && "px-3", type === 'dashboard' && "mb-4")}> 
       {renderSectionHeader()}
       {items.map((item, index) => {
         const hasChildren = tree[item.id]?.length > 0;
@@ -147,11 +147,11 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
                   className={cn(
                     "w-full text-left rounded-md text-sm transition-all duration-200 group flex items-center",
                     collapsed ? "justify-center" : "justify-between",
-                    "px-3 py-2",
+                    collapsed ? "w-10 h-10 p-0 mx-auto" : "px-3 py-2",
                     (!hasAccess && !isAlwaysAccessibleItem(item)) ? "opacity-50 cursor-not-allowed pointer-events-none" : (
                       isActiveItem(item)
                         ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50 shadow-sm"
-                        : "hover:bg-emerald-50 hover:text-[#10b981] border border-transparent hover:border-emerald-200/30 hover:shadow-sm"
+                        : "hover:bg-emerald-50 hover:text-[#10b981] border border-transparent"
                     )
                   )}
                   aria-label={`${translatedTitle} - ${isExpanded ? "Collapse" : "Expand"} submenu`}

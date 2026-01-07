@@ -151,7 +151,7 @@ export const UserLayoutContent = ({
   );
 
   return (
-    <div className="min-h-screen bg-background dark:bg-neutral-950 flex">
+    <div className="h-screen bg-background dark:bg-neutral-950 flex overflow-hidden">
       <MobileMenuSheet
         open={mobileMenuOpen}
         onOpenChange={setMobileMenuOpen}
@@ -179,7 +179,7 @@ export const UserLayoutContent = ({
         onLogout={handleLogout}
       />
 
-      <div className={`flex-1 min-w-0 flex flex-col ${mainOffsetClass}`}>
+      <div className={`flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden ${mainOffsetClass}`}>
         <UserHeader
           setSidebarCollapsed={setSidebarCollapsed}
           setMobileMenuOpen={setMobileMenuOpen}
@@ -194,7 +194,7 @@ export const UserLayoutContent = ({
           onLogout={handleLogout}
         />
 
-        <main className="flex-1 overflow-y-auto bg-background dark:bg-neutral-950">
+        <main className="flex-1 min-h-0 overflow-y-auto bg-background dark:bg-neutral-950">
           <div className="h-full">
             {contentBlocked ? (
               <ProgressiveLoader

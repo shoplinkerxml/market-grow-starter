@@ -175,7 +175,7 @@ export const ShopDetail = () => {
 
   return (
     <>
-      <div className="p-6 space-y-6">
+      <div className="p-6 h-full min-h-0 flex flex-col gap-6">
         <PageHeader
           title={shop.store_name}
           description={`${t('managing_shop') || 'Управління магазином'} ${shop.store_name}`}
@@ -224,7 +224,7 @@ export const ShopDetail = () => {
           }
         />
 
-        <div className="bg-background rounded-md">
+        <div className="bg-background rounded-md flex-1 min-h-0 overflow-hidden">
           {productsCount === 0 ? (
             <div className="p-6">
               <Empty>
@@ -238,13 +238,15 @@ export const ShopDetail = () => {
               </Empty>
             </div>
           ) : (
-            <ProductsTable
-              storeId={shopId}
-              onEdit={(product: Product) => navigate(`/user/shops/${shopId}/products/edit/${product.id}`)}
-              onDelete={handleDeleteProduct}
-              canCreate={true}
-              hideDuplicate={true}
-            />
+            <div className="h-full min-h-0">
+              <ProductsTable
+                storeId={shopId}
+                onEdit={(product: Product) => navigate(`/user/shops/${shopId}/products/edit/${product.id}`)}
+                onDelete={handleDeleteProduct}
+                canCreate={true}
+                hideDuplicate={true}
+              />
+            </div>
           )}
         </div>
       </div>

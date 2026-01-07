@@ -66,7 +66,7 @@ export const UserSidebarNav = memo(
     hasAccess: boolean;
   }) => {
     return (
-      <nav className={collapsed ? "space-y-1 flex-1 overflow-y-auto px-4" : "space-y-1 flex-1 overflow-y-auto"}>
+      <nav className={collapsed ? "space-y-1 flex-1 overflow-y-auto" : "space-y-1 flex-1 overflow-y-auto"}>
         {menuLoading ? null : (
           <>
             {menuSections.map((section, sectionIndex) => {
@@ -115,7 +115,7 @@ export const UserSidebarFooter = memo(
     onLogout: () => void;
   }) => {
     return (
-      <div className={collapsed ? "p-4 shrink-0" : "pt-4 border-t shrink-0"}>
+      <div className={collapsed ? "p-4 pb-6 shrink-0" : "pt-4 pb-6 shrink-0"}>
         {collapsed ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -137,7 +137,7 @@ export const UserSidebarFooter = memo(
           </DropdownMenu>
         ) : (
           <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 shrink-0">
+            <Avatar className="h-10 w-10 shrink-0 ml-2">
               <AvatarImage src={user.avatar_url} alt={user.name} />
               <AvatarFallback className="bg-emerald-100 text-emerald-600 font-semibold">
                 {user.name?.charAt(0).toUpperCase() || "U"}
@@ -149,7 +149,11 @@ export const UserSidebarFooter = memo(
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground hover:bg-transparent hover:border-transparent hover:shadow-none active:scale-100 hover:[&_svg]:[stroke-width:2]"
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -212,7 +216,7 @@ export const MobileMenuSheet = memo(
               isActiveItem={isActiveItem}
               hasAccess={hasAccess}
             />
-            <div className="pt-4 border-t shrink-0">
+            <div className="pt-4 pb-6 shrink-0">
               <UserSidebarFooter collapsed={false} user={user} t={t} onLogout={onLogout} />
             </div>
           </div>

@@ -92,12 +92,12 @@ export function ProductsTableView({
   const virtualBottomH = enableVirtual ? Math.max(0, (allRows.length - virtualEnd) * rowHeight) : 0;
 
   return (
-    <div className="flex flex-col gap-4 bg-background px-4 sm:px-6 py-4" data-testid="user_products_dataTable_root">
+    <div className="flex flex-col gap-4 bg-background px-4 sm:px-6 py-4 h-full min-h-0" data-testid="user_products_dataTable_root">
       <ToolbarFromContext />
-      <div className="bg-background" data-testid="user_products_table">
+      <div className="bg-background flex-1 min-h-0 overflow-hidden rounded-lg border" data-testid="user_products_table">
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          <Table ref={tableElRef}>
-            <TableHeader>
+          <Table ref={tableElRef} wrapperClassName="h-full overflow-y-auto">
+            <TableHeader className="sticky top-0 z-10 bg-muted">
               {table.getHeaderGroups().map((headerGroup) => {
                 const ids = headerGroup.headers.map((h) => h.column.id).filter((id) => id !== "actions");
                 return (

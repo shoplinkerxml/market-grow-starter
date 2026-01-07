@@ -70,7 +70,7 @@ export const MenuItemWithIcon: React.FC<MenuItemWithIconProps> = ({
 
   const translatedTitle = translateMenuItem(item.title);
   
-  const baseClasses = "w-full text-left rounded-md text-sm transition-all duration-200 group";
+  const baseClasses = "rounded-md text-sm transition-all duration-200 group";
   
   const variantClasses = {
     default: "px-3 py-2", // 12px horizontal padding
@@ -82,7 +82,7 @@ export const MenuItemWithIcon: React.FC<MenuItemWithIconProps> = ({
     ? "opacity-50 cursor-not-allowed pointer-events-none"
     : (isActive
     ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50 shadow-sm"
-    : "hover:bg-emerald-50 hover:text-[#10b981] border border-transparent hover:border-emerald-200/30 hover:shadow-sm");
+    : "hover:bg-emerald-50 hover:text-[#10b981] border border-transparent");
 
   const iconSize = variant === 'dashboard' ? "w-6 h-6" : "w-5 h-5";
   const iconMargin = collapsed ? "" : "mr-3"; // 12px gap between icon and text
@@ -115,7 +115,12 @@ export const MenuItemWithIcon: React.FC<MenuItemWithIconProps> = ({
     <button
       onClick={() => { if (!disabled) onClick(item); }}
       onMouseEnter={() => onHover && onHover(item)}
-      className={cn(baseClasses, variantClasses[variant], stateClasses)}
+      className={cn(
+        baseClasses,
+        collapsed ? "w-10 h-10 p-0 mx-auto flex items-center justify-center" : "w-full text-left",
+        collapsed ? "px-0 py-0" : variantClasses[variant],
+        stateClasses,
+      )}
       aria-label={collapsed ? translatedTitle : undefined}
     >
       {renderContent()}
