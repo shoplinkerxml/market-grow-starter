@@ -227,6 +227,13 @@ export class ShopServiceCore {
     } catch {
       void 0;
     }
+    try {
+      const { PersistentCacheService } = await import("@/lib/persistent-cache-service");
+      PersistentCacheService.invalidateShops();
+      PersistentCacheService.invalidateMenu();
+    } catch {
+      void 0;
+    }
   }
 
   static clearAllCaches(): void {

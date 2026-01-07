@@ -36,7 +36,6 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
   const [loadingStores, setLoadingStores] = useState(false);
   const [togglingStoreIds, setTogglingStoreIds] = useState<string[]>([]);
   const [badgeOpenId, setBadgeOpenId] = useState<string | null>(null);
-  const truncate = (s: string) => (s.length > 12 ? `${s.slice(0, 12)}...` : s);
 
   const loadStoresAndLinks = useCallback(async () => {
       let shops: ShopAggregated[] = [];
@@ -211,7 +210,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                         <Loader2 className="absolute h-3 w-3 animate-spin text-emerald-600 pointer-events-none" />
                       ) : null}
                     </div>
-                    <span className="truncate">{s.store_name || s.store_url || id}</span>
+                    <span>{s.store_name || s.store_url || id}</span>
                   </DropdownMenuItem>
                 );
               })
@@ -227,7 +226,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
     <div className="w-full flex flex-col gap-1">
       {storeIds.map((id) => {
         const name = storeNames[String(id)] || "";
-        const label = name ? truncate(name) : "…";
+        const label = name || "…";
         const isOpen = badgeOpenId === String(id);
         return (
           <div key={id} className="inline-flex items-center">
@@ -352,7 +351,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                                 <Loader2 className="absolute h-3 w-3 animate-spin text-emerald-600 pointer-events-none" />
                               ) : null}
                             </div>
-                            <span className="truncate">{s.store_name || s.store_url || "—"}</span>
+                            <span>{s.store_name || s.store_url || "—"}</span>
                           </DropdownMenuItem>
                         );
                       })

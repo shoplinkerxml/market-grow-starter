@@ -7,6 +7,7 @@ import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
 import { useI18n } from '@/i18n';
 import { ShopsList, ShopForm } from '@/components/user/shops';
 import { ShopService, type ShopLimitInfo } from '@/lib/shop-service';
+import { ProductService } from '@/lib/product-service';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,6 +84,10 @@ export const Shops = () => {
     try {
       await ShopService.deleteShop(id);
       toast.success(t('shop_deleted'));
+      try { queryClient.invalidateQueries({ queryKey: ["auth", "me"], exact: true }); } catch { void 0; }
+      try { queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false }); } catch { void 0; }
+      try { queryClient.removeQueries({ queryKey: ["user", uid, "shops"], exact: false }); } catch { void 0; }
+      try { ProductService.clearAllProductsCaches(); } catch { void 0; }
     } catch (error) {
       const message = (error as Error)?.message || t('failed_delete_shop');
       toast.error(message);

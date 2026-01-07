@@ -3,12 +3,60 @@ import { createClient } from '@supabase/supabase-js'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
 const MAX_LINKS = 1000
+const REDIS_REST_URL =
+  Deno.env.get('UPSTASH_REDIS_REST_URL') || Deno.env.get('REDIS_REST_URL') || ''
+const REDIS_REST_TOKEN =
+  Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || Deno.env.get('REDIS_REST_TOKEN') || ''
+const SHOP_COUNTS_KEY_PREFIX =
+  Deno.env.get('SHOP_COUNTS_KEY_PREFIX') || 'shop:counts:'
+const PRODUCT_STORES_KEY_PREFIX =
+  Deno.env.get('PRODUCT_STORES_KEY_PREFIX') || 'product:stores:'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json',
+}
+
+async function redisPipeline(commands: any[]): Promise<any[] | null> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
+  try {
+    const base = REDIS_REST_URL.replace(/\/+$/, '')
+    const res = await fetch(`${base}/pipeline`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(commands),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return Array.isArray(json) ? json : null
+  } catch {
+    return null
+  }
+}
+
+function buildCountsKey(storeId: string): string {
+  return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`
+}
+
+function buildProductStoresKey(productId: string): string {
+  return `${PRODUCT_STORES_KEY_PREFIX}${productId}`
+}
+
+async function invalidateCounts(storeIds: string[]): Promise<void> {
+  const ids = Array.from(new Set((storeIds || []).map((v) => String(v || '').trim()).filter(Boolean)))
+  if (ids.length === 0) return
+  await redisPipeline(ids.map((id) => ['DEL', buildCountsKey(id)]))
+}
+
+async function invalidateProductStores(productIds: string[]): Promise<void> {
+  const ids = Array.from(new Set((productIds || []).map((v) => String(v || '').trim()).filter(Boolean)))
+  if (ids.length === 0) return
+  await redisPipeline(ids.map((id) => ['DEL', buildProductStoresKey(id)]))
 }
 
 Deno.serve(async (req) => {
@@ -65,6 +113,19 @@ Deno.serve(async (req) => {
         }),
         { status: 500, headers: CORS_HEADERS }
       )
+    }
+
+    try {
+      const storeIds = Array.from(
+        new Set(links.map((l: any) => String(l?.store_id || '').trim()).filter(Boolean)),
+      )
+      const productIds = Array.from(
+        new Set(links.map((l: any) => String(l?.product_id || '').trim()).filter(Boolean)),
+      )
+      await invalidateCounts(storeIds)
+      await invalidateProductStores(productIds)
+    } catch {
+      void 0
     }
 
     return new Response(

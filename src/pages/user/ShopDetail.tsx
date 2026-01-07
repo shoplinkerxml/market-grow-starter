@@ -226,7 +226,13 @@ export const ShopDetail = () => {
                 size="icon"
                 className="hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                 onClick={() => setExportOpen(true)}
-                title={t('export_section') || 'Експорт'}
+                disabled={productsCount === 0}
+                aria-disabled={productsCount === 0}
+                title={
+                  productsCount === 0
+                    ? (t('no_products') || 'Немає товарів')
+                    : (t('export_section') || 'Експорт')
+                }
               >
                 <Share2 className="h-4 w-4" />
               </Button>

@@ -19,6 +19,7 @@ import { R2Storage } from "@/lib/r2-storage";
 import { ImageHelpers } from "@/utils/imageHelpers";
 import { useI18n } from "@/i18n";
 import { getImageUrl, IMAGE_SIZES } from "@/lib/imageUtils";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ProductFormTabsProps {
   product?: any | null;
@@ -44,6 +45,7 @@ interface ProductImage {
 
 export const ProductFormTabs = ({ product, onSuccess, onCancel }: ProductFormTabsProps) => {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
   const isSavedRef = useRef(false);
@@ -586,6 +588,10 @@ export const ProductFormTabs = ({ product, onSuccess, onCancel }: ProductFormTab
         savedProduct = await ProductService.createProduct(productData);
         toast.success('Товар успішно створено');
       }
+
+      try { ProductService.clearAllProductsCaches(); } catch {}
+      try { queryClient.invalidateQueries({ queryKey: ["user"], exact: false }); } catch {}
+      try { queryClient.invalidateQueries({ queryKey: ["auth", "me"], exact: true }); } catch {}
 
       if (onSuccess) {
         onSuccess();

@@ -56,6 +56,8 @@ const REDIS_REST_TOKEN =
   Deno.env.get("UPSTASH_REDIS_REST_TOKEN") || Deno.env.get("REDIS_REST_TOKEN") || "";
 const SHOP_COUNTS_KEY_PREFIX =
   Deno.env.get("SHOP_COUNTS_KEY_PREFIX") || "shop:counts:";
+const PRODUCT_STORES_KEY_PREFIX =
+  Deno.env.get("PRODUCT_STORES_KEY_PREFIX") || "product:stores:";
 
 async function redisPipeline(commands: any[]): Promise<any[] | null> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null;
@@ -85,6 +87,16 @@ async function invalidateCounts(storeIds: string[]): Promise<void> {
   const ids = Array.from(new Set((storeIds || []).map((v) => String(v || "").trim()).filter(Boolean)));
   if (ids.length === 0) return;
   await redisPipeline(ids.map((id) => ["DEL", buildCountsKey(id)]));
+}
+
+function buildProductStoresKey(productId: string): string {
+  return `${PRODUCT_STORES_KEY_PREFIX}${productId}`;
+}
+
+async function invalidateProductStores(productIds: string[]): Promise<void> {
+  const ids = Array.from(new Set((productIds || []).map((v) => String(v || "").trim()).filter(Boolean)));
+  if (ids.length === 0) return;
+  await redisPipeline(ids.map((id) => ["DEL", buildProductStoresKey(id)]));
 }
 
 function extractObjectKeyFromUrl(url: string): string | null {
@@ -334,6 +346,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "create_failed", message: (subErr as { message?: string })?.message || "Create sub-ops failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    await invalidateProductStores([String(created.id)]);
     return new Response(JSON.stringify({ product_id: String(created.id) }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     const msg = (e as unknown as { message?: string })?.message ?? "Create failed";

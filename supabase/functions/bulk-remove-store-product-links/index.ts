@@ -13,6 +13,8 @@ const REDIS_REST_TOKEN =
   Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || Deno.env.get('REDIS_REST_TOKEN') || ''
 const SHOP_COUNTS_KEY_PREFIX =
   Deno.env.get('SHOP_COUNTS_KEY_PREFIX') || 'shop:counts:'
+const PRODUCT_STORES_KEY_PREFIX =
+  Deno.env.get('PRODUCT_STORES_KEY_PREFIX') || 'product:stores:'
 
 async function redisPipeline(commands: any[]): Promise<any[] | null> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
@@ -38,10 +40,20 @@ function buildCountsKey(storeId: string): string {
   return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`
 }
 
+function buildProductStoresKey(productId: string): string {
+  return `${PRODUCT_STORES_KEY_PREFIX}${productId}`
+}
+
 async function invalidateCounts(storeIds: string[]): Promise<void> {
   const ids = Array.from(new Set((storeIds || []).map(String).filter(Boolean)))
   if (ids.length === 0) return
   await redisPipeline(ids.map((id) => ['DEL', buildCountsKey(id)]))
+}
+
+async function invalidateProductStores(productIds: string[]): Promise<void> {
+  const ids = Array.from(new Set((productIds || []).map((v) => String(v || '').trim()).filter(Boolean)))
+  if (ids.length === 0) return
+  await redisPipeline(ids.map((id) => ['DEL', buildProductStoresKey(id)]))
 }
 
 type RequestBody = {
@@ -107,6 +119,7 @@ Deno.serve(async (req) => {
     }
 
     await invalidateCounts(storeIds)
+    await invalidateProductStores(productIds)
     return new Response(
       JSON.stringify(data || { deleted: 0, deletedByStore: {}, categoryNamesByStore: {} }),
       { status: 200, headers: CORS_HEADERS }

@@ -137,6 +137,7 @@ export const ExportDialog = ({ storeId, open, onOpenChange }: Props) => {
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
                     <Button
                       type="button"
+                      variant="outline"
                       className="w-full sm:w-auto"
                       onClick={() => createOrUpdate("xml")}
                       disabled={loading}
@@ -167,6 +168,7 @@ export const ExportDialog = ({ storeId, open, onOpenChange }: Props) => {
                   <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
                     <Button
                       type="button"
+                      variant="outline"
                       className="w-full sm:w-auto"
                       onClick={() => createOrUpdate("csv")}
                       disabled={loading}

@@ -6,6 +6,16 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const R2_PUBLIC_HOST = Deno.env.get('R2_PUBLIC_HOST') || ''
 const R2_PUBLIC_BASE_URL = Deno.env.get('R2_PUBLIC_BASE_URL') || ''
+const REDIS_REST_URL =
+  Deno.env.get('UPSTASH_REDIS_REST_URL') || Deno.env.get('REDIS_REST_URL') || ''
+const REDIS_REST_TOKEN =
+  Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || Deno.env.get('REDIS_REST_TOKEN') || ''
+const PRODUCT_STORES_TTL_SECONDS = Math.max(
+  5,
+  Number(Deno.env.get('PRODUCT_STORES_TTL_SECONDS') || '60') || 60,
+)
+const PRODUCT_STORES_KEY_PREFIX =
+  Deno.env.get('PRODUCT_STORES_KEY_PREFIX') || 'product:stores:'
 
 const DEFAULT_LIMIT = 10
 const MAX_LIMIT = 50
@@ -70,6 +80,77 @@ const cache = new Cache()
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: CORS_HEADERS })
 
+async function redisPipeline(commands: any[]): Promise<any[] | null> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
+  try {
+    const base = REDIS_REST_URL.replace(/\/+$/, '')
+    const res = await fetch(`${base}/pipeline`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(commands),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return Array.isArray(json) ? json : null
+  } catch {
+    return null
+  }
+}
+
+function buildProductStoresKey(productId: string): string {
+  return `${PRODUCT_STORES_KEY_PREFIX}${productId}`
+}
+
+type ProductStoresInfo = { storeIds: string[]; customCategoryId: string | null }
+
+async function getProductStoresFromRedis(productIds: string[]): Promise<Map<string, ProductStoresInfo>> {
+  const out = new Map<string, ProductStoresInfo>()
+  const ids = Array.from(new Set((productIds || []).map((v) => String(v || '').trim()).filter(Boolean)))
+  if (ids.length === 0) return out
+  const resp = await redisPipeline(ids.map((id) => ['GET', buildProductStoresKey(id)]))
+  if (!resp) return out
+  for (let i = 0; i < ids.length; i++) {
+    const raw = resp?.[i]?.result
+    if (!raw) continue
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      const storeIds = Array.isArray(parsed?.storeIds) ? parsed.storeIds.map(String).filter(Boolean) : []
+      const customCategoryId = parsed?.customCategoryId != null ? String(parsed.customCategoryId) : null
+      out.set(ids[i], { storeIds, customCategoryId })
+    } catch {
+      continue
+    }
+  }
+  return out
+}
+
+async function setProductStoresToRedis(rows: Array<{ productId: string; info: ProductStoresInfo }>): Promise<void> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return
+  const items = (rows || [])
+    .map((r) => ({
+      productId: String(r.productId || '').trim(),
+      info: {
+        storeIds: Array.isArray(r.info?.storeIds) ? r.info.storeIds.map(String).filter(Boolean) : [],
+        customCategoryId: r.info?.customCategoryId != null ? String(r.info.customCategoryId) : null,
+      },
+    }))
+    .filter((r) => r.productId.length > 0)
+  if (items.length === 0) return
+  const now = Date.now()
+  await redisPipeline(
+    items.map((r) => [
+      'SET',
+      buildProductStoresKey(r.productId),
+      JSON.stringify({ ...r.info, ts: now }),
+      'EX',
+      PRODUCT_STORES_TTL_SECONDS,
+    ]),
+  )
+}
+
 function getImagePublicUrl(r2Key: string | null, fallbackUrl: string): string {
   if (!r2Key) return fallbackUrl
   const base = R2_PUBLIC_HOST || R2_PUBLIC_BASE_URL
@@ -111,23 +192,39 @@ async function fetchAllProducts(
 
   const productIds = data.map((p: any) => String(p.id))
 
-  // Связи магазинов
-  const { data: links } = await client
-    .from('store_product_links')
-    .select('product_id, store_id, is_active, custom_category_id')
-    .in('product_id', productIds)
-    .eq('is_active', true)
+  const linksMap = new Map<string, ProductStoresInfo>()
+  const cachedLinks = await getProductStoresFromRedis(productIds)
+  for (const [pid, info] of cachedLinks.entries()) {
+    linksMap.set(pid, info)
+  }
 
-  const linksMap = new Map()
-  for (const link of links || []) {
-    const pid = String(link.product_id)
-    if (!linksMap.has(pid)) {
-      linksMap.set(pid, { storeIds: [], customCategoryId: null })
+  const missingProductIds = productIds.filter((pid) => !linksMap.has(String(pid)))
+  if (missingProductIds.length > 0) {
+    const { data: links } = await client
+      .from('store_product_links')
+      .select('product_id, store_id, is_active, custom_category_id')
+      .in('product_id', missingProductIds)
+      .eq('is_active', true)
+
+    const toWrite: Array<{ productId: string; info: ProductStoresInfo }> = []
+    for (const pid of missingProductIds) {
+      linksMap.set(String(pid), { storeIds: [], customCategoryId: null })
     }
-    linksMap.get(pid).storeIds.push(String(link.store_id))
-    if (link.custom_category_id && linksMap.get(pid).storeIds.length === 1) {
-      linksMap.get(pid).customCategoryId = String(link.custom_category_id)
+    for (const link of links || []) {
+      const pid = String(link.product_id)
+      const item = linksMap.get(pid) || { storeIds: [], customCategoryId: null }
+      item.storeIds.push(String(link.store_id))
+      if (link.custom_category_id && item.storeIds.length === 1) {
+        item.customCategoryId = String(link.custom_category_id)
+      }
+      linksMap.set(pid, item)
     }
+    for (const pid of missingProductIds) {
+      const info = linksMap.get(String(pid))
+      if (!info) continue
+      toWrite.push({ productId: String(pid), info })
+    }
+    await setProductStoresToRedis(toWrite)
   }
 
   // Обработка продуктов

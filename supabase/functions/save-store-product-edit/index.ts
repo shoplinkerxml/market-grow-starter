@@ -114,6 +114,8 @@ const REDIS_REST_TOKEN =
   Deno.env.get("UPSTASH_REDIS_REST_TOKEN") || Deno.env.get("REDIS_REST_TOKEN") || ""
 const SHOP_COUNTS_KEY_PREFIX =
   Deno.env.get("SHOP_COUNTS_KEY_PREFIX") || "shop:counts:"
+const PRODUCT_STORES_KEY_PREFIX =
+  Deno.env.get("PRODUCT_STORES_KEY_PREFIX") || "product:stores:"
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
   throw new Error("Missing Supabase configuration")
@@ -145,10 +147,20 @@ function buildCountsKey(storeId: string): string {
   return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`
 }
 
+function buildProductStoresKey(productId: string): string {
+  return `${PRODUCT_STORES_KEY_PREFIX}${productId}`
+}
+
 async function invalidateCounts(storeId: string | null | undefined): Promise<void> {
   const sid = String(storeId || "").trim()
   if (!sid) return
   await redisPipeline([["DEL", buildCountsKey(sid)]])
+}
+
+async function invalidateProductStores(productId: string | null | undefined): Promise<void> {
+  const pid = String(productId || "").trim()
+  if (!pid) return
+  await redisPipeline([["DEL", buildProductStoresKey(pid)]])
 }
 
 const s3 = accountId && bucket && accessKeyId && secretAccessKey
@@ -604,6 +616,7 @@ serve(async (req) => {
     }
 
     await invalidateCounts(storeId)
+    await invalidateProductStores(productId)
     return new Response(
       JSON.stringify({ product_id: String(productId), link }),
       { status: 200, headers: jsonHeaders },

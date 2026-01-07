@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
+ import { createClient } from "@supabase/supabase-js"
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +16,8 @@ const SHOP_COUNTS_KEY_PREFIX =
   Deno.env.get("SHOP_COUNTS_KEY_PREFIX") || "shop:counts:"
 const SHOP_LIST_KEY_PREFIX =
   Deno.env.get("SHOP_LIST_KEY_PREFIX") || "shop:list:"
+const PRODUCT_STORES_KEY_PREFIX =
+  Deno.env.get("PRODUCT_STORES_KEY_PREFIX") || "product:stores:"
 
 async function redisPipeline(commands: any[]): Promise<any[] | null> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
@@ -49,6 +51,10 @@ function buildShopListKey(userId: string): string {
   return `${SHOP_LIST_KEY_PREFIX}${userId}`
 }
 
+function buildProductStoresKey(productId: string): string {
+  return `${PRODUCT_STORES_KEY_PREFIX}${productId}`
+}
+
 async function deleteShopFromRedis(storeId: string): Promise<void> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return
   const sid = String(storeId || "").trim()
@@ -61,6 +67,13 @@ async function deleteShopListFromRedis(userId: string): Promise<void> {
   const uid = String(userId || "").trim()
   if (!uid) return
   await redisPipeline([["DEL", buildShopListKey(uid)]])
+}
+
+async function invalidateProductStores(productIds: string[]): Promise<void> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return
+  const ids = Array.from(new Set((productIds || []).map((v) => String(v || "").trim()).filter(Boolean)))
+  if (ids.length === 0) return
+  await redisPipeline(ids.map((id) => ["DEL", buildProductStoresKey(id)]))
 }
 
 Deno.serve(async (req) => {
@@ -116,6 +129,28 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: corsHeaders })
     }
 
+    const { data: links, error: linksErr } = await supabase
+      .from("store_product_links")
+      .select("product_id")
+      .eq("store_id", id)
+
+    if (linksErr) {
+      return new Response(JSON.stringify({ error: "db_error" }), { status: 500, headers: corsHeaders })
+    }
+
+    const affectedProductIds = Array.from(
+      new Set((links || []).map((r: any) => String(r?.product_id || "").trim()).filter(Boolean)),
+    )
+
+    const { error: delLinksErr } = await supabase
+      .from("store_product_links")
+      .delete()
+      .eq("store_id", id)
+
+    if (delLinksErr) {
+      return new Response(JSON.stringify({ error: "db_error" }), { status: 500, headers: corsHeaders })
+    }
+
     const { error } = await supabase.from("user_stores").delete().eq("id", id)
     if (error) {
       return new Response(JSON.stringify({ error: "db_error" }), { status: 500, headers: corsHeaders })
@@ -127,6 +162,11 @@ Deno.serve(async (req) => {
     }
     try {
       await deleteShopListFromRedis(userId)
+    } catch {
+      void 0
+    }
+    try {
+      await invalidateProductStores(affectedProductIds)
     } catch {
       void 0
     }
