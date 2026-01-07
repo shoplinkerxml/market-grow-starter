@@ -198,7 +198,7 @@ async function fetchAllProducts(
     linksMap.set(pid, info)
   }
 
-  const missingProductIds = productIds.filter((pid) => !linksMap.has(String(pid)))
+  const missingProductIds = productIds.filter((pid: string) => !linksMap.has(String(pid)))
   if (missingProductIds.length > 0) {
     const { data: links } = await client
       .from('store_product_links')
