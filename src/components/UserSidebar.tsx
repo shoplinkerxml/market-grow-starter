@@ -208,9 +208,7 @@ export const UserSidebar = ({
   return (
     <div
       className={cn(
-        "relative flex flex-col border-r transition-all duration-300",
-        "bg-gradient-to-r from-emerald-50/80 via-emerald-25/40 to-white",
-        "shadow-[4px_0_16px_-4px_rgba(0,0,0,0.12)]",
+        "relative flex flex-col border-r bg-white transition-all duration-300",
         collapsed ? "w-16" : "w-64"
       )}
     >

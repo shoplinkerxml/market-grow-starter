@@ -13,12 +13,11 @@ import {
 } from "./user-auth-schemas";
 import { AuthorizationErrorHandler } from "./error-handler";
 import { invokeEdgeWithAuth, SessionValidator, isAuthenticationError } from "./session-validation";
-import { removeCache } from "./cache-utils";
+import { readCache, writeCache, removeCache, CACHE_TTL } from "./cache-utils";
 import { registerUser, type RegistrationOptions } from "./user-auth-register";
 import { signInWithFacebook, signInWithGoogle, handleOAuthCallback } from "./user-auth-oauth";
 import { loginUser, logout, resetPassword, updatePassword } from "./user-auth-login";
 import { RequestDeduplicatorFactory } from "./request-deduplicator";
-import { PersistentCacheService } from "./persistent-cache-service";
 
 type UserStoreLite = { id: string; store_name: string };
 
@@ -116,21 +115,28 @@ export class UserAuthService {
   }
 
   static async fetchAuthMe(): Promise<AuthMeData> {
-    return await PersistentCacheService.getAuthMe<AuthMeData>(async () => {
-      const validation = await SessionValidator.ensureValidSession();
-      if (!validation.isValid || !validation.session || !validation.user) {
-        return { user: null, subscription: null, tariffLimits: [], menuItems: [], userStores: [] };
-      }
+    const validation = await SessionValidator.ensureValidSession();
+    if (!validation.isValid || !validation.session || !validation.user) {
+      this.clearAuthMeCache();
+      return { user: null, subscription: null, tariffLimits: [], menuItems: [], userStores: [] };
+    }
+    const cacheKey = this.getAuthMeCacheKey(validation.user.id);
+    const sessionKey = `${validation.user.id}:${validation.expiresAt ?? 0}`;
+    const cached = readCache<AuthMeData>(cacheKey);
+    if (cached?.data) {
+      return cached.data;
+    }
+    return await this.authMeDeduplicator.dedupe(sessionKey, async () => {
       try {
         const timeoutMs = 12_000;
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
         const resp = await Promise.race([
           invokeEdgeWithAuth<{
-            user?: UserProfile | null;
-            subscription?: unknown | null;
-            tariffLimits?: Array<{ limit_name: string; value: number }>;
-            menuItems?: UserMenuItem[];
-            userStores?: UserStoreLite[];
+          user?: UserProfile | null;
+          subscription?: unknown | null;
+          tariffLimits?: Array<{ limit_name: string; value: number }>;
+          menuItems?: UserMenuItem[];
+          userStores?: UserStoreLite[];
           }>("auth-me", {}),
           new Promise<never>((_, reject) => {
             timeoutId = setTimeout(() => reject(new Error("auth_me_timeout")), timeoutMs);
@@ -138,7 +144,7 @@ export class UserAuthService {
         ]).finally(() => {
           if (timeoutId) clearTimeout(timeoutId);
         });
-        return {
+        const result = {
           user: (resp?.user ?? null) as UserProfile | null,
           subscription: resp?.subscription ?? null,
           tariffLimits: Array.isArray(resp?.tariffLimits)
@@ -147,21 +153,48 @@ export class UserAuthService {
           menuItems: Array.isArray(resp?.menuItems) ? (resp.menuItems as UserMenuItem[]) : [],
           userStores: Array.isArray(resp?.userStores) ? (resp.userStores as UserStoreLite[]) : [],
         };
+        writeCache(cacheKey, result, CACHE_TTL.authMe);
+        return result;
       } catch {
-        return { user: null, subscription: null, tariffLimits: [], menuItems: [], userStores: [] };
+        const cachedFallback = readCache<AuthMeData>(cacheKey, true);
+        return cachedFallback?.data || { user: null, subscription: null, tariffLimits: [], menuItems: [], userStores: [] };
       }
     });
   }
 
   static clearAuthMeCache(): void {
     this.authMeDeduplicator.clear();
+    removeCache("auth-me");
     try {
-      removeCache("auth-me");
-    } catch {
-      void 0;
-    }
-    try {
-      PersistentCacheService.invalidateAuthMe();
+      if (typeof window === "undefined") return;
+      const storages: Storage[] = [];
+      try {
+        storages.push(window.localStorage);
+      } catch {
+        void 0;
+      }
+      try {
+        storages.push(window.sessionStorage);
+      } catch {
+        void 0;
+      }
+      for (const s of storages) {
+        const keys: string[] = [];
+        for (let i = 0; i < s.length; i++) {
+          const k = s.key(i);
+          if (!k) continue;
+          if (k === "auth-me" || k === "v1:auth-me" || k.startsWith("auth-me:") || k.startsWith("v1:auth-me:")) {
+            keys.push(k);
+          }
+        }
+        for (const k of keys) {
+          try {
+            s.removeItem(k);
+          } catch {
+            void 0;
+          }
+        }
+      }
     } catch {
       void 0;
     }

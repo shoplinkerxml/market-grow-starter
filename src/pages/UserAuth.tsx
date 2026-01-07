@@ -16,12 +16,9 @@ import {
 import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useQueryClient } from "@tanstack/react-query";
-import { SessionValidator } from "@/lib/session-validation";
 
 const UserAuth = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { t, lang, setLang } = useI18n();
   const [loading, setLoading] = useState(false);
 
@@ -124,17 +121,6 @@ const UserAuth = () => {
 
       if (user && session) {
         toast.success(t("login_success"));
-        try {
-          SessionValidator.clearCache();
-        } catch {
-          void 0;
-        }
-        try {
-          queryClient.removeQueries({ queryKey: ["auth", "session"], exact: true });
-          queryClient.removeQueries({ queryKey: ["auth", "me"], exact: true });
-        } catch {
-          void 0;
-        }
         navigate("/user/dashboard");
       }
     } catch (error) {

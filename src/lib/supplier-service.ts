@@ -1,7 +1,6 @@
 import { requireValidSession, invokeEdgeWithAuth } from "./session-validation";
 import { CACHE_TTL, UnifiedCacheManager } from "./cache-utils";
 import { RequestDeduplicatorFactory } from "./request-deduplicator";
-import { PersistentCacheService } from "./persistent-cache-service";
 
 export interface Supplier {
   id: number;
@@ -84,11 +83,6 @@ export class SupplierService {
   static clearSuppliersCache(): void {
     SupplierService.deduplicator.clear();
     SupplierService.cache.clearAll();
-    try {
-      PersistentCacheService.invalidateSuppliers();
-    } catch {
-      void 0;
-    }
   }
 
   /** Получение только максимального лимита поставщиков (без подсчета текущих) */
@@ -121,10 +115,6 @@ export class SupplierService {
 
   /** Отримання списку постачальників поточного користувача */
   static async getSuppliers(opts?: { signal?: AbortSignal }): Promise<Supplier[]> {
-    return await PersistentCacheService.getSuppliers(async () => await SupplierService.getSuppliersDirect(opts));
-  }
-
-  private static async getSuppliersDirect(opts?: { signal?: AbortSignal }): Promise<Supplier[]> {
     const sessionValidation = await requireValidSession({ requireAccessToken: false });
     const userId = sessionValidation.user?.id ? String(sessionValidation.user.id) : "";
     const cached = userId ? SupplierService.getCachedSuppliers(userId) : null;
@@ -192,11 +182,6 @@ export class SupplierService {
       const next = [row, ...(cached?.rows || [])].filter((v) => v && typeof v === "object");
       SupplierService.setSuppliersCache(userId, next);
     }
-    try {
-      PersistentCacheService.invalidateSuppliers();
-    } catch {
-      void 0;
-    }
     return row;
   }
 
@@ -242,11 +227,6 @@ export class SupplierService {
       const exists = next.some((s) => Number(s.id) === Number(row.id));
       SupplierService.setSuppliersCache(userId, exists ? next : [row, ...next]);
     }
-    try {
-      PersistentCacheService.invalidateSuppliers();
-    } catch {
-      void 0;
-    }
     return row;
   }
 
@@ -262,11 +242,6 @@ export class SupplierService {
       const prev = cached?.rows || [];
       const next = prev.filter((s) => Number(s.id) !== Number(id));
       SupplierService.setSuppliersCache(userId, next);
-    }
-    try {
-      PersistentCacheService.invalidateSuppliers();
-    } catch {
-      void 0;
     }
   }
 }

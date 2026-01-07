@@ -130,11 +130,12 @@ const App = () => {
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const prevUserId = lastAuthUserId;
       const currentUserId = session?.user?.id ? String(session.user.id) : null;
-      const hasPrevUser = prevUserId != null;
-      const userChanged = hasPrevUser && currentUserId !== prevUserId;
-      const shouldClear = event === "SIGNED_OUT" || userChanged;
+      const userChanged = currentUserId !== lastAuthUserId;
+      const shouldClear =
+        event === "SIGNED_OUT" ||
+        (event === "SIGNED_IN" && userChanged) ||
+        (event === "USER_UPDATED" && userChanged);
       
       // Cancel any in-progress prefetch on sign out or user change
       if (event === "SIGNED_OUT" || userChanged) {
@@ -173,8 +174,14 @@ const App = () => {
           void 0;
         }
         try {
-          const { PrefetchService } = await import("@/lib/prefetch-service");
-          PrefetchService.clearAllCaches();
+          const { SupplierService } = await import("@/lib/supplier-service");
+          SupplierService.clearSuppliersCache();
+        } catch {
+          void 0;
+        }
+        try {
+          const { ShopService } = await import("@/lib/shop-service");
+          ShopService.clearAllCaches();
         } catch {
           void 0;
         }

@@ -44,7 +44,7 @@ import { useI18n } from "@/i18n";
 import { PageHeader } from "@/components/PageHeader";
 import { useOutletContext } from "react-router-dom";
 import { useBreadcrumbs } from "@/hooks/useBreadcrumbs";
-import { useTariffs } from "@/hooks/useTariffs";
+import { useQuery } from "@tanstack/react-query";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
 
 const SYMBOL_BY_CURRENCY: Record<string, string> = {
@@ -85,7 +85,18 @@ const TariffPage = () => {
     isLoading,
     isError,
     error,
-  } = useTariffs({ includeInactive: false, includeDemo: false });
+  } = useQuery<TariffWithDetails[]>({
+    queryKey: ["tariffs", "list"],
+    queryFn: async () => {
+      return await TariffService.getTariffsAggregated(false);
+    },
+    retry: false,
+    staleTime: 900_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    placeholderData: (prev) => prev as TariffWithDetails[] | undefined,
+  });
 
   useEffect(() => {
     if (!isError) return;

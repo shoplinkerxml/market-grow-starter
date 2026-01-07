@@ -2,7 +2,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { getTariffsListCached, invalidateTariffsCache } from './tariff-cache';
 import { invokeEdgeWithAuth } from './session-validation';
-import { PersistentCacheService } from "./persistent-cache-service";
 
 export type Tariff = Database['public']['Tables']['tariffs']['Row'];
 export type TariffInsert = Database['public']['Tables']['tariffs']['Insert'];
@@ -44,19 +43,6 @@ export class TariffService {
   private static tariffsRefreshInFlight = false;
   private static tariffsLastRefreshAt = 0;
 
-  private static invalidateTariffsCaches(): void {
-    try {
-      invalidateTariffsCache();
-    } catch {
-      void 0;
-    }
-    try {
-      PersistentCacheService.invalidateTariffs();
-    } catch {
-      void 0;
-    }
-  }
-
   static async activateMyTariff(tariffId: number): Promise<{ success: boolean; subscription?: unknown }> {
     return await invokeEdgeWithAuth<{ success: boolean; subscription?: unknown }>(
       'user-activate-tariff',
@@ -64,22 +50,19 @@ export class TariffService {
     );
   }
   static async getTariffsAggregated(includeInactive = false, includeDemo = false): Promise<TariffWithDetails[]> {
-    const cacheKey = `list:${includeInactive ? "inactive" : "active"}:${includeDemo ? "demo" : "noDemo"}`;
-    return await PersistentCacheService.getTariffs(async () => {
-      const rows = await getTariffsListCached<TariffWithDetails>(async () => {
-        try {
-          const payload = await invokeEdgeWithAuth<{ tariffs: TariffWithDetails[] }>('tariffs-list', { includeInactive, includeDemo });
-          const edgeRows = Array.isArray(payload.tariffs) ? payload.tariffs : [];
-          if (edgeRows.length) return edgeRows;
-          const fb = await TariffService.getAllTariffs(includeInactive, includeDemo);
-          return Array.isArray(fb) ? (fb as unknown as TariffWithDetails[]) : [];
-        } catch {
-          const fb = await TariffService.getAllTariffs(includeInactive, includeDemo);
-          return Array.isArray(fb) ? (fb as unknown as TariffWithDetails[]) : [];
-        }
-      });
-      return rows;
-    }, cacheKey);
+    const rows = await getTariffsListCached<TariffWithDetails>(async () => {
+      try {
+        const payload = await invokeEdgeWithAuth<{ tariffs: TariffWithDetails[] }>('tariffs-list', { includeInactive, includeDemo });
+        const edgeRows = Array.isArray(payload.tariffs) ? payload.tariffs : [];
+        if (edgeRows.length) return edgeRows;
+        const fb = await TariffService.getAllTariffs(includeInactive, includeDemo);
+        return Array.isArray(fb) ? (fb as unknown as TariffWithDetails[]) : [];
+      } catch {
+        const fb = await TariffService.getAllTariffs(includeInactive, includeDemo);
+        return Array.isArray(fb) ? (fb as unknown as TariffWithDetails[]) : [];
+      }
+    });
+    return rows;
   }
   // Get all tariffs with currency data, features, and limits
   static async getAllTariffs(includeInactive = false, includeDemo = false) {
@@ -287,7 +270,6 @@ export class TariffService {
         .single();
 
       if (createError) throw createError;
-      TariffService.invalidateTariffsCaches();
 
       // Then fetch the currency data separately - handle both currency and currency_id fields
       const currencyField = createdTariff.currency_id;
@@ -312,6 +294,7 @@ export class TariffService {
       }
 
       // Return tariff without currency data if no valid currency field
+      invalidateTariffsCache();
       return createdTariff as Tariff;
     } catch (error) {
       console.error('Error creating tariff:', error);
@@ -341,7 +324,6 @@ export class TariffService {
         console.error('No tariff returned after update - possible RLS issue');
         throw new Error('Failed to update tariff - no data returned');
       }
-      TariffService.invalidateTariffsCaches();
 
       // Then fetch the currency data separately - handle both currency and currency_id fields
       const currencyField = updatedTariff.currency_id;
@@ -363,6 +345,7 @@ export class TariffService {
         } as (Tariff & { currency_data: Currency });
       }
 
+      invalidateTariffsCache();
       return updatedTariff as Tariff;
     } catch (error) {
       console.error('Error updating tariff:', error);
@@ -379,7 +362,7 @@ export class TariffService {
         .eq('id', id);
 
       if (error) throw error;
-      TariffService.invalidateTariffsCaches();
+      invalidateTariffsCache();
       return true;
     } catch (error) {
       console.error('Error deleting tariff:', error);
@@ -415,7 +398,7 @@ export class TariffService {
         .single();
 
       if (error) throw error;
-      TariffService.invalidateTariffsCaches();
+      invalidateTariffsCache();
       return data as TariffFeature;
     } catch (error) {
       console.error('Error adding tariff feature:', error);
@@ -431,7 +414,7 @@ export class TariffService {
         .insert(features)
         .select('id,tariff_id,feature_name,is_active');
       if (error) throw error;
-      TariffService.invalidateTariffsCaches();
+      invalidateTariffsCache();
       return (data || []) as TariffFeature[];
     } catch (error) {
       console.error('Error adding tariff features:', error);
@@ -450,7 +433,7 @@ export class TariffService {
         .single();
 
       if (error) throw error;
-      TariffService.invalidateTariffsCaches();
+      invalidateTariffsCache();
       return data as TariffFeature;
     } catch (error) {
       console.error('Error updating tariff feature:', error);
@@ -465,9 +448,9 @@ export class TariffService {
         .from('tariff_features')
         .delete()
         .eq('id', id);
+      invalidateTariffsCache();
 
       if (error) throw error;
-      TariffService.invalidateTariffsCaches();
       return true;
     } catch (error) {
       console.error('Error deleting tariff feature:', error);
@@ -503,7 +486,7 @@ export class TariffService {
         .single();
 
       if (error) throw error;
-      TariffService.invalidateTariffsCaches();
+      invalidateTariffsCache();
       return data as TariffLimit;
     } catch (error) {
       console.error('Error adding tariff limit:', error);
@@ -519,7 +502,7 @@ export class TariffService {
         .insert(limits)
         .select('id,tariff_id,template_id,code,limit_name,description,path,value,is_active');
       if (error) throw error;
-      TariffService.invalidateTariffsCaches();
+      invalidateTariffsCache();
       return (data || []) as TariffLimit[];
     } catch (error) {
       console.error('Error adding tariff limits:', error);
@@ -538,7 +521,7 @@ export class TariffService {
         .single();
 
       if (error) throw error;
-      TariffService.invalidateTariffsCaches();
+      try { if (typeof window !== 'undefined') window.localStorage.removeItem('rq:tariffs:list'); } catch {}
       return data as TariffLimit;
     } catch (error) {
       console.error('Error updating tariff limit:', error);
@@ -553,9 +536,9 @@ export class TariffService {
         .from('tariff_limits')
         .delete()
         .eq('id', id);
+      try { if (typeof window !== 'undefined') window.localStorage.removeItem('rq:tariffs:list'); } catch {}
 
       if (error) throw error;
-      TariffService.invalidateTariffsCaches();
       return true;
     } catch (error) {
       console.error('Error deleting tariff limit:', error);

@@ -2,7 +2,6 @@ import type { StoreProductLink, StoreProductLinkPatchInput } from "@/lib/product
 import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
 import { RequestDeduplicatorFactory } from "@/lib/request-deduplicator";
-import { PersistentCacheService } from "@/lib/persistent-cache-service";
 
 export class ProductLinkService {
   private static readonly INFLIGHT_LINKS_MAX_SIZE = 200;
@@ -113,17 +112,6 @@ export class ProductLinkService {
         const cnt = Array.isArray(catsByStore[sid]) ? catsByStore[sid].length : 0;
         ShopService.setCategoriesCountInCache(String(sid), cnt);
       }
-
-      try {
-        const negativeDeltas: Record<string, number> = {};
-        for (const sid of Object.keys(deletedByStore)) {
-          const removed = Math.max(0, Number(deletedByStore[sid] ?? 0) || 0);
-          if (removed > 0) negativeDeltas[String(sid)] = -removed;
-        }
-        await PersistentCacheService.bumpCachedShopsCounts(negativeDeltas, catsByStore);
-      } catch {
-        void 0;
-      }
     } catch (error) {
       console.error("ProductLinkService.bulkRemoveStoreProductLinks ShopService sync failed", error);
     }
@@ -165,12 +153,6 @@ export class ProductLinkService {
       for (const sid of Object.keys(catsByStore)) {
         const cnt = Array.isArray(catsByStore[sid]) ? catsByStore[sid].length : 0;
         ShopService.setCategoriesCountInCache(String(sid), cnt);
-      }
-
-      try {
-        await PersistentCacheService.bumpCachedShopsCounts(addedByStore, catsByStore);
-      } catch {
-        void 0;
       }
     } catch (error) {
       console.error("ProductLinkService.bulkAddStoreProductLinks ShopService sync failed", error);

@@ -72,6 +72,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
           created_at: baseIso,
           updated_at: baseIso,
         })) as ShopAggregated[];
+        try { queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], shops); } catch { void 0; }
       }
     } catch {
       shops = Array.isArray(storesList) && storesList.length > 0 ? storesList : Object.entries(storeNames).map(([id, name]) => ({ id: String(id), store_name: name })) as ShopAggregated[];

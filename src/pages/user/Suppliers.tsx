@@ -10,8 +10,7 @@ import { SupplierForm } from '@/components/user/suppliers';
 import { SupplierService, type Supplier } from '@/lib/supplier-service';
 import { toast } from 'sonner';
 import { useOutletContext } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { useSuppliers } from "@/hooks/useSuppliers";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 type ViewMode = 'list' | 'create' | 'edit';
 
@@ -24,6 +23,7 @@ export const Suppliers = () => {
 
   const { tariffLimits, user } = useOutletContext<{ tariffLimits: Array<{ limit_name: string; value: number }>; user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
+  const suppliersQueryKey = useMemo(() => ["user", uid, "suppliers", "list"] as const, [uid]);
   const supplierLimit = useMemo(() => {
     return (
       (tariffLimits || []).find((l) => {
@@ -33,9 +33,15 @@ export const Suppliers = () => {
     );
   }, [tariffLimits]);
 
-  const suppliersQueryKey = useMemo(() => ["user", uid, "suppliers", "list"] as const, [uid]);
-
-  const { data: suppliersData } = useSuppliers(uid);
+  const { data: suppliersData } = useQuery<Supplier[]>({
+    queryKey: suppliersQueryKey,
+    queryFn: async ({ signal }) => await SupplierService.getSuppliers({ signal }),
+    staleTime: 900_000,
+    gcTime: 86_400_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev as Supplier[] | undefined,
+  });
 
   const suppliersCount = suppliersData?.length ?? 0;
   const canCreate = suppliersCount < supplierLimit;

@@ -7,7 +7,6 @@ import { UserAuthService } from "@/lib/user-auth-service";
 import { UserProfile } from "@/lib/user-auth-schemas";
 import { SessionValidator } from "@/lib/session-validation";
 import { UserProfile as UIUserProfile } from "@/components/ui/profile-types";
-import { useAuthMe } from "@/hooks/useAuthMe";
 import { CreditCard, LayoutDashboard, Loader2, Package, Store, Truck, User } from "lucide-react";
 import { PageLoadingModal } from "@/components/LoadingSkeletons";
 import type { TariffLimit } from "@/lib/tariff-service";
@@ -59,7 +58,7 @@ const UserProtected = () => {
   const sessionQuery = useQuery({
     queryKey: ["auth", "session"],
     queryFn: async () => {
-      let validation = await SessionValidator.validateSession();
+      let validation = await SessionValidator.ensureValidSession();
       for (
         let i = 0;
         i < 6 &&
@@ -73,7 +72,7 @@ const UserProtected = () => {
           void 0;
         }
         await new Promise((resolve) => setTimeout(resolve, 250));
-        validation = await SessionValidator.validateSession();
+        validation = await SessionValidator.ensureValidSession();
       }
       return validation;
     },
@@ -87,7 +86,17 @@ const UserProtected = () => {
   const sessionValidation = sessionQuery.data ?? null;
   const sessionValid = sessionValidation?.isValid === true;
 
-  const authMeQuery = useAuthMe({ enabled: sessionValid });
+  const authMeQuery = useQuery<AuthMeData>({
+    queryKey: ["auth", "me"],
+    queryFn: async () => UserAuthService.fetchAuthMe(),
+    enabled: sessionValid,
+    retry: false,
+    staleTime: 900_000,
+    gcTime: 86_400_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
   const authMe = authMeQuery.data ?? null;
   const fallbackUser = useMemo<UserProfile | null>(() => {

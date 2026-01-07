@@ -21,9 +21,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { SessionValidator } from '@/lib/session-validation';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FullPageLoader } from "@/components/LoadingSkeletons";
-import { useShops } from "@/hooks/useShops";
 
 type ShopWithMarketplace = ShopAggregated;
 
@@ -54,7 +53,18 @@ export const ShopsList = ({
   // ============================================================================
   // React Query - єдине джерело правди
   // ============================================================================
-  const { data: shopsData, isLoading, isFetching } = useShops(uid, { forceCounts: true });
+  const { data: shopsData, isLoading, isFetching } = useQuery<ShopWithMarketplace[]>({
+    queryKey: ["user", uid, "shops"],
+    queryFn: async () => {
+      const rows = await ShopService.getShopsAggregated({ force: true });
+      return rows as ShopWithMarketplace[];
+    },
+    retry: false,
+    staleTime: 30_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev as ShopWithMarketplace[] | undefined,
+  });
 
   const shops: ShopWithMarketplace[] = useMemo(
     () => shopsData ?? [],
