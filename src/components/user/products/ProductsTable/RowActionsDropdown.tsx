@@ -72,7 +72,6 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
             updated_at: baseIso,
           })) as ShopAggregated[];
           setStores(arr);
-          try { queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], arr); } catch { void 0; }
         } finally {
           setLoadingStores(false);
         }

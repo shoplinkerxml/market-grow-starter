@@ -5,6 +5,7 @@
 
 import { ShopService } from "./shop-service";
 import { SupplierService } from "./supplier-service";
+import { PersistentCacheService } from "./persistent-cache-service";
 
 export class PrefetchService {
   private static prefetchInProgress = false;
@@ -51,6 +52,10 @@ export class PrefetchService {
     }
   }
 
+  static async prefetchEssentialData(): Promise<void> {
+    await PrefetchService.prefetchUserData();
+  }
+
   /**
    * Cancel any in-progress prefetch operations.
    * Called on sign-out to prevent stale data being cached.
@@ -61,6 +66,25 @@ export class PrefetchService {
       this.prefetchAbortController = null;
     }
     this.prefetchInProgress = false;
+  }
+
+  static clearAllCaches(): void {
+    PrefetchService.cancelPrefetch();
+    try {
+      PersistentCacheService.clearAll();
+    } catch {
+      void 0;
+    }
+    try {
+      ShopService.clearAllCaches();
+    } catch {
+      void 0;
+    }
+    try {
+      SupplierService.clearSuppliersCache();
+    } catch {
+      void 0;
+    }
   }
 
   private static async prefetchShops(signal: AbortSignal): Promise<void> {

@@ -5,9 +5,12 @@ import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
 import { Shield } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { SessionValidator } from "@/lib/session-validation";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { t } = useI18n();
 
   useEffect(() => {
@@ -58,6 +61,17 @@ const AuthCallback = () => {
           } else {
             toast.success(t("welcome_back"));
           }
+          try {
+            SessionValidator.clearCache();
+          } catch {
+            void 0;
+          }
+          try {
+            queryClient.removeQueries({ queryKey: ["auth", "session"], exact: true });
+            queryClient.removeQueries({ queryKey: ["auth", "me"], exact: true });
+          } catch {
+            void 0;
+          }
           navigate("/user/dashboard");
         } else {
           // Handle case where user confirmed email but profile wasn't created
@@ -74,7 +88,7 @@ const AuthCallback = () => {
     };
 
     handleCallback();
-  }, [navigate, t]);
+  }, [navigate, queryClient, t]);
 
   return <FullPageLoader title={t("loading") || "Завантаження…"} subtitle={t("auth_processing") || "Завершуємо авторизацію"} icon={Shield} />;
 };

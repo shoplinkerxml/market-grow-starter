@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useQueryClient, QueryClient } from "@tanstack/react-query";
 import { ShopCountsService } from "@/lib/shop-counts";
 import { ProductService, type Product } from "@/lib/product-service";
+import { PersistentCacheService } from "@/lib/persistent-cache-service";
 import { useOutletContext } from "react-router-dom";
 
 type ProductRow = Product & { linkedStoreIds?: string[] };
@@ -54,6 +55,10 @@ function hasLinkedProducts(products: ProductRow[], storeIds: string[]): boolean 
   );
 }
 
+function normalizeCount(v: unknown): number {
+  return Math.max(0, Number(v ?? 0) || 0);
+}
+
 async function updateStoreCounts(
   queryClient: QueryClient,
   userId: string,
@@ -84,6 +89,12 @@ async function updateStoreCounts(
         const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
         ShopCountsService.set(queryClient, userId, String(sid), { productsCount: prevProducts, categoriesCount: cnt });
       }
+    }
+
+    try {
+      await PersistentCacheService.bumpCachedShopsCounts(deltas, categoriesByStore);
+    } catch {
+      void 0;
     }
 
     try {
@@ -327,9 +338,10 @@ export function AddToStoresMenu({
     ? selectedStoreIds
     : [...new Set(selectedProducts.flatMap(p => p.linkedStoreIds || []))];
 
-  const totalInSelectedStores = selectedStoreIds.reduce((sum, sid) => 
-    sum + countProductsInStore(items, sid), 0
-  );
+  const totalInSelectedStores = selectedStoreIds.reduce((sum, sid) => {
+    const s = (stores || []).find((x) => String(x.id) === String(sid));
+    return sum + normalizeCount(s?.productsCount);
+  }, 0);
 
   const canDelete = !removingStores
     && effectiveStoreIds.length > 0
@@ -374,8 +386,9 @@ export function AddToStoresMenu({
               stores.map(store => {
                 const storeId = String(store.id);
                 const isChecked = selectedStoreIds.includes(storeId);
-                const productCount = countProductsInStore(items, storeId);
-                const categoryCount = productCount === 0 ? 0 : countCategoriesInStore(items, storeId);
+                const productCount = normalizeCount(store.productsCount);
+                const categoryCount = productCount === 0 ? 0 : normalizeCount(store.categoriesCount);
+                const selectedLinkedCount = selectedProducts.filter((p) => (p.linkedStoreIds || []).includes(storeId)).length;
                 const isRemoving = removingStores || removingStoreId === storeId;
 
                 return (
@@ -432,7 +445,7 @@ export function AddToStoresMenu({
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        disabled={isRemoving || !isChecked || productCount === 0}
+                        disabled={isRemoving || !isChecked || selectedLinkedCount === 0}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRemoveSingleStore(storeId);
