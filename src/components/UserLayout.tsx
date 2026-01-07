@@ -551,7 +551,7 @@ const UserLayoutContent = ({
       </Sheet>
 
       {/* User Sidebar - Desktop - Fixed Position */}
-      <aside className={`hidden md:flex max-[1393px]:hidden ${sidebarCollapsed ? 'w-16' : 'w-64'} transition-all duration-300 shrink-0 border-r bg-background flex-col fixed left-0 top-0 h-screen z-40 overflow-hidden`}>
+      <aside className={`hidden md:flex max-[1393px]:hidden ${sidebarCollapsed ? 'w-16' : 'w-64'} transition-all duration-300 shrink-0 border-r bg-background flex-col fixed left-0 top-0 h-screen z-40 overflow-hidden shadow-lg`}>
         <div className="p-4 shrink-0">
           {/* Logo/Header */}
           <div className="flex items-center justify-between mb-6">

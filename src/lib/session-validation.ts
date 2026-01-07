@@ -15,6 +15,8 @@ import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations
 import type { Session, User } from "@supabase/supabase-js";
 import { invokeSupabaseFunctionWithRetry, type RetryOptions } from "@/lib/request-handler";
 
+const __DEV__ = import.meta.env?.DEV ?? false;
+
 export interface SessionValidationResult {
   isValid: boolean;
   session: Session | null;
@@ -203,7 +205,37 @@ export class SessionValidator {
         const { data: { session }, error } = out as any;
         
         if (error) {
-          console.error('[SessionValidator] Session fetch error:', error);
+          const msg = String((error as any)?.message || "");
+          const lower = msg.toLowerCase();
+          const status = Number((error as any)?.status ?? (error as any)?.statusCode ?? (error as any)?.context?.status ?? 0);
+          const invalidRefresh =
+            lower.includes("invalid refresh token") ||
+            lower.includes("refresh token not found") ||
+            lower.includes("refresh_token_not_found") ||
+            (status === 400 && lower.includes("refresh")) ||
+            (status === 401 && lower.includes("refresh"));
+          if (invalidRefresh) {
+            try {
+              await (supabase.auth as any).signOut?.({ scope: "local" });
+            } catch {
+              void 0;
+            } finally {
+              this.purgeAuthStorage();
+              this.clearCache();
+            }
+            return {
+              isValid: false,
+              session: null,
+              user: null,
+              accessToken: null,
+              refreshToken: null,
+              expiresAt: null,
+              timeUntilExpiry: null,
+              needsRefresh: false,
+              error: msg || "Invalid refresh token",
+            };
+          }
+          if (__DEV__) console.error("[SessionValidator] Session fetch error:", error);
           const storedResult = readStoredSessionResult();
           if (storedResult?.isValid) {
             if (epoch === this.epoch) {
@@ -334,6 +366,36 @@ export class SessionValidator {
             }
             const { data: { session }, error } = out as any;
             if (error) {
+              const msg = String((error as any)?.message || "");
+              const lower = msg.toLowerCase();
+              const status = Number((error as any)?.status ?? (error as any)?.statusCode ?? (error as any)?.context?.status ?? 0);
+              const invalidRefresh =
+                lower.includes("invalid refresh token") ||
+                lower.includes("refresh token not found") ||
+                lower.includes("refresh_token_not_found") ||
+                (status === 400 && lower.includes("refresh")) ||
+                (status === 401 && lower.includes("refresh"));
+              if (invalidRefresh) {
+                try {
+                  await (supabase.auth as any).signOut?.({ scope: "local" });
+                } catch {
+                  void 0;
+                } finally {
+                  this.purgeAuthStorage();
+                  this.clearCache();
+                }
+                return {
+                  isValid: false,
+                  session: null,
+                  user: null,
+                  accessToken: null,
+                  refreshToken: null,
+                  expiresAt: null,
+                  timeUntilExpiry: null,
+                  needsRefresh: false,
+                  error: msg || "Invalid refresh token",
+                };
+              }
               return validation;
             }
             if (session && epoch === this.epoch) {
