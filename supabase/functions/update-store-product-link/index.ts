@@ -53,27 +53,35 @@ type Body = {
 }
 
 // ENV и клиент один раз
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? ""
-const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
 const REDIS_REST_URL =
-  Deno.env.get("UPSTASH_REDIS_REST_URL") || Deno.env.get("REDIS_REST_URL") || ""
+  Deno.env.get("UPSTASH_REDIS_REST_URL") || Deno.env.get("REDIS_REST_URL") || "";
 const REDIS_REST_TOKEN =
-  Deno.env.get("UPSTASH_REDIS_REST_TOKEN") || Deno.env.get("REDIS_REST_TOKEN") || ""
+  Deno.env.get("UPSTASH_REDIS_REST_TOKEN") || Deno.env.get("REDIS_REST_TOKEN") || "";
+
+const SHOP_COUNTS_TTL_SECONDS = Math.max(
+  5,
+  Number(Deno.env.get("SHOP_COUNTS_TTL_SECONDS") || "30") || 30,
+);
+
 const SHOP_COUNTS_KEY_PREFIX =
-  Deno.env.get("SHOP_COUNTS_KEY_PREFIX") || "shop:counts:"
+  Deno.env.get("SHOP_COUNTS_KEY_PREFIX") || "shop:counts:";
+const SHOP_LIST_KEY_PREFIX = Deno.env.get("SHOP_LIST_KEY_PREFIX") || "shop:list:";
 const PRODUCT_STORES_KEY_PREFIX =
-  Deno.env.get("PRODUCT_STORES_KEY_PREFIX") || "product:stores:"
+  Deno.env.get("PRODUCT_STORES_KEY_PREFIX") || "product:stores:";
 
 if (!SUPABASE_URL || !SERVICE_KEY) {
-  throw new Error("Missing Supabase configuration")
+  throw new Error("Missing Supabase configuration");
 }
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 async function redisPipeline(commands: any[]): Promise<any[] | null> {
-  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null;
   try {
-    const base = REDIS_REST_URL.replace(/\/+$/, "")
+    const base = REDIS_REST_URL.replace(/\/+$/, "");
     const res = await fetch(`${base}/pipeline`, {
       method: "POST",
       headers: {
@@ -81,33 +89,101 @@ async function redisPipeline(commands: any[]): Promise<any[] | null> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(commands),
-    })
-    if (!res.ok) return null
-    const json = await res.json()
-    return Array.isArray(json) ? json : null
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return Array.isArray(json) ? json : null;
   } catch {
-    return null
+    return null;
   }
 }
 
 function buildCountsKey(storeId: string): string {
-  return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`
+  return `${SHOP_COUNTS_KEY_PREFIX}${storeId}`;
+}
+
+function buildShopsListKey(userId: string): string {
+  return `${SHOP_LIST_KEY_PREFIX}${userId}`;
 }
 
 function buildProductStoresKey(productId: string): string {
-  return `${PRODUCT_STORES_KEY_PREFIX}${productId}`
+  return `${PRODUCT_STORES_KEY_PREFIX}${productId}`;
+}
+
+type ShopCounts = { productsCount: number; categoriesCount: number };
+
+function normalizeCounts(input: any): ShopCounts {
+  const productsCount = Math.max(0, Number(input?.productsCount ?? input?.products_count ?? 0) || 0);
+  const categoriesRaw = Math.max(0, Number(input?.categoriesCount ?? input?.categories_count ?? 0) || 0);
+  return { productsCount, categoriesCount: productsCount === 0 ? 0 : categoriesRaw };
+}
+
+async function setCountsToRedis(storeId: string, counts: ShopCounts): Promise<void> {
+  const sid = String(storeId || "").trim();
+  if (!sid) return;
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return;
+  const now = Date.now();
+  await redisPipeline([
+    [
+      "SET",
+      buildCountsKey(sid),
+      JSON.stringify({ ...normalizeCounts(counts), ts: now }),
+      "EX",
+      SHOP_COUNTS_TTL_SECONDS,
+    ],
+  ]);
 }
 
 async function invalidateCounts(storeId: string): Promise<void> {
-  const sid = String(storeId || "").trim()
-  if (!sid) return
-  await redisPipeline([["DEL", buildCountsKey(sid)]])
+  const sid = String(storeId || "").trim();
+  if (!sid) return;
+  await redisPipeline([["DEL", buildCountsKey(sid)]]);
+}
+
+async function invalidateShopsList(userId: string | null | undefined): Promise<void> {
+  const uid = String(userId || "").trim();
+  if (!uid) return;
+  await redisPipeline([["DEL", buildShopsListKey(uid)]]);
 }
 
 async function invalidateProductStores(productId: string): Promise<void> {
-  const pid = String(productId || "").trim()
-  if (!pid) return
-  await redisPipeline([["DEL", buildProductStoresKey(pid)]])
+  const pid = String(productId || "").trim();
+  if (!pid) return;
+  await redisPipeline([["DEL", buildProductStoresKey(pid)]]);
+}
+
+async function recomputeCountsForStore(storeId: string): Promise<ShopCounts> {
+  const sid = String(storeId || "").trim();
+  if (!sid) return { productsCount: 0, categoriesCount: 0 };
+
+  const { data: links } = await supabase
+    .from("store_product_links")
+    .select(
+      "store_id, is_active, product_id, custom_category_id, store_products!inner(category_id,category_external_id)",
+    )
+    .eq("store_id", sid)
+    .eq("is_active", true);
+
+  let productsCount = 0;
+  const categories = new Set<string>();
+
+  for (const link of links || []) {
+    productsCount += 1;
+    const base = (link as any)?.store_products || {};
+    const customCat = (link as any)?.custom_category_id;
+    const catKey =
+      customCat != null
+        ? `ext:${String(customCat)}`
+        : base?.category_id != null
+          ? `cat:${String(base.category_id)}`
+          : base?.category_external_id != null
+            ? `ext:${String(base.category_external_id)}`
+            : null;
+    if (catKey) categories.add(catKey);
+  }
+
+  const categoriesCount = productsCount === 0 ? 0 : categories.size;
+  return normalizeCounts({ productsCount, categoriesCount });
 }
 
 serve(async (req) => {
