@@ -94,7 +94,7 @@ export function ProductsTableView({
   return (
     <div className="flex flex-col gap-4 bg-background px-4 sm:px-6 py-4 h-full min-h-0" data-testid="user_products_dataTable_root">
       <ToolbarFromContext />
-      <div className="bg-background flex-1 min-h-0 overflow-hidden rounded-lg border" data-testid="user_products_table">
+      <div className="bg-background flex-1 min-h-0 overflow-hidden" data-testid="user_products_table">
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <Table ref={tableElRef} wrapperClassName="h-full overflow-y-auto">
             <TableHeader className="sticky top-0 z-10 bg-muted">

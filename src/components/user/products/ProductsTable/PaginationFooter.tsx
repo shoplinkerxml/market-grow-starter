@@ -20,7 +20,7 @@ export function PaginationFooter<TData>({
 }) {
   const { t } = useI18n();
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-2 border-t" data-testid="user_products_dataTable_pagination">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-2" data-testid="user_products_dataTable_pagination">
       <div className="text-xs text-muted-foreground" data-testid="user_products_dataTable_selectionStatus">
         {(() => {
           const selected = table.getSelectedRowModel().rows.length;
