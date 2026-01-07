@@ -20,7 +20,7 @@ export class PersistentCacheService {
   });
 
   private static shopsCache = UnifiedCacheManager.create("persistent:shops", {
-    mode: "local",
+    mode: "memory",
     defaultTtlMs: PersistentCacheService.TTL.SHOPS,
   });
 

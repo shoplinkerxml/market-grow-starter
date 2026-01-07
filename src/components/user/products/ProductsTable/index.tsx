@@ -128,7 +128,10 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
 
   const deleteDialogProduct = useMemo(() => (state.deleteDialog.productId ? (items || []).find((p) => String(p.id) === String(state.deleteDialog.productId)) ?? null : null), [items, state.deleteDialog.productId]);
   const { handleConfirmDelete } = useProductsDelete({ t, uid, storeId, onDelete, refreshTrigger, queryClient, productsBaseKey, table, setProductsCached, setDeleteProgress, closeDeleteDialog });
-  const setStores = useCallback((v: ShopAggregated[]) => queryClient.setQueryData(["user", uid, "shops"], v), [queryClient, uid]);
+  const setStores = useCallback((v: ShopAggregated[]) => {
+    queryClient.setQueryData(["user", uid, "shops"], v);
+    queryClient.setQueryData(["user", uid, "shops", "menu"], v);
+  }, [queryClient, uid]);
   const setStoresMenuOpen = useCallback((v: boolean) => dispatch({ type: "setStoresMenuOpen", next: v }), []);
   const setSelectedStoreIds = useCallback((updater: string[] | ((prev: string[]) => string[])) => dispatch({ type: "setSelectedStoreIds", next: updater }), []);
   const setRemovingStores = useCallback((v: boolean) => dispatch({ type: "setRemovingStores", next: v }), []);

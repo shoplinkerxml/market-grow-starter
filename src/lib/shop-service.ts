@@ -26,6 +26,17 @@ export class ShopService extends ShopServiceCore {
     }
   }
 
+  static invalidateInternalCache(): void {
+    try {
+      this.clearCache("shops");
+      this.clearCache("shops-aggregated");
+      this.clearCache("shop-limit");
+      this.clearCache("shop-limit-info");
+    } catch {
+      void 0;
+    }
+  }
+
   static async getStoreCategories(storeId: string): Promise<StoreCategory[]> {
     return await ShopCategoriesService.getStoreCategories(storeId);
   }

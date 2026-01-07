@@ -204,12 +204,6 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
     queryFn: async () => {
       const cachedShops = queryClient.getQueryData<ShopAggregated[]>(["user", uid, "shops"]);
       if (Array.isArray(cachedShops) && cachedShops.length > 0) return cachedShops;
-      try {
-        const shops = await ShopService.getShopsAggregated({ force: false });
-        if (Array.isArray(shops) && shops.length > 0) return shops as ShopAggregated[];
-      } catch {
-        void 0;
-      }
       const cachedAuthMe = queryClient.getQueryData<any>(["auth", "me"]);
       const cachedRows = Array.isArray((cachedAuthMe as any)?.userStores)
         ? ((cachedAuthMe as any).userStores as Array<{ id: string; store_name: string }>)
@@ -219,7 +213,14 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
       const rows = Array.isArray((authMe as any)?.userStores)
         ? ((authMe as any).userStores as Array<{ id: string; store_name: string }>)
         : [];
-      return mapUserStoresToAgg(rows);
+      if (rows.length > 0) return mapUserStoresToAgg(rows);
+      try {
+        const shops = await ShopService.getShopsAggregated({ force: false });
+        if (Array.isArray(shops) && shops.length > 0) return shops as ShopAggregated[];
+      } catch {
+        void 0;
+      }
+      return [];
     },
     enabled: !storeId,
     retry: false,
@@ -232,12 +233,14 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
 
   const loadStoresForMenu = useCallback(async () => {
     const cachedAgg = queryClient.getQueryData<ShopAggregated[]>(shopsMenuKey) || [];
-    if (cachedAgg.length > 0) return;
+    const hasCounts =
+      cachedAgg.length > 0 &&
+      cachedAgg.some((s) => typeof (s as any)?.productsCount === "number" || typeof (s as any)?.categoriesCount === "number");
+    if (hasCounts) return;
 
     const cachedShops = queryClient.getQueryData<ShopAggregated[]>(["user", uid, "shops"]);
     if (Array.isArray(cachedShops) && cachedShops.length > 0) {
       queryClient.setQueryData<ShopAggregated[]>(shopsMenuKey, cachedShops);
-      return;
     }
 
     const cachedAuthMe = queryClient.getQueryData<any>(["auth", "me"]);
@@ -247,18 +250,21 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
     if (cachedRows && cachedRows.length > 0) {
       const mapped = mapUserStoresToAgg(cachedRows);
       queryClient.setQueryData<ShopAggregated[]>(shopsMenuKey, mapped);
-      return;
+    }
+
+    try {
+      const shops = await ShopService.getShopsAggregated({ force: true });
+      if (Array.isArray(shops) && shops.length > 0) {
+        queryClient.setQueryData<ShopAggregated[]>(shopsMenuKey, shops);
+        return;
+      }
+    } catch {
+      void 0;
     }
 
     await queryClient.fetchQuery({
       queryKey: shopsMenuKey,
       queryFn: async () => {
-        try {
-          const shops = await ShopService.getShopsAggregated({ force: false });
-          if (Array.isArray(shops) && shops.length > 0) return shops as ShopAggregated[];
-        } catch {
-          void 0;
-        }
         const authMe = await UserAuthService.fetchAuthMe();
         const rows = Array.isArray((authMe as any)?.userStores)
           ? ((authMe as any).userStores as Array<{ id: string; store_name: string }>)

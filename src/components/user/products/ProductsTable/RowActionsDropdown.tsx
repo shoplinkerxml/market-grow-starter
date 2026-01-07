@@ -6,7 +6,6 @@ import { Edit, MoreHorizontal, Copy, Loader2, Store, Trash2 } from "lucide-react
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { toast } from "sonner";
-import { ShopCountsService } from "@/lib/shop-counts";
 import { ProductService, type Product } from "@/lib/product-service";
 import type { ShopAggregated } from "@/lib/shop-service";
 import { useSyncStatus } from "@/lib/optimistic-mutation";
@@ -177,7 +176,7 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
                                   try { onStoresUpdate?.(product.id, nextIds, { storeIdChanged: id, added: !!v, categoryKey }); } catch { void 0; }
                                   try {
                                     if (v) {
-                                      const { addedByStore, categoryNamesByStore } = await ProductService.bulkAddStoreProductLinks([
+                                      await ProductService.bulkAddStoreProductLinks([
                                         {
                                           product_id: String(product.id),
                                           store_id: String(id),
@@ -190,50 +189,12 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
                                         },
                                       ]);
                                       toast.success(t("product_added_to_store"));
-                                      {
-                                        const idStr = String(id);
-                                        const added = Math.max(0, Number(addedByStore?.[idStr] ?? 1) || 0);
-                                        if (added > 0) {
-                                          ShopCountsService.suppressRealtimeProductsDelta(uid, idStr, added);
-                                          ShopCountsService.bumpProducts(queryClient, uid, idStr, added);
-                                        }
-                                        const cats = categoryNamesByStore?.[idStr];
-                                        if (Array.isArray(cats)) {
-                                          const cnt = cats.length;
-                                          const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, idStr));
-                                          const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
-                                          ShopCountsService.set(queryClient, uid, idStr, { productsCount: prevProducts, categoriesCount: cnt });
-                                        }
-                                        try {
-                                          const updated = queryClient.getQueryData<ShopAggregated[]>(["user", uid, "shops"]) || [];
-                                          setStores(updated || []);
-                                        } catch { /* ignore */ }
-                                      }
                                     } else {
-                                      const { deletedByStore, categoryNamesByStore } = await ProductService.bulkRemoveStoreProductLinks(
+                                      await ProductService.bulkRemoveStoreProductLinks(
                                         [String(product.id)],
                                         [String(id)]
                                       );
                                       toast.success(t("product_removed_from_store"));
-                                      {
-                                        const idStr = String(id);
-                                        const deleted = Math.max(0, Number(deletedByStore?.[idStr] ?? 1) || 0);
-                                        if (deleted > 0) {
-                                          ShopCountsService.suppressRealtimeProductsDelta(uid, idStr, -deleted);
-                                          ShopCountsService.bumpProducts(queryClient, uid, idStr, -deleted);
-                                        }
-                                        const cats = categoryNamesByStore?.[idStr];
-                                        if (Array.isArray(cats)) {
-                                          const cnt = cats.length;
-                                          const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, idStr));
-                                          const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
-                                          ShopCountsService.set(queryClient, uid, idStr, { productsCount: prevProducts, categoriesCount: cnt });
-                                        }
-                                        try {
-                                          const updated = queryClient.getQueryData<ShopAggregated[]>(["user", uid, "shops"]) || [];
-                                          setStores(updated || []);
-                                        } catch { /* ignore */ }
-                                      }
                                     }
                                   } catch {
                                     setLinkedStoreIds(baseIds);

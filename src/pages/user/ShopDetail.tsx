@@ -17,7 +17,6 @@ import { useI18n } from '@/i18n';
 import { ShopService, type ShopAggregated } from '@/lib/shop-service';
 import { ProductService, type Product } from '@/lib/product-service';
 import { useShopRealtimeSync } from "@/hooks/useShopRealtimeSync";
-import { ShopCountsService } from "@/lib/shop-counts";
 
 export const ShopDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -112,30 +111,7 @@ export const ShopDetail = () => {
       if (!shopId) return;
 
       try {
-        const { deletedByStore, categoryNamesByStore } = await ProductService.bulkRemoveStoreProductLinks(
-          [String(product.id)],
-          [shopId]
-        );
-
-        const list = queryClient.getQueryData<ShopAggregated[]>(["user", uid, "shops"]) || [];
-        const current = (list || []).find((s) => String(s.id) === String(shopId)) ?? null;
-        const baseProductsCount = Math.max(0, Number(current?.productsCount ?? 0));
-        const baseCategoriesCount = Math.max(0, Number(current?.categoriesCount ?? 0));
-        const deleted = Math.max(0, Number(deletedByStore?.[String(shopId)] ?? 1) || 0);
-        const nextProductsCount = Math.max(0, baseProductsCount - deleted);
-        const cats = categoryNamesByStore?.[String(shopId)];
-        const nextCategoriesCount =
-          nextProductsCount === 0
-            ? 0
-            : Array.isArray(cats)
-              ? cats.length
-              : baseCategoriesCount;
-
-        if (deleted > 0) ShopCountsService.suppressRealtimeProductsDelta(uid, shopId, -deleted);
-        ShopCountsService.set(queryClient, uid, shopId, {
-          productsCount: nextProductsCount,
-          categoriesCount: nextCategoriesCount,
-        });
+        await ProductService.bulkRemoveStoreProductLinks([String(product.id)], [shopId]);
         
         toast.success(t('product_removed_successfully') || 'Товар видалено');
       } catch (error) {
@@ -143,7 +119,7 @@ export const ShopDetail = () => {
         toast.error(t('failed_remove_from_store') || 'Помилка видалення');
       }
     },
-    [shopId, queryClient, t, uid]
+    [shopId, t]
   );
 
   if (isLoading) {

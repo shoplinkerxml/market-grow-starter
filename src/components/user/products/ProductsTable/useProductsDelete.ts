@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { ProductService, type Product } from "@/lib/product-service";
-import { ShopCountsService } from "@/lib/shop-counts";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Table as TanTable } from "@tanstack/react-table";
 import type { ProductRow } from "./columns";
@@ -75,29 +74,11 @@ export function useProductsDelete({
               setProductsCached((prev) => prev.filter((p) => !ids.includes(String(p.id))));
               patchTotal(-ids.length);
               setDeleteProgress({ open: true });
-              const { deleted, deletedByStore, categoryNamesByStore } = await ProductService.bulkRemoveStoreProductLinks(
-                ids,
-                [String(storeId)],
-              );
+              const { deleted, deletedByStore } = await ProductService.bulkRemoveStoreProductLinks(ids, [String(storeId)]);
               const sid = String(storeId);
               const removedCount = Math.max(0, Number(deletedByStore?.[sid] ?? deleted ?? ids.length) || 0);
               const correction = -removedCount - -ids.length;
               if (correction !== 0) patchTotal(correction);
-              try {
-                if (removedCount > 0) {
-                  ShopCountsService.suppressRealtimeProductsDelta(uid, sid, -removedCount);
-                  ShopCountsService.bumpProducts(queryClient, uid, sid, -removedCount);
-                }
-                const cats = categoryNamesByStore?.[sid];
-                if (Array.isArray(cats)) {
-                  const cnt = cats.length;
-                  const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, sid));
-                  const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
-                  ShopCountsService.set(queryClient, uid, sid, { productsCount: prevProducts, categoriesCount: cnt });
-                }
-              } catch {
-                void 0;
-              }
               toast.success(t("product_removed_from_store"));
             } catch {
               for (const [k, v] of prevQueries) {
@@ -140,7 +121,7 @@ export function useProductsDelete({
         console.error("Delete error:", error);
       }
     },
-    [closeDeleteDialog, onDelete, productsBaseKey, queryClient, setDeleteProgress, setProductsCached, storeId, t, table, uid],
+    [closeDeleteDialog, onDelete, productsBaseKey, queryClient, setDeleteProgress, setProductsCached, storeId, t, table],
   );
 
   return { handleConfirmDelete };

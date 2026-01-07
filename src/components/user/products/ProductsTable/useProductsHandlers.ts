@@ -1,6 +1,5 @@
 import { useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { ShopCountsService } from "@/lib/shop-counts";
 import { ProductService, type Product } from "@/lib/product-service";
 import { runOptimisticOperation } from "@/lib/optimistic-mutation";
 import type { QueryClient } from "@tanstack/react-query";
@@ -148,22 +147,11 @@ export function useProductsHandlers({
 
       applyOptimistic(-1);
       try {
-        const { deletedByStore, categoryNamesByStore } = await ProductService.bulkRemoveStoreProductLinks([pid], [sid]);
+        const { deletedByStore } = await ProductService.bulkRemoveStoreProductLinks([pid], [sid]);
         const deleted = Math.max(0, Number(deletedByStore?.[sid] ?? 1) || 0);
         if (isRemovingCurrentStore) {
           const correction = -deleted - -1;
           if (correction !== 0) applyOptimistic(correction);
-        }
-        if (deleted > 0) {
-          ShopCountsService.suppressRealtimeProductsDelta(uid, sid, -deleted);
-          ShopCountsService.bumpProducts(queryClient, uid, sid, -deleted);
-        }
-        const cats = categoryNamesByStore?.[sid];
-        if (Array.isArray(cats)) {
-          const cnt = cats.length;
-          const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(uid, sid));
-          const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
-          ShopCountsService.set(queryClient, uid, sid, { productsCount: prevProducts, categoriesCount: cnt });
         }
         toast.success(t("product_removed_from_store"));
       } catch {
@@ -175,7 +163,7 @@ export function useProductsHandlers({
       }
       return !reverted;
     },
-    [queryClient, productsBaseKey, setProductsCached, storeId, t, uid],
+    [queryClient, productsBaseKey, setProductsCached, storeId, t],
   );
   return { handleDuplicate, handleToggleAvailable, handleStoresUpdate, handleRemoveStoreLink };
 }

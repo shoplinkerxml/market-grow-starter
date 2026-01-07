@@ -8,10 +8,8 @@ import { useI18n } from "@/i18n";
 import { useCallback } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { toast } from "sonner";
-import { useQueryClient, QueryClient } from "@tanstack/react-query";
-import { ShopCountsService } from "@/lib/shop-counts";
+import { QueryClient } from "@tanstack/react-query";
 import { ProductService, type Product } from "@/lib/product-service";
-import { PersistentCacheService } from "@/lib/persistent-cache-service";
 import { useOutletContext } from "react-router-dom";
 
 type ProductRow = Product & { linkedStoreIds?: string[] };
@@ -22,8 +20,6 @@ type StoreAgg = {
   productsCount?: number; 
   categoriesCount?: number;
 };
-
-// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
 
 function countProductsInStore(products: ProductRow[], storeId: string): number {
   return products.reduce((count, product) => {
@@ -58,71 +54,6 @@ function hasLinkedProducts(products: ProductRow[], storeIds: string[]): boolean 
 function normalizeCount(v: unknown): number {
   return Math.max(0, Number(v ?? 0) || 0);
 }
-
-async function updateStoreCounts(
-  queryClient: QueryClient,
-  userId: string,
-  storeIds: string[],
-  productDelta: Record<string, number>,
-  setStores: (stores: StoreAgg[]) => void,
-  currentStores: StoreAgg[],
-  categoryResultsOverride?: Record<string, string[]>,
-  itemsForAccurateCount?: ProductRow[]
-) {
-  try {
-    const uniqueIds = Array.from(new Set(storeIds.map(String).filter(Boolean)));
-    const deltas: Record<string, number> = productDelta || {};
-    for (const sid of uniqueIds) {
-      const delta = Number(deltas[String(sid)] ?? 0) || 0;
-      if (delta !== 0) {
-        ShopCountsService.suppressRealtimeProductsDelta(userId, String(sid), delta);
-        ShopCountsService.bumpProducts(queryClient, userId, String(sid), delta);
-      }
-    }
-
-    const categoriesByStore = categoryResultsOverride || {};
-    const categoryStoreIds = Object.keys(categoriesByStore);
-    if (categoryStoreIds.length > 0) {
-      for (const sid of categoryStoreIds) {
-        const cnt = Array.isArray(categoriesByStore[sid]) ? categoriesByStore[sid].length : 0;
-        const oldCounts = queryClient.getQueryData<{ productsCount?: number }>(ShopCountsService.key(userId, String(sid)));
-        const prevProducts = Math.max(0, Number(oldCounts?.productsCount ?? 0));
-        ShopCountsService.set(queryClient, userId, String(sid), { productsCount: prevProducts, categoriesCount: cnt });
-      }
-    }
-
-    try {
-      await PersistentCacheService.bumpCachedShopsCounts(deltas, categoriesByStore);
-    } catch {
-      void 0;
-    }
-
-    try {
-      const updated = queryClient.getQueryData<StoreAgg[]>(["user", userId ? String(userId) : "current", "shops"]) || [];
-      if (Array.isArray(updated) && updated.length > 0) {
-        setStores(updated as StoreAgg[]);
-        return;
-      }
-    } catch { /* ignore */ }
-
-    const byIdDelta: Record<string, number> = {};
-    for (const sid of uniqueIds) byIdDelta[sid] = Number(deltas[sid] ?? 0) || 0;
-    const next = (currentStores || []).map((s) => {
-      const sid = String(s.id);
-      const delta = byIdDelta[sid] || 0;
-      const nextProducts = Math.max(0, Number(s.productsCount ?? 0) + delta);
-      const nextCategories = Object.prototype.hasOwnProperty.call(categoriesByStore, sid)
-        ? (Array.isArray(categoriesByStore[sid]) ? categoriesByStore[sid].length : 0)
-        : (nextProducts === 0 ? 0 : Number(s.categoriesCount ?? 0) || 0);
-      return { ...s, productsCount: nextProducts, categoriesCount: nextCategories };
-    });
-    setStores(next);
-  } catch (error) {
-    console.error('Failed to update store counts:', error);
-  }
-}
-
-// ========== ОСНОВНОЙ КОМПОНЕНТ ==========
 
 export function AddToStoresMenu({
   open,
@@ -166,8 +97,6 @@ export function AddToStoresMenu({
   disabled?: boolean;
 }) {
   const { t } = useI18n();
-  const qc = useQueryClient();
-  const q = queryClient || qc;
   const { user } = useOutletContext<{ user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
 
@@ -218,7 +147,7 @@ export function AddToStoresMenu({
           }));
       });
 
-      const { inserted, addedByStore, categoryNamesByStore } = await ProductService.bulkAddStoreProductLinks(links);
+      const { inserted } = await ProductService.bulkAddStoreProductLinks(links);
 
       if (inserted === 0) {
         toast.success(t('products_already_linked'));
@@ -227,15 +156,11 @@ export function AddToStoresMenu({
 
       toast.success(t('product_added_to_stores'));
 
-      // Обновляем локальный кэш продуктов
       setProductsCached(prev => prev.map(p => {
         if (!productIds.includes(String(p.id))) return p;
         const mergedStores = [...new Set([...(p.linkedStoreIds || []), ...selectedStoreIds])];
         return { ...p, linkedStoreIds: mergedStores };
       }));
-
-      // Обновляем счетчики магазинов
-      await updateStoreCounts(q, uid, selectedStoreIds, addedByStore, setStores, stores, categoryNamesByStore, items);
 
     } catch (error) {
       console.error('Failed to add products to stores:', error);
@@ -253,11 +178,10 @@ export function AddToStoresMenu({
     setRemovingStores(true);
 
     try {
-      const { deletedByStore, categoryNamesByStore } = await ProductService.bulkRemoveStoreProductLinks(productIds, storeIds);
+      await ProductService.bulkRemoveStoreProductLinks(productIds, storeIds);
 
       toast.success(t('product_removed_from_store'));
 
-      // Обновляем локальный кэш
       setProductsCached(prev => prev.map(p => {
         const shouldUpdate = productIds.length === 0 || productIds.includes(String(p.id));
         if (!shouldUpdate) return p;
@@ -265,25 +189,6 @@ export function AddToStoresMenu({
         const filteredStores = (p.linkedStoreIds || []).filter(sid => !storeIds.includes(sid));
         return { ...p, linkedStoreIds: filteredStores };
       }));
-
-      // Подсчитываем удаленные связи
-      const countsByStore: Record<string, number> = {};
-      if (productIds.length > 0) {
-        storeIds.forEach(sid => {
-          countsByStore[sid] = selectedProducts.filter(p => 
-            (p.linkedStoreIds || []).includes(sid)
-          ).length;
-        });
-      } else {
-        Object.assign(countsByStore, deletedByStore);
-      }
-
-      // Инвертируем дельты для декремента
-      const negativeDeltas = Object.fromEntries(
-        Object.entries(countsByStore).map(([sid, count]) => [sid, -count])
-      );
-
-      await updateStoreCounts(q, uid, storeIds, negativeDeltas, setStores, stores, categoryNamesByStore, items);
 
     } catch (error) {
       console.error('Failed to remove products from stores:', error);
@@ -306,7 +211,7 @@ export function AddToStoresMenu({
     setRemovingStoreId(storeId);
 
     try {
-      const { deletedByStore, categoryNamesByStore } = await ProductService.bulkRemoveStoreProductLinks(productIds, [storeId]);
+      const { deletedByStore } = await ProductService.bulkRemoveStoreProductLinks(productIds, [storeId]);
 
       toast.success(t('product_removed_from_store'));
 
@@ -316,8 +221,7 @@ export function AddToStoresMenu({
         return { ...p, linkedStoreIds: filtered };
       }));
 
-      const delta = deletedByStore?.[storeId] || productsInStore.length;
-      await updateStoreCounts(q, uid, [storeId], { [storeId]: -delta }, setStores, stores, categoryNamesByStore, items);
+      const delta = Math.max(0, Number(deletedByStore?.[storeId] ?? productsInStore.length) || 0);
 
       const remainingCount = countProductsInStore(items, storeId) - delta;
       if (remainingCount === 0) {
@@ -333,7 +237,6 @@ export function AddToStoresMenu({
     }
   };
 
-  // Вычисляем эффективные магазины для удаления
   const effectiveStoreIds = selectedStoreIds.length > 0
     ? selectedStoreIds
     : [...new Set(selectedProducts.flatMap(p => p.linkedStoreIds || []))];

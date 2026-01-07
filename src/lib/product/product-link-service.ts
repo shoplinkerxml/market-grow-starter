@@ -3,6 +3,7 @@ import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
 import { RequestDeduplicatorFactory } from "@/lib/request-deduplicator";
 import { PersistentCacheService } from "@/lib/persistent-cache-service";
+import { ShopProductSyncService } from "@/lib/services/shop-product-sync-service";
 
 export class ProductLinkService {
   private static readonly INFLIGHT_LINKS_MAX_SIZE = 200;
@@ -102,30 +103,17 @@ export class ProductLinkService {
     }
 
     try {
-      const { ShopService } = await import("@/lib/shop-service");
       const deletedByStore = out.deletedByStore || {};
-      for (const sid of Object.keys(deletedByStore)) {
-        const removed = Math.max(0, Number(deletedByStore[sid] ?? 0) || 0);
-        if (removed > 0) ShopService.bumpProductsCountInCache(String(sid), -removed);
-      }
-      const catsByStore = out.categoryNamesByStore || {};
-      for (const sid of Object.keys(catsByStore)) {
-        const cnt = Array.isArray(catsByStore[sid]) ? catsByStore[sid].length : 0;
-        ShopService.setCategoriesCountInCache(String(sid), cnt);
-      }
-
-      try {
-        const negativeDeltas: Record<string, number> = {};
-        for (const sid of Object.keys(deletedByStore)) {
-          const removed = Math.max(0, Number(deletedByStore[sid] ?? 0) || 0);
-          if (removed > 0) negativeDeltas[String(sid)] = -removed;
-        }
-        await PersistentCacheService.bumpCachedShopsCounts(negativeDeltas, catsByStore);
-      } catch {
-        void 0;
-      }
+      const categoryNamesByStore = out.categoryNamesByStore || {};
+      
+      await ShopProductSyncService.syncAfterBulkRemove(
+        deletedByStore,
+        categoryNamesByStore,
+        productIds,
+        storeIds
+      );
     } catch (error) {
-      console.error("ProductLinkService.bulkRemoveStoreProductLinks ShopService sync failed", error);
+      console.error("ProductLinkService.bulkRemoveStoreProductLinks sync failed", error);
     }
 
     return {
@@ -155,25 +143,18 @@ export class ProductLinkService {
     }
 
     try {
-      const { ShopService } = await import("@/lib/shop-service");
       const addedByStore = out.addedByStore || {};
-      for (const sid of Object.keys(addedByStore)) {
-        const added = Math.max(0, Number(addedByStore[sid] ?? 0) || 0);
-        if (added > 0) ShopService.bumpProductsCountInCache(String(sid), added);
-      }
-      const catsByStore = out.categoryNamesByStore || {};
-      for (const sid of Object.keys(catsByStore)) {
-        const cnt = Array.isArray(catsByStore[sid]) ? catsByStore[sid].length : 0;
-        ShopService.setCategoriesCountInCache(String(sid), cnt);
-      }
-
-      try {
-        await PersistentCacheService.bumpCachedShopsCounts(addedByStore, catsByStore);
-      } catch {
-        void 0;
-      }
+      const categoryNamesByStore = out.categoryNamesByStore || {};
+      const productIds = Array.from(new Set(payload.map(p => p.product_id)));
+      
+      await ShopProductSyncService.syncAfterBulkAdd(
+        addedByStore,
+        categoryNamesByStore,
+        productIds,
+        payload.map((p) => ({ product_id: String(p.product_id), store_id: String(p.store_id) }))
+      );
     } catch (error) {
-      console.error("ProductLinkService.bulkAddStoreProductLinks ShopService sync failed", error);
+      console.error("ProductLinkService.bulkAddStoreProductLinks sync failed", error);
     }
 
     return {

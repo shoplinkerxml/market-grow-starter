@@ -98,7 +98,7 @@ export class ShopServiceCore {
   });
 
   protected static cache = UnifiedCacheManager.create("shop-service", {
-    mode: "auto", // Use localStorage/sessionStorage for persistence
+    mode: "memory",
     defaultTtlMs: 300_000, // 5 min cache for faster subsequent loads
     maxSize: 300,
   });
