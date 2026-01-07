@@ -3,8 +3,29 @@ export * from "./shop-core";
 import { ShopCategoriesService } from "./shop-categories";
 import { ShopServiceCore, type StoreCategory } from "./shop-core";
 import { ShopCurrenciesService } from "./shop-currencies";
+import { PersistentCacheService } from "./persistent-cache-service";
 
 export class ShopService extends ShopServiceCore {
+  static async getShopsAggregated(options?: { force?: boolean; forceCounts?: boolean }) {
+    if (options?.force) {
+      try {
+        PersistentCacheService.invalidateShops();
+      } catch {
+        void 0;
+      }
+    }
+    return await PersistentCacheService.getShops(async () => await super.getShopsAggregated(options));
+  }
+
+  static clearAllCaches(): void {
+    super.clearAllCaches();
+    try {
+      PersistentCacheService.invalidateShops();
+    } catch {
+      void 0;
+    }
+  }
+
   static async getStoreCategories(storeId: string): Promise<StoreCategory[]> {
     return await ShopCategoriesService.getStoreCategories(storeId);
   }
@@ -67,4 +88,3 @@ export class ShopService extends ShopServiceCore {
     return await ShopCurrenciesService.getAvailableCurrencies();
   }
 }
-

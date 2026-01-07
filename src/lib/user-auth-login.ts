@@ -34,6 +34,11 @@ export async function loginUser(
       if (authMe.user.role && authMe.user.role !== "user") {
         return { user: null, session: authData.session, error: "redirect_to_admin" };
       }
+      try {
+        void import("@/lib/prefetch-service").then(({ PrefetchService }) => PrefetchService.prefetchEssentialData());
+      } catch {
+        void 0;
+      }
       return { user: authMe.user, session: authData.session, error: null };
     }
 
@@ -133,4 +138,3 @@ export async function logout(deps: { mapSupabaseError: (error: any) => string })
     };
   }
 }
-

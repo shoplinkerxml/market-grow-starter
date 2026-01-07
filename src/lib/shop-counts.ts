@@ -78,26 +78,46 @@ export const ShopCountsService = {
   },
   bumpProducts(queryClient: QueryClient, userId: string, storeId: string, delta: number) {
     queryClient.setQueryData<ShopCounts>(this.key(userId, storeId), (old) => {
-      const base = old?.productsCount ?? 0;
-      const cats = old?.categoriesCount ?? 0;
+      const list = queryClient.getQueryData<ShopAggregated[]>(this.shopsListKey(userId));
+      const fromList = Array.isArray(list) ? (list || []).find((s) => String(s.id) === String(storeId)) : null;
+      const fromDetail = queryClient.getQueryData<ShopAggregated | null>(this.shopDetailKey(userId, storeId));
+      const base = Number(old?.productsCount ?? fromDetail?.productsCount ?? fromList?.productsCount ?? 0) || 0;
+      const cats = Number(old?.categoriesCount ?? fromDetail?.categoriesCount ?? fromList?.categoriesCount ?? 0) || 0;
       const nextProducts = Math.max(0, base + delta);
       const nextCategories = nextProducts === 0 ? 0 : cats;
       return { productsCount: nextProducts, categoriesCount: nextCategories };
     });
     queryClient.setQueryData<ShopAggregated[]>(this.shopsListKey(userId), (prev) => {
       if (!Array.isArray(prev)) return prev;
+      const nextCounts = queryClient.getQueryData<ShopCounts>(this.key(userId, storeId));
       return prev.map((s) =>
         String(s.id) === String(storeId)
           ? {
               ...s,
-              productsCount: Math.max(0, (s.productsCount ?? 0) + delta),
-              categoriesCount: Math.max(0, (s.productsCount ?? 0) + delta) === 0 ? 0 : (s.categoriesCount ?? 0),
+              productsCount:
+                nextCounts && typeof nextCounts.productsCount === "number"
+                  ? Math.max(0, nextCounts.productsCount)
+                  : Math.max(0, (s.productsCount ?? 0) + delta),
+              categoriesCount:
+                nextCounts && typeof nextCounts.categoriesCount === "number"
+                  ? Math.max(0, nextCounts.productsCount) === 0
+                    ? 0
+                    : Math.max(0, nextCounts.categoriesCount)
+                  : Math.max(0, (s.productsCount ?? 0) + delta) === 0
+                    ? 0
+                    : (s.categoriesCount ?? 0),
             }
           : s
       );
     });
     queryClient.setQueryData<ShopAggregated | null>(this.shopDetailKey(userId, storeId), (prev) => {
       if (!prev) return prev;
+      const nextCounts = queryClient.getQueryData<ShopCounts>(this.key(userId, storeId));
+      if (nextCounts && typeof nextCounts.productsCount === "number" && typeof nextCounts.categoriesCount === "number") {
+        const productsCount = Math.max(0, nextCounts.productsCount);
+        const categoriesCount = productsCount === 0 ? 0 : Math.max(0, nextCounts.categoriesCount);
+        return { ...prev, productsCount, categoriesCount };
+      }
       const nextProductsCount = Math.max(0, Number(prev.productsCount ?? 0) + delta);
       const nextCategoriesCount = nextProductsCount === 0 ? 0 : Math.max(0, Number(prev.categoriesCount ?? 0));
       return { ...prev, productsCount: nextProductsCount, categoriesCount: nextCategoriesCount };
