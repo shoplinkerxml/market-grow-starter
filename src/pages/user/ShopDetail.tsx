@@ -155,9 +155,11 @@ export const ShopDetail = () => {
     );
   }
 
-  const productsCount = Math.max(0, Number(shop.productsCount ?? 0));
-  const categoriesCount =
-    productsCount === 0 ? 0 : Math.max(0, Number(shop.categoriesCount ?? 0));
+  const [tableProductsCount, setTableProductsCount] = useState<number | null>(null);
+
+  const productsCountBase = Math.max(0, Number(shop.productsCount ?? 0));
+  const productsCount = Math.max(productsCountBase, Math.max(0, Number(tableProductsCount ?? 0)));
+  const categoriesCount = productsCount === 0 ? 0 : Math.max(0, Number(shop.categoriesCount ?? 0));
 
   return (
     <>
@@ -217,29 +219,16 @@ export const ShopDetail = () => {
         />
 
         <div className="bg-background rounded-md flex-1 min-h-0 overflow-hidden">
-          {productsCount === 0 ? (
-            <div className="p-6">
-              <Empty>
-                <EmptyHeader>
-                  <EmptyMedia className="text-primary">
-                    <Package className="h-[1.5rem] w-[1.5rem]" />
-                  </EmptyMedia>
-                  <EmptyTitle>{t('no_products')}</EmptyTitle>
-                  <EmptyDescription>{t('no_products_description')}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            </div>
-          ) : (
-            <div className="h-full min-h-0">
-              <ProductsTable
-                storeId={shopId}
-                onEdit={(product: Product) => navigate(`/user/shops/${shopId}/products/edit/${product.id}`)}
-                onDelete={handleDeleteProduct}
-                canCreate={true}
-                hideDuplicate={true}
-              />
-            </div>
-          )}
+          <div className="h-full min-h-0">
+            <ProductsTable
+              storeId={shopId}
+              onEdit={(product: Product) => navigate(`/user/shops/${shopId}/products/edit/${product.id}`)}
+              onDelete={handleDeleteProduct}
+              canCreate={true}
+              hideDuplicate={true}
+              onProductsLoaded={(count) => setTableProductsCount(count)}
+            />
+          </div>
         </div>
       </div>
 
