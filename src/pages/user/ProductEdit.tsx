@@ -77,7 +77,15 @@ export const ProductEdit = () => {
         const agg = await ProductService.getProductEditData(id);
         setProduct(agg.product);
         preloadedImagesRef.current = (agg.images || []) as Array<{ id?: string; url: string; order_index: number; is_main: boolean; alt_text?: string }>;
-        preloadedParamsRef.current = (agg.params || []) as Array<{ id?: string; name: string; value: string; order_index: number; paramid?: string; valueid?: string }>;
+        let params = (agg.params || []) as Array<{ id?: string; name: string; value: string; order_index: number; paramid?: string; valueid?: string }>;
+        if (params.length === 0) {
+          try {
+            params = (await ProductService.getProductParams(id)) as Array<{ id?: string; name: string; value: string; order_index: number; paramid?: string; valueid?: string }>;
+          } catch {
+            void 0;
+          }
+        }
+        preloadedParamsRef.current = params;
         if (agg.categoryName) setCategoryName(agg.categoryName);
         const nextLookups: UserLookups = {
           suppliers: Array.isArray(agg.suppliers) ? agg.suppliers : [],

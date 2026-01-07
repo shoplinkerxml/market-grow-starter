@@ -244,19 +244,6 @@ const App = () => {
         }
       }
       
-      // Prefetch user data on successful login (after caches are cleared)
-      if (event === "SIGNED_IN" && currentUserId) {
-        // Use setTimeout to ensure prefetch happens after initial auth flow completes
-        setTimeout(async () => {
-          try {
-            const { PrefetchService } = await import("@/lib/prefetch-service");
-            await PrefetchService.prefetchUserData();
-          } catch {
-            void 0;
-          }
-        }, 100);
-      }
-      
       lastAuthUserId = currentUserId;
     });
     return () => data.subscription.unsubscribe();

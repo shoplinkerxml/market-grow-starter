@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useEffect, useMemo, useCallback, useState } from "react";
+import { useEffect, useMemo, useCallback, useState, useRef } from "react";
 import type { ComponentType } from "react";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProductService } from "@/lib/product-service";
@@ -41,6 +41,7 @@ type AuthLoaderMeta = {
 const UserProtected = () => {
   const queryClient = useQueryClient();
   const location = useLocation();
+  const prefetchDoneRef = useRef<string | null>(null);
   const isHardReload = useMemo(() => {
     try {
       const navEntry = (performance.getEntriesByType?.("navigation")?.[0] ??
@@ -230,6 +231,29 @@ const UserProtected = () => {
     if (!authenticated) return;
     void prefetchData();
   }, [authenticated, prefetchData]);
+
+  useEffect(() => {
+    if (!authenticated) return;
+    if (authMeQuery.data == null) return;
+    const uid = user?.id ? String(user.id) : "";
+    if (!uid) return;
+    const expiresAt = sessionValidation?.expiresAt ?? 0;
+    const key = `${uid}:${expiresAt}`;
+    if (prefetchDoneRef.current === key) return;
+    prefetchDoneRef.current = key;
+
+    const run = () => {
+      void import("@/lib/prefetch-service")
+        .then(({ PrefetchService }) => PrefetchService.prefetchUserData())
+        .catch(() => void 0);
+    };
+
+    if (typeof requestIdleCallback !== "undefined") {
+      requestIdleCallback(() => run(), { timeout: 2000 });
+    } else {
+      setTimeout(() => run(), 0);
+    }
+  }, [authenticated, authMeQuery.data, sessionValidation?.expiresAt, user?.id]);
 
   const sessionPending = sessionQuery.data == null && (sessionQuery.isLoading || sessionIsFetching);
   const authMePending = sessionValid && authMeQuery.data == null && (authMeQuery.isLoading || authMeQuery.isFetching);

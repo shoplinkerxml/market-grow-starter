@@ -792,11 +792,55 @@ export class ProductService {
       this.edgeError(error as any, "failed_load_product_edit");
       throw new ApiError("failed_load_product_edit", 500);
     }
+
+    const rawImages = Array.isArray(resp?.images) ? resp.images : [];
+    const images = rawImages
+      .map((img: any, idx: number) => {
+        const rawOrder =
+          typeof img?.order_index === "number" ? img.order_index : Number(img?.order_index);
+        const order_index = Number.isFinite(rawOrder) ? rawOrder : idx;
+        const base = img || {};
+        return {
+          ...base,
+          id: base.id != null ? String(base.id) : undefined,
+          product_id: base.product_id != null ? String(base.product_id) : String(productId),
+          url: String(base.url || ""),
+          order_index,
+          is_main: base.is_main === true,
+          alt_text: base.alt_text == null ? undefined : String(base.alt_text),
+        } as ProductImage;
+      })
+      .sort((a, b) => Number(a.order_index || 0) - Number(b.order_index || 0));
+
+    const rawParams = Array.isArray(resp?.params) ? resp.params : [];
+    const normalizeId = (v: unknown): string | undefined => {
+      const s = v == null ? "" : String(v).trim();
+      return s ? s : undefined;
+    };
+    const params = rawParams
+      .map((p: any, idx: number) => {
+        const rawOrder =
+          typeof p?.order_index === "number" ? p.order_index : Number(p?.order_index);
+        const order_index = Number.isFinite(rawOrder) ? rawOrder : idx;
+        const base = p || {};
+        return {
+          ...base,
+          id: base.id != null ? String(base.id) : undefined,
+          product_id: base.product_id != null ? String(base.product_id) : String(productId),
+          name: String(base.name || ""),
+          value: String(base.value || ""),
+          order_index,
+          paramid: normalizeId(base.paramid),
+          valueid: normalizeId(base.valueid),
+        } as ProductParam;
+      })
+      .sort((a, b) => Number(a.order_index || 0) - Number(b.order_index || 0));
+
     return {
       product: (resp?.product || null) as Product | null,
       link: (resp?.link || null) as StoreProductLink | null,
-      images: (resp?.images || []) as ProductImage[],
-      params: (resp?.params || []) as ProductParam[],
+      images,
+      params,
       supplier: (resp?.supplier || null) as {
         id: number;
         supplier_name: string;
