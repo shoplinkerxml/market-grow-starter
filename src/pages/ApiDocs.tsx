@@ -1493,7 +1493,10 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden">
                   <DialogHeader>
-                    <DialogTitle>Available authorizations</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                      Available authorizations
+                    </DialogTitle>
                     <DialogDescription>
                       Значения сохраняются локально в браузере
                     </DialogDescription>
@@ -1623,7 +1626,10 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Экспорт</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Download className="h-4 w-4 text-muted-foreground" />
+                      Экспорт
+                    </DialogTitle>
                     <DialogDescription>
                       Скачайте Swagger/OpenAPI или Postman коллекцию
                     </DialogDescription>

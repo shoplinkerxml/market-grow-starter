@@ -282,7 +282,10 @@ export const LimitsList = ({
       <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, limit: null })}>
         <AlertDialogContent noOverlay>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('delete_limit_confirm')}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-muted-foreground" />
+              {t('delete_limit_confirm')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               <span className="block">{t('delete_limit_warning')}</span>
               {deleteDialog.limit?.name && (

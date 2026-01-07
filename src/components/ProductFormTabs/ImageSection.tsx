@@ -380,7 +380,10 @@ export function ImageSection(props: Props) {
           <Dialog open={reorderOpen} onOpenChange={(o) => setReorderOpen(!!o)}>
             <DialogContent className="max-w-3xl sm:max-w-4xl p-3 sm:p-4 max-h-[85vh] sm:max-h-[80vh] overflow-y-auto" overlayClassName="bg-black/50">
               <DialogHeader>
-                <DialogTitle>{t('reorder') || 'Змінити порядок зображень'}</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <ListOrdered className="h-4 w-4 text-muted-foreground" />
+                  {t('reorder') || 'Змінити порядок зображень'}
+                </DialogTitle>
                 <DialogDescription>{t('drag_to_reorder') || 'Перетягніть зображення, щоб змінити порядок. Максимум 15 фото.'}</DialogDescription>
               </DialogHeader>
               <DndContext sensors={sensors} onDragEnd={handleModalDragEnd}>

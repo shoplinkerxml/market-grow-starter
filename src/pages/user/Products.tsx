@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Package } from 'lucide-react';
+import { Package, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/PageHeader';
 import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
@@ -128,7 +128,10 @@ export const Products = () => {
       <DialogNoOverlay modal={false} open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogNoOverlayContent position="top-right" variant="info" className="p-[0.75rem] w-[min(22rem,90vw)] border-0" data-testid="user_products_delete_progress">
           <DialogNoOverlayHeader>
-            <DialogNoOverlayTitle>{t('deleting_product_title')}</DialogNoOverlayTitle>
+            <DialogNoOverlayTitle className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-muted-foreground" />
+              {t('deleting_product_title')}
+            </DialogNoOverlayTitle>
           </DialogNoOverlayHeader>
           <div className="text-sm text-muted-foreground">
             <span>{t('deleting_product')}{deletingName ? `: ${deletingName}` : ''}</span>

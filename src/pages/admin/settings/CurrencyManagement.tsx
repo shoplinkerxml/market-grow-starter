@@ -300,7 +300,8 @@ const CurrencyManagement = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent noOverlay>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Banknote className="h-4 w-4 text-muted-foreground" />
               {editingCurrency ? t("edit_currency") : t("add_currency")}
             </DialogTitle>
             <DialogDescription className="sr-only">

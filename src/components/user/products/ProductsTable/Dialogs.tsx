@@ -8,7 +8,7 @@ import {
   DialogNoOverlayTitle,
 } from "@/components/ui/dialog-no-overlay";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, Loader2, Trash2 } from "lucide-react";
 import type { Product } from "@/lib/product-service";
 
 export function CopyProgressDialog({ open, name, t }: { open: boolean; name: string | null; t: (k: string) => string }) {
@@ -234,7 +234,10 @@ export function DeleteDialog({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogNoOverlayHeader>
-          <DialogNoOverlayTitle>{t("delete_product_confirm")}</DialogNoOverlayTitle>
+          <DialogNoOverlayTitle className="text-sm flex items-center gap-2">
+            <Trash2 className="h-4 w-4 text-muted-foreground" />
+            {t("delete_product_confirm")}
+          </DialogNoOverlayTitle>
           <DialogNoOverlayDescription>
             {product?.name ? (
               <span>

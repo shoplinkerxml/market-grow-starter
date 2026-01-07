@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useI18n } from "@/i18n";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
 import { useDeleteUser } from "@/hooks/useUsers";
 
 interface UserProfile {
@@ -70,7 +70,10 @@ export function DeleteUserDialog({
             </div>
             <div>
               <AlertDialogTitle className="text-left">
-                {t("delete_user_title")}
+                <span className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4 text-muted-foreground" />
+                  {t("delete_user_title")}
+                </span>
               </AlertDialogTitle>
               <AlertDialogDescription className="text-left">
                 {t("delete_user_desc")}

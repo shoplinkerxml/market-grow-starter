@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import ParametersDataTable from '@/components/products/ParametersDataTable'
+import { Settings } from 'lucide-react'
 import type { ProductParam } from './types'
 
 type ParamForm = {
@@ -67,7 +68,8 @@ export default function ParamsSection(props: Props) {
           <Dialog open={props.isParamModalOpen} onOpenChange={props.setIsParamModalOpen}>
             <DialogContent data-testid="productForm_paramModal">
               <DialogHeader>
-                <DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <Settings className="h-4 w-4 text-muted-foreground" />
                   {props.editingParamIndex === null ? props.t('add_characteristic') : props.t('edit_characteristic')}
                 </DialogTitle>
                 <DialogDescription className="sr-only">

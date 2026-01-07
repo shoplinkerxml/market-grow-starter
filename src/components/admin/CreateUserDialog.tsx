@@ -23,7 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useI18n } from "@/i18n";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, UserPlus } from "lucide-react";
 import { useCreateUser } from "@/hooks/useUsers";
 import { useToast } from "@/hooks/use-toast";
 
@@ -102,7 +102,10 @@ export function CreateUserDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" noOverlay>
         <DialogHeader>
-          <DialogTitle>{t("create_user_title")}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-muted-foreground" />
+            {t("create_user_title")}
+          </DialogTitle>
           <DialogDescription>
             {t("create_user_desc")}
           </DialogDescription>

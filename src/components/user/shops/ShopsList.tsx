@@ -400,7 +400,10 @@ export const ShopsList = ({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('delete_shop_confirm')}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-muted-foreground" />
+              {t('delete_shop_confirm')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Цю дію неможливо скасувати. Магазин "{deleteDialog.shop?.store_name}" буде повністю видалено з системи.
             </AlertDialogDescription>

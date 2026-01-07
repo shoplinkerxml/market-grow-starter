@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Edit, Trash2, AlertTriangle, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { TariffService, type Tariff, type TariffFeature, type TariffLimit, type TariffFeatureInsert, type TariffLimitInsert } from '@/lib/tariff-service';
 import { useI18n } from '@/i18n';
 import { PageHeader } from '@/components/PageHeader';
@@ -333,7 +333,8 @@ const AdminTariffFeatures = () => {
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>
+                          <DialogTitle className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-muted-foreground" />
                             {editingFeature ? t('edit_feature') : t('add_new_feature')}
                           </DialogTitle>
                           <DialogDescription className="sr-only">
@@ -446,7 +447,8 @@ const AdminTariffFeatures = () => {
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>
+                          <DialogTitle className="flex items-center gap-2">
+                            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
                             {editingLimit ? t('edit_limit') : t('add_new_limit')}
                           </DialogTitle>
                           <DialogDescription className="sr-only">

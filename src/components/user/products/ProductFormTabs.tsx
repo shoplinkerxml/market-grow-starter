@@ -1112,7 +1112,8 @@ export const ProductFormTabs = ({ product, onSuccess, onCancel }: ProductFormTab
               <Dialog open={isParamModalOpen} onOpenChange={setIsParamModalOpen}>
                 <DialogContent data-testid="productForm_paramModal">
                   <DialogHeader>
-                    <DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-muted-foreground" />
                       {editingParamIndex === null ? t('add_characteristic') : t('edit_characteristic')}
                     </DialogTitle>
                     <DialogDescription className="sr-only">

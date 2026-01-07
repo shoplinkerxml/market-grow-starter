@@ -167,7 +167,10 @@ export const ProductsList = ({
       <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, product: null })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('delete_product_confirm')}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-muted-foreground" />
+              {t('delete_product_confirm')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Цю дію неможливо скасувати. Продукт "{deleteDialog.product?.name}" буде повністю видалено з системи.
             </AlertDialogDescription>

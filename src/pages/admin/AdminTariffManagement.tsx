@@ -424,7 +424,10 @@ const AdminTariffManagement = () => {
               </div>
               <div>
                 <AlertDialogTitle className="text-lg font-semibold">
-                  {t('confirm_delete_tariff')}
+                  <span className="flex items-center gap-2">
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    {t('confirm_delete_tariff')}
+                  </span>
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-sm text-gray-600 mt-1">
                   {t('delete_tariff_warning')}

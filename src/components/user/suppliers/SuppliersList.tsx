@@ -176,7 +176,10 @@ export const SuppliersList = ({
       <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, supplier: null })}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('delete_supplier_confirm')}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-muted-foreground" />
+              {t('delete_supplier_confirm')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Цю дію неможливо скасувати. Постачальник "{deleteDialog.supplier?.supplier_name}" буде повністю видалено з системи.
             </AlertDialogDescription>

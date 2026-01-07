@@ -11,8 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, Plus } from 'lucide-react';
-import { Save, X } from 'lucide-react';
+import { Trash2, Plus, Save, X, Settings } from 'lucide-react';
 import { useI18n } from "@/i18n";
 import { ShopService, type Shop, type UpdateShopData } from '@/lib/shop-service';
 import { useMarketplaces } from '@/hooks/useMarketplaces';
@@ -222,9 +221,12 @@ export const EditShopDialog = ({ shop, open, onOpenChange, onSuccess }: EditShop
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[clamp(30rem,70vw,46rem)] max-h-[80vh] overflow-y-auto py-6 sm:py-8" noOverlay>
+      <DialogContent className="max-w-[clamp(30rem,70vw,46rem)] max-h-[80vh] overflow-y-auto py-4 sm:py-5" noOverlay>
         <DialogHeader>
-          <DialogTitle>Редагувати магазин</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-4 w-4 text-muted-foreground" />
+            Редагувати магазин
+          </DialogTitle>
           <DialogDescription>
             Змініть назву та формат вашого магазину
           </DialogDescription>

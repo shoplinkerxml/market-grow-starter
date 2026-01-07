@@ -545,7 +545,10 @@ export default function ShopSettings() {
               }}>
             <DialogContent className="max-w-[clamp(22rem,60vw,32rem)]">
               <DialogHeader>
-                <DialogTitle>{t('edit') || 'Редагувати'}</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                  {t('edit') || 'Редагувати'}
+                </DialogTitle>
                 <DialogDescription className="sr-only">
                   {t('edit') || 'Редагувати'}
                 </DialogDescription>
@@ -647,7 +650,10 @@ export default function ShopSettings() {
         <Dialog open={savingShop} onOpenChange={() => void 0}>
           <DialogContent className="max-w-[clamp(16rem,40vw,20rem)]">
             <DialogHeader>
-              <DialogTitle className="text-sm">{t('save_changes') || 'Зберегти зміни'}</DialogTitle>
+              <DialogTitle className="text-sm flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                {t('save_changes') || 'Зберегти зміни'}
+              </DialogTitle>
               <DialogDescription className="sr-only">
                 Збереження налаштувань…
               </DialogDescription>

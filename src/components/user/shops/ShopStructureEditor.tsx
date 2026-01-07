@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Save } from 'lucide-react';
+import { Save, Settings } from 'lucide-react';
 import { useI18n } from "@/i18n";
 import { ShopService, type Shop, type ShopAggregated } from '@/lib/shop-service';
 import { toast } from 'sonner';
@@ -126,14 +126,17 @@ export const ShopStructureEditor = ({ shop, open, onOpenChange, onSuccess }: Sho
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] h-[95vh] max-w-[95vw] max-h-[95vh] flex flex-col overflow-hidden p-0 border-green-500/30 ring-2 ring-green-500/20 shadow-[0_0_24px_rgba(34,197,94,0.25)]">
-        <DialogHeader className="p-6 pb-4 pr-14 pt-10 flex-shrink-0">
-          <DialogTitle>Редагування XML структури - {shop.store_name}</DialogTitle>
+        <DialogHeader className="p-4 pb-3 pr-12 pt-7 flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-4 w-4 text-muted-foreground" />
+            Редагування XML структури - {shop.store_name}
+          </DialogTitle>
           <DialogDescription>
             Це ваша копія шаблону. Зміни не впливають на адмін шаблон.
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 overflow-auto px-6 pb-6">
+        <div className="flex-1 overflow-auto px-4 pb-4">
           {loadingStructure && !xmlStructure ? (
             <div className="text-center text-muted-foreground py-8">
               {t('loading') || 'Завантаження…'}
@@ -152,7 +155,7 @@ export const ShopStructureEditor = ({ shop, open, onOpenChange, onSuccess }: Sho
         </div>
 
         <div className="mt-auto bg-background border-t flex-shrink-0">
-          <DialogFooter className="p-6 flex-row justify-end gap-2">
+          <DialogFooter className="p-4 flex-row justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isBusy}>
               {t('close') || 'Закрити'}
             </Button>

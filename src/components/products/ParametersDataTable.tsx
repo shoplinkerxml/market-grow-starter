@@ -602,7 +602,10 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent noOverlay>
           <DialogHeader>
-            <DialogTitle>{t('tab_preview')}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <File className="h-4 w-4 text-muted-foreground" />
+              {t('tab_preview')}
+            </DialogTitle>
             <DialogDescription className="sr-only">
               {t('tab_preview')}
             </DialogDescription>

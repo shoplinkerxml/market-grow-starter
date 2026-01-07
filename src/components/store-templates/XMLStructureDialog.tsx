@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CodeXml } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -118,7 +119,10 @@ export const XMLStructureDialog = ({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col" noOverlay>
         <DialogHeader>
-          <DialogTitle>Визначення структури XML</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <CodeXml className="h-4 w-4 text-muted-foreground" />
+            Визначення структури XML
+          </DialogTitle>
           <DialogDescription>
             Вкажіть теги які відповідають за різні розділи в вашому XML файлі
           </DialogDescription>

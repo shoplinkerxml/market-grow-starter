@@ -21,7 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useI18n } from "@/i18n";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserCog } from "lucide-react";
 import { useUpdateUser } from "@/hooks/useUsers";
 
 // Schema outside component to avoid re-creation
@@ -106,7 +106,10 @@ export function EditUserDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" noOverlay>
         <DialogHeader>
-          <DialogTitle>{t("edit_user_title")}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <UserCog className="h-4 w-4 text-muted-foreground" />
+            {t("edit_user_title")}
+          </DialogTitle>
           <DialogDescription>
             {t("edit_user_desc")}
           </DialogDescription>

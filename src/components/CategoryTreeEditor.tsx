@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 import { CategoryService, type StoreCategory } from "@/lib/category-service";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, ChevronDown, MoreVertical, Plus, Pencil, Trash2, Check, X, Loader2, RefreshCw } from "lucide-react";
+import { ChevronRight, ChevronDown, MoreVertical, Plus, Pencil, Trash2, Check, X, Loader2, RefreshCw, FolderTree } from "lucide-react";
 import { runOptimisticOperation, useSyncStatus } from "@/lib/optimistic-mutation";
 type Supplier = {
   id: string;
@@ -419,7 +419,10 @@ export const CategoryTreeEditor: React.FC<CategoryTreeEditorProps> = ({
       <DialogNoOverlay modal={false} open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogNoOverlayContent position="top-right" className="p-[0.75rem] w-[min(22rem,90vw)]" data-testid="categoryTree_deleteProgress">
           <DialogNoOverlayHeader>
-            <DialogNoOverlayTitle>{t("deleting_category_title")}</DialogNoOverlayTitle>
+            <DialogNoOverlayTitle className="text-sm flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-muted-foreground" />
+              {t("deleting_category_title")}
+            </DialogNoOverlayTitle>
             <DialogNoOverlayDescription className="sr-only">
               {t("deleting_category_title")}
             </DialogNoOverlayDescription>
@@ -450,7 +453,10 @@ export const CategoryTreeEditor: React.FC<CategoryTreeEditorProps> = ({
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t("create_category_modal_title")}</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <FolderTree className="h-4 w-4 text-muted-foreground" />
+                {t("create_category_modal_title")}
+              </DialogTitle>
               <DialogDescription className="sr-only">
                 {t("create_category_modal_title")}
               </DialogDescription>
