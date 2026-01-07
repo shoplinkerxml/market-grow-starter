@@ -19,12 +19,17 @@ export const PageHeader = ({
 }: PageHeaderProps) => {
   
   return (
-    <div className={cn("mb-6", className)}>
-      <div className="flex items-center justify-between">
+    <div
+      className={cn(
+        "mb-4 rounded-md bg-emerald-50/80 px-4 py-2 dark:bg-emerald-950/20",
+        className
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{title}</h1>
+          <h1 className="text-xl font-bold">{title}</h1>
           {description && (
-            <p className="text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-0.5 text-sm">
               {description}
             </p>
           )}

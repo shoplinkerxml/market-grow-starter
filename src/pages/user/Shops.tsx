@@ -21,6 +21,7 @@ export const Shops = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [shopsCount, setShopsCount] = useState(0);
   const [limitInfo, setLimitInfo] = useState<ShopLimitInfo>({ current: 0, max: 0, canCreate: false });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const queryClient = useQueryClient();
   const { tariffLimits, user } = useOutletContext<{ tariffLimits: Array<{ limit_name: string; value: number }>; user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
@@ -73,6 +74,11 @@ export const Shops = () => {
     setViewMode('list');
   };
 
+  const handleCreateSuccess = () => {
+    setViewMode('list');
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await ShopService.deleteShop(id);
@@ -110,7 +116,7 @@ export const Shops = () => {
                   size="icon"
                   className="focus-visible:ring-0 focus-visible:ring-offset-0"
                   title={t('refresh') || 'Оновити'}
-                  onClick={() => window.location.reload()}
+                  onClick={() => setRefreshTrigger((prev) => prev + 1)}
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
@@ -145,13 +151,13 @@ export const Shops = () => {
           onDelete={handleDelete}
           onCreateNew={handleCreateNew}
           onShopsLoaded={handleShopsLoaded}
-          refreshTrigger={0}
+          refreshTrigger={refreshTrigger}
         />
       )}
 
       {viewMode === 'create' && (
         <ShopForm
-          onSuccess={handleBackToList}
+          onSuccess={handleCreateSuccess}
           onCancel={handleBackToList}
         />
       )}

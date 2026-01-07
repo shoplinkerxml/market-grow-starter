@@ -103,7 +103,21 @@ export const ShopsList = ({
   // Інвалідація при зміні refreshTrigger
   useEffect(() => {
     if ((refreshTrigger ?? 0) > 0) {
-      queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"] });
+      (async () => {
+        try {
+          try {
+            ShopService.clearAllCaches();
+          } catch {
+            void 0;
+          }
+          const fresh = await ShopService.getShopsAggregated({ force: true, forceCounts: true });
+          queryClient.setQueryData<ShopWithMarketplace[]>(["user", uid, "shops"], () => {
+            return Array.isArray(fresh) ? (fresh as ShopWithMarketplace[]) : [];
+          });
+        } catch {
+          queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"] });
+        }
+      })();
     }
   }, [refreshTrigger, queryClient, uid]);
 

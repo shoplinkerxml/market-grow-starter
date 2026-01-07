@@ -18,12 +18,17 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   return (
-    <div className={cn("space-y-4", className)}>
+    <div
+      className={cn(
+        "space-y-2 rounded-md bg-emerald-50/80 px-4 py-2 dark:bg-emerald-950/20",
+        className
+      )}
+    >
       {/* Breadcrumb */}
       <Breadcrumb items={breadcrumbItems} />
       
       {/* Title row with inline actions, description below */}
-      <div className="space-y-2">
+      <div className="space-y-1">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-xl xs:text-2xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">{title}</h1>
           {actions && (

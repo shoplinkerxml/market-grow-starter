@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -30,6 +30,8 @@ export const ShopDetail = () => {
   const uid = user?.id ? String(user.id) : "current";
   const { t } = useI18n();
   const breadcrumbs = useBreadcrumbs();
+  const [structureOpen, setStructureOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const isReload = useMemo(() => {
     try {
       const entries = typeof performance !== "undefined" ? (performance.getEntriesByType("navigation") as PerformanceNavigationTiming[]) : [];
@@ -60,6 +62,11 @@ export const ShopDetail = () => {
   useEffect(() => {
     if (!shopId) navigate('/user/shops');
   }, [shopId, navigate]);
+
+  useEffect(() => {
+    setStructureOpen(false);
+    setExportOpen(false);
+  }, [shopId]);
 
   useEffect(() => {
     if (!shopId || !modalAction) return;
@@ -94,8 +101,11 @@ export const ShopDetail = () => {
   const shopBreadcrumbs = useMemo(() => {
     const marketplace = shop?.marketplace ? String(shop.marketplace) : '';
     const label = marketplace || shop?.store_name || t('loading') || 'Завантаження...';
-    return [...breadcrumbs, { label, current: true }];
-  }, [breadcrumbs, shop?.marketplace, shop?.store_name, t]);
+        return [...breadcrumbs, { label, current: true }];
+      }, [breadcrumbs, shop?.marketplace, shop?.store_name, t]);
+
+  const isStructureOpen = structureOpen || modalAction === "structure";
+  const isExportOpen = exportOpen || modalAction === "export";
 
   const handleDeleteProduct = useCallback(
     async (product: Product) => {
@@ -206,7 +216,7 @@ export const ShopDetail = () => {
                 variant="ghost"
                 size="icon"
                 className="hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                onClick={() => navigate(`/user/shops/${shopId}/structure`)}
+                onClick={() => setStructureOpen(true)}
                 title={t('xml_structure') || 'Структура XML'}
               >
                 <Settings className="h-4 w-4" />
@@ -215,7 +225,7 @@ export const ShopDetail = () => {
                 variant="ghost"
                 size="icon"
                 className="hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                onClick={() => navigate(`/user/shops/${shopId}/export`)}
+                onClick={() => setExportOpen(true)}
                 title={t('export_section') || 'Експорт'}
               >
                 <Share2 className="h-4 w-4" />
@@ -253,16 +263,20 @@ export const ShopDetail = () => {
 
       <ShopStructureEditor
         shop={shop}
-        open={modalAction === "structure"}
+        open={isStructureOpen}
         onOpenChange={(open) => {
-          if (!open) closeModal();
+          if (open) return;
+          if (modalAction === "structure") closeModal();
+          else setStructureOpen(false);
         }}
       />
       <ExportDialog
         storeId={shopId}
-        open={modalAction === "export"}
+        open={isExportOpen}
         onOpenChange={(open) => {
-          if (!open) closeModal();
+          if (open) return;
+          if (modalAction === "export") closeModal();
+          else setExportOpen(false);
         }}
       />
     </>
