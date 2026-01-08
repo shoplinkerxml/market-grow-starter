@@ -2,11 +2,59 @@ import { ShopCountsService } from "@/lib/shop-counts";
 import { ProductLinkService } from "@/lib/product/product-link-service";
 import { queryClient } from "@/lib/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ShopService } from "@/lib/shop-service";
+import { ShopService, type ShopAggregated } from "@/lib/shop-service";
+import { PersistentCacheService } from "@/lib/persistent-cache-service";
 
 type StoreLink = { product_id: string; store_id: string };
 
 export class ShopProductSyncService {
+  /**
+   * Immediately update counters in react-query cache for given stores.
+   * This is the primary mechanism to keep UI in sync after mutations.
+   */
+  private static async refreshCountersFromServer(
+    uids: string[],
+    storeIds: string[],
+  ): Promise<void> {
+    if (storeIds.length === 0) return;
+    
+    try {
+      // Fetch fresh data from server (which reads from Redis)
+      const refreshed = await ShopService.getShopsAggregated({ force: true, forceCounts: true });
+      
+      for (const uid of uids) {
+        // Update main shops list cache
+        queryClient.setQueryData(["user", uid, "shops"], refreshed);
+        queryClient.setQueryData(["user", uid, "shops", "menu"], refreshed);
+        
+        // Update individual shop counts caches
+        for (const storeId of storeIds) {
+          const found = (refreshed || []).find((s: any) => String(s?.id) === String(storeId));
+          if (!found) continue;
+          
+          const productsCount = Math.max(0, Number((found as any).productsCount ?? 0) || 0);
+          const categoriesCount = productsCount === 0 ? 0 : Math.max(0, Number((found as any).categoriesCount ?? 0) || 0);
+          
+          // Set both the counts cache and shop detail cache
+          ShopCountsService.set(queryClient, uid, storeId, { productsCount, categoriesCount });
+        }
+      }
+      
+      // Also bump persistent cache
+      const deltas: Record<string, number> = {};
+      for (const s of refreshed || []) {
+        const sid = String((s as any)?.id || "");
+        if (!sid || !storeIds.includes(sid)) continue;
+        deltas[sid] = 0; // Just touch to update
+      }
+      await PersistentCacheService.bumpCachedShopsCounts(deltas);
+    } catch (error) {
+      console.warn("[ShopProductSyncService] refreshCountersFromServer failed:", error);
+      // Fallback: invalidate caches
+      ShopService.invalidateInternalCache();
+    }
+  }
+
   static async syncAfterBulkAdd(
     addedByStore: Record<string, number>,
     categoryNamesByStore: Record<string, string[]>,
@@ -18,36 +66,21 @@ export class ShopProductSyncService {
     if (!userId) return;
 
     const uids = Array.from(new Set([String(userId), "current"]));
-
     const storeIds = Object.keys(addedByStore);
 
+    // Suppress realtime updates for these stores to avoid double-counting
     for (const uid of uids) {
       for (const storeId of storeIds) {
         const addedCount = addedByStore[storeId] || 0;
         if (addedCount === 0) continue;
-
         ShopCountsService.suppressRealtimeProductsDelta(uid, storeId, addedCount);
       }
     }
 
-    try {
-      const refreshed = await ShopService.getShopsAggregated({ force: true, forceCounts: true });
-      for (const uid of uids) {
-        queryClient.setQueryData(["user", uid, "shops"], refreshed);
-        queryClient.setQueryData(["user", uid, "shops", "menu"], refreshed);
-        for (const storeId of storeIds) {
-          const found = (refreshed || []).find((s: any) => String(s?.id) === String(storeId));
-          if (!found) continue;
-          const productsCount = Math.max(0, Number((found as any).productsCount ?? 0) || 0);
-          const categoriesCount =
-            productsCount === 0 ? 0 : Math.max(0, Number((found as any).categoriesCount ?? 0) || 0);
-          queryClient.setQueryData(ShopCountsService.key(uid, storeId), { productsCount, categoriesCount });
-        }
-      }
-      void categoryNamesByStore;
-    } catch {
-      ShopService.invalidateInternalCache();
-    }
+    // Immediately refresh counters from server
+    await this.refreshCountersFromServer(uids, storeIds);
+    
+    void categoryNamesByStore;
 
     if (Array.isArray(links) && links.length > 0) {
       const storeIdsByProduct = new Map<string, Set<string>>();
@@ -118,36 +151,21 @@ export class ShopProductSyncService {
     if (!userId) return;
 
     const uids = Array.from(new Set([String(userId), "current"]));
-
     const storeIds = Object.keys(deletedByStore);
 
+    // Suppress realtime updates for these stores to avoid double-counting
     for (const uid of uids) {
       for (const storeId of storeIds) {
         const deletedCount = deletedByStore[storeId] || 0;
         if (deletedCount === 0) continue;
-
         ShopCountsService.suppressRealtimeProductsDelta(uid, storeId, -deletedCount);
       }
     }
 
-    try {
-      const refreshed = await ShopService.getShopsAggregated({ force: true, forceCounts: true });
-      for (const uid of uids) {
-        queryClient.setQueryData(["user", uid, "shops"], refreshed);
-        queryClient.setQueryData(["user", uid, "shops", "menu"], refreshed);
-        for (const storeId of storeIds) {
-          const found = (refreshed || []).find((s: any) => String(s?.id) === String(storeId));
-          if (!found) continue;
-          const productsCount = Math.max(0, Number((found as any).productsCount ?? 0) || 0);
-          const categoriesCount =
-            productsCount === 0 ? 0 : Math.max(0, Number((found as any).categoriesCount ?? 0) || 0);
-          queryClient.setQueryData(ShopCountsService.key(uid, storeId), { productsCount, categoriesCount });
-        }
-      }
-      void categoryNamesByStore;
-    } catch {
-      ShopService.invalidateInternalCache();
-    }
+    // Immediately refresh counters from server
+    await this.refreshCountersFromServer(uids, storeIds);
+    
+    void categoryNamesByStore;
 
     const removeSet = new Set((storeIdsToRemove || storeIds).map((s) => String(s)).filter(Boolean));
     if (removeSet.size > 0 && productIds.length > 0) {

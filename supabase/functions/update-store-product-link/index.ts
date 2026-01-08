@@ -134,10 +134,11 @@ async function setCountsToRedis(storeId: string, counts: ShopCounts): Promise<vo
   ]);
 }
 
-async function invalidateCounts(storeId: string): Promise<void> {
+async function invalidateAndRecomputeCounts(storeId: string): Promise<void> {
   const sid = String(storeId || "").trim();
   if (!sid) return;
-  await redisPipeline([["DEL", buildCountsKey(sid)]]);
+  const counts = await recomputeCountsForStore(sid);
+  await setCountsToRedis(sid, counts);
 }
 
 async function invalidateShopsList(userId: string | null | undefined): Promise<void> {
@@ -305,7 +306,8 @@ serve(async (req) => {
         )
       }
 
-      await invalidateCounts(storeId)
+      await invalidateAndRecomputeCounts(storeId)
+      await invalidateShopsList(userId)
       await invalidateProductStores(productId)
       return new Response(JSON.stringify({ link: inserted }), {
         status: 200,
@@ -331,7 +333,8 @@ serve(async (req) => {
       )
     }
 
-    await invalidateCounts(storeId)
+    await invalidateAndRecomputeCounts(storeId)
+    await invalidateShopsList(userId)
     await invalidateProductStores(productId)
     return new Response(JSON.stringify({ link: updated }), {
       status: 200,
