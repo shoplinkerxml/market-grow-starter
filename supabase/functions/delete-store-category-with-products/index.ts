@@ -55,10 +55,76 @@ function buildProductStoresKey(productId: string): string {
   return `${PRODUCT_STORES_KEY_PREFIX}${productId}`
 }
 
-async function invalidateCounts(storeIds: string[]): Promise<void> {
+type ShopCounts = { productsCount: number; categoriesCount: number }
+
+function normalizeCounts(input: any): ShopCounts {
+  const productsCount = Math.max(0, Number(input?.productsCount ?? input?.products_count ?? 0) || 0)
+  const categoriesRaw = Math.max(0, Number(input?.categoriesCount ?? input?.categories_count ?? 0) || 0)
+  return { productsCount, categoriesCount: productsCount === 0 ? 0 : categoriesRaw }
+}
+
+const SHOP_COUNTS_TTL_SECONDS = Math.max(
+  5,
+  Number(Deno.env.get("SHOP_COUNTS_TTL_SECONDS") || "30") || 30,
+)
+
+async function recomputeCountsForStore(supabase: any, storeId: string): Promise<ShopCounts> {
+  const sid = String(storeId || "").trim()
+  if (!sid) return { productsCount: 0, categoriesCount: 0 }
+
+  const { data: links } = await supabase
+    .from("store_product_links")
+    .select(
+      "store_id, is_active, product_id, custom_category_id, store_products!inner(category_id,category_external_id)",
+    )
+    .eq("store_id", sid)
+    .eq("is_active", true)
+
+  let productsCount = 0
+  const categories = new Set<string>()
+
+  for (const link of links || []) {
+    productsCount += 1
+    const base = (link as any)?.store_products || {}
+    const customCat = (link as any)?.custom_category_id
+    const catKey =
+      customCat != null
+        ? `ext:${String(customCat)}`
+        : base?.category_id != null
+          ? `cat:${String(base.category_id)}`
+          : base?.category_external_id != null
+            ? `ext:${String(base.category_external_id)}`
+            : null
+    if (catKey) categories.add(catKey)
+  }
+
+  const categoriesCount = productsCount === 0 ? 0 : categories.size
+  return normalizeCounts({ productsCount, categoriesCount })
+}
+
+async function setCountsToRedis(storeId: string, counts: ShopCounts): Promise<void> {
+  const sid = String(storeId || "").trim()
+  if (!sid) return
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return
+  const now = Date.now()
+  await redisPipeline([
+    [
+      "SET",
+      buildCountsKey(sid),
+      JSON.stringify({ ...normalizeCounts(counts), ts: now }),
+      "EX",
+      SHOP_COUNTS_TTL_SECONDS,
+    ],
+  ])
+}
+
+async function invalidateAndRecomputeCounts(supabase: any, storeIds: string[]): Promise<void> {
   const ids = Array.from(new Set((storeIds || []).map((v) => String(v || "").trim()).filter(Boolean)))
   if (ids.length === 0) return
-  await redisPipeline(ids.map((id) => ["DEL", buildCountsKey(id)]))
+  for (const sid of ids) {
+    const counts = await recomputeCountsForStore(supabase, sid)
+    await setCountsToRedis(sid, counts)
+  }
 }
 
 async function invalidateProductStores(productIds: string[]): Promise<void> {
@@ -151,7 +217,7 @@ Deno.serve(async (req) => {
     if (delCatErr) return new Response(JSON.stringify({ error: "db_error" }), { status: 500, headers: CORS_HEADERS })
 
     try {
-      await invalidateCounts([store_id])
+      await invalidateAndRecomputeCounts(supabase, [store_id])
       await invalidateProductStores(productIds)
     } catch {
       void 0
