@@ -31,6 +31,7 @@ export const ShopDetail = () => {
   const breadcrumbs = useBreadcrumbs();
   const [structureOpen, setStructureOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [tableProductsCount, setTableProductsCount] = useState<number | null>(null);
   const isReload = useMemo(() => {
     try {
       const entries = typeof performance !== "undefined" ? (performance.getEntriesByType("navigation") as PerformanceNavigationTiming[]) : [];
@@ -154,8 +155,6 @@ export const ShopDetail = () => {
       </div>
     );
   }
-
-  const [tableProductsCount, setTableProductsCount] = useState<number | null>(null);
 
   const productsCountBase = Math.max(0, Number(shop.productsCount ?? 0));
   const productsCount = Math.max(productsCountBase, Math.max(0, Number(tableProductsCount ?? 0)));
