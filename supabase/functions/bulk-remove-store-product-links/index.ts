@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
     await invalidateProductStores(productIds)
     await invalidateShopsList(userId)
     return new Response(
-      JSON.stringify(data || { deleted: 0, deletedByStore: {}, categoryNamesByStore: {} }),
+      JSON.stringify(data || { deleted: 0, deletedByStore: {}, categoryNamesByStore: {}, deletedProductIds: [] }),
       { status: 200, headers: CORS_HEADERS }
     )
 

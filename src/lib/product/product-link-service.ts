@@ -92,9 +92,15 @@ export class ProductLinkService {
     deleted: number;
     deletedByStore: Record<string, number>;
     categoryNamesByStore?: Record<string, string[]>;
+    deletedProductIds?: string[];
   }> {
     await ProductLinkService.ensureValidSession();
-    let out: { deleted?: number; deletedByStore?: Record<string, number>; categoryNamesByStore?: Record<string, string[]> };
+    let out: { 
+      deleted?: number; 
+      deletedByStore?: Record<string, number>; 
+      categoryNamesByStore?: Record<string, string[]>;
+      deletedProductIds?: string[];
+    };
     try {
       out = await invokeEdgeWithAuth("bulk-remove-store-product-links", { product_ids: productIds, store_ids: storeIds });
     } catch (error) {
@@ -105,11 +111,15 @@ export class ProductLinkService {
     try {
       const deletedByStore = out.deletedByStore || {};
       const categoryNamesByStore = out.categoryNamesByStore || {};
+      // Используем deletedProductIds из ответа сервера (когда productIds не указаны)
+      const actualProductIds = Array.isArray(out.deletedProductIds) && out.deletedProductIds.length > 0
+        ? out.deletedProductIds.map(String)
+        : productIds;
       
       await ShopProductSyncService.syncAfterBulkRemove(
         deletedByStore,
         categoryNamesByStore,
-        productIds,
+        actualProductIds,
         storeIds
       );
     } catch (error) {
@@ -120,6 +130,7 @@ export class ProductLinkService {
       deleted: out.deleted ?? 0,
       deletedByStore: out.deletedByStore ?? {},
       categoryNamesByStore: out.categoryNamesByStore || {},
+      deletedProductIds: Array.isArray(out.deletedProductIds) ? out.deletedProductIds.map(String) : [],
     };
   }
 
