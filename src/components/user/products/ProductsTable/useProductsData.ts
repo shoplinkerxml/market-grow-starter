@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useProductsRealtime } from "@/hooks/useProductsRealtime";
+import { useProductLinksRealtime } from "@/hooks/useProductLinksRealtime";
 import { ProductService } from "@/lib/product-service";
 import { UserAuthService } from "@/lib/user-auth-service";
 import { ShopService, type ShopAggregated } from "@/lib/shop-service";
@@ -198,7 +199,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
   }, [pageIndex, pageSize, items.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useProductsRealtime(storeId, uid, queryClient);
-
+  useProductLinksRealtime(uid, queryClient);
   const storesQuery = useQuery<ShopAggregated[]>({
     queryKey: shopsMenuKey,
     queryFn: async () => {

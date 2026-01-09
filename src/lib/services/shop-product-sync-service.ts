@@ -125,6 +125,11 @@ export class ShopProductSyncService {
       }
     }
 
+    // Notify realtime hook to suppress updates for these products
+    if (productIds.length > 0) {
+      window.dispatchEvent(new CustomEvent("product-links-mutation", { detail: { productIds } }));
+    }
+
     for (const productId of productIds) {
       ProductLinkService.invalidateStoreLinksCache(productId);
     }
@@ -203,6 +208,11 @@ export class ShopProductSyncService {
           },
         );
       }
+    }
+
+    // Notify realtime hook to suppress updates for these products
+    if (productIds.length > 0) {
+      window.dispatchEvent(new CustomEvent("product-links-mutation", { detail: { productIds } }));
     }
 
     for (const productId of productIds) {
