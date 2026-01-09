@@ -269,22 +269,28 @@ function createStoresColumn(config: ColumnConfig): ColumnDef<ProductRow> {
       
       return selected.some(name => storeNamesForProduct.includes(name));
     }) as FilterFn<ProductRow>,
-    header: ({ column, table }) => renderHeader(
-      config.t("stores"), 
-      column, 
-      table, 
-      <ColumnFilterMenu column={column} extraOptions={Object.values(config.storeNames)} />
+    header: ({ column, table }) => (
+      <div className="flex justify-center w-full">
+        {renderHeader(
+          config.t("stores"), 
+          column, 
+          table, 
+          <ColumnFilterMenu column={column} extraOptions={Object.values(config.storeNames)} />
+        )}
+      </div>
     ),
     size: 96,
     cell: ({ row }) => (
-      <StoresBadgeCell
-        product={row.original}
-        storeNames={config.storeNames}
-        storesList={config.stores}
-        prefetchStores={config.loadStoresForMenu}
-        onRemove={config.handleRemoveStoreLink}
-        onStoresUpdate={config.handleStoresUpdate}
-      />
+      <div className="flex justify-center w-full">
+        <StoresBadgeCell
+          product={row.original}
+          storeNames={config.storeNames}
+          storesList={config.stores}
+          prefetchStores={config.loadStoresForMenu}
+          onRemove={config.handleRemoveStoreLink}
+          onStoresUpdate={config.handleStoresUpdate}
+        />
+      </div>
     ),
   };
 }

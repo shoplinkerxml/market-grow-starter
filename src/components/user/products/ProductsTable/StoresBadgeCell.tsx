@@ -192,16 +192,16 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
   }
 
   return (
-    <div className="w-full flex flex-col gap-1">
+    <div className="w-full flex flex-wrap gap-1 justify-center">
       {storeIds.map((id) => {
         const name = storeNames[String(id)] || "";
         const label = name || "…";
         const isOpen = badgeOpenId === String(id);
         return (
-          <div key={id} className="inline-flex items-center">
+          <div key={id} className="flex items-center min-w-[fit-content] max-w-full">
             <Badge
               variant="secondary"
-              className="text-[11px] pr-0 border border-emerald-200 bg-emerald-50 text-emerald-700 transition-transform shadow-sm hover:shadow-md hover:-translate-y-[1px] hover:border-emerald-300"
+              className="w-full justify-center h-5 pl-[1px] pr-[1px] rounded-sm text-[10px] border border-emerald-200 bg-emerald-50 text-emerald-700 transition-transform shadow-sm hover:shadow-md hover:-translate-y-[1px] hover:border-emerald-300 max-w-full"
             >
               <DropdownMenu
                 open={isOpen}
@@ -301,7 +301,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
               {onRemove ? (
                 <button
                   type="button"
-                  className="ml-1 inline-flex items-center justify-center h-4 w-4 rounded hover:bg-emerald-100 text-emerald-700"
+                  className="ml-0.5 inline-flex items-center justify-center h-[10px] w-[10px] rounded hover:bg-emerald-100 text-emerald-700"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemove?.(String(product.id), String(id));
@@ -309,7 +309,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                   aria-label={`remove_store_${id}`}
                   data-testid={`user_products_store_remove_${id}`}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x h-3 w-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x h-[8px] w-[8px]">
                     <path d="M18 6 6 18"></path>
                     <path d="M6 6l12 12"></path>
                   </svg>
