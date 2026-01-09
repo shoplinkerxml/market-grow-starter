@@ -146,8 +146,9 @@ export const UserLayoutContent = ({
       refetch: refreshUserData,
       subscription: guardSubscription,
       tariffLimits: guardTariffLimits,
+      sidebarCollapsed,
     }),
-    [guardSubscription, guardTariffLimits, menuItems, refreshMenuItems, refreshUserData, user],
+    [guardSubscription, guardTariffLimits, menuItems, refreshMenuItems, refreshUserData, user, sidebarCollapsed],
   );
 
   return (

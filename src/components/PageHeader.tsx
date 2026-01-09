@@ -37,9 +37,6 @@ export function PageHeader({
             </div>
           )}
         </div>
-        {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
-        )}
       </div>
     </div>
   );

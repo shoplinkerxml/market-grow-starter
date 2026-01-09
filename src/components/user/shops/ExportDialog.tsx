@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
+import { useOutletContext } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,8 @@ import { ExportService, type ExportLink } from "@/lib/export-service";
 import { Copy, RefreshCw, Link as LinkIcon, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
+import type { UserProtectedOutletContext } from "@/components/user-layout/types";
 
 type Props = {
   storeId: string;
@@ -18,6 +21,7 @@ export const ExportDialog = ({ storeId, open, onOpenChange }: Props) => {
   const { t } = useI18n();
   const [links, setLinks] = useState<ExportLink[]>([]);
   const [loading, setLoading] = useState(false);
+  const { sidebarCollapsed } = useOutletContext<UserProtectedOutletContext>() || {};
 
   const loadLinks = useCallback(async () => {
     try {
@@ -105,7 +109,12 @@ export const ExportDialog = ({ storeId, open, onOpenChange }: Props) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[95vw] sm:max-w-[clamp(24rem,70vw,40rem)] overflow-x-hidden border border-emerald-200"
+        className={cn(
+          "max-w-[95vw] w-full overflow-x-hidden border border-emerald-200",
+          "sm:w-fit sm:max-w-[90vw]",
+          sidebarCollapsed === false && "min-[1393px]:left-[calc(50%+8rem)]",
+          sidebarCollapsed === true && "min-[1393px]:left-[calc(50%+2rem)]"
+        )}
         data-testid="user_shop_export_dialog"
       >
         <DialogHeader>
@@ -132,30 +141,36 @@ export const ExportDialog = ({ storeId, open, onOpenChange }: Props) => {
             <div className="space-y-3">
               <div className="space-y-2" data-testid="user_shop_export_xml">
                 <div className="text-sm font-medium">XML</div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input readOnly value={xmlUrl} className="text-xs w-full sm:flex-1" data-testid="user_shop_export_xml_value" />
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                <div className="flex items-center gap-2">
+                  <Input 
+                    readOnly 
+                    value={xmlUrl} 
+                    className="text-xs min-w-0 w-auto" 
+                    size={Math.max(40, xmlUrl.length)}
+                    data-testid="user_shop_export_xml_value" 
+                  />
+                  <div className="flex items-center gap-2 shrink-0">
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full sm:w-auto"
+                      size="icon"
                       onClick={() => createOrUpdate("xml")}
                       disabled={loading}
                       data-testid="user_shop_export_create_xml"
+                      title={xmlLink ? t("refresh_export") : t("create")}
                     >
-                      {xmlLink ? <RefreshCw className="mr-2 h-4 w-4" /> : <LinkIcon className="mr-2 h-4 w-4" />}
-                      {xmlLink ? t("refresh_export") : t("create")}
+                      {xmlLink ? <RefreshCw className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full sm:w-auto"
+                      size="icon"
                       onClick={() => void copyToClipboard(xmlUrl)}
                       disabled={!xmlUrl || loading}
                       data-testid="user_shop_export_copy_xml"
+                      title={t("copy_link")}
                     >
-                      <Copy className="mr-2 h-4 w-4" />
-                      {t("copy_link")}
+                      <Copy className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -163,30 +178,36 @@ export const ExportDialog = ({ storeId, open, onOpenChange }: Props) => {
 
               <div className="space-y-2" data-testid="user_shop_export_csv">
                 <div className="text-sm font-medium">CSV</div>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Input readOnly value={csvUrl} className="text-xs w-full sm:flex-1" data-testid="user_shop_export_csv_value" />
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                <div className="flex items-center gap-2">
+                  <Input 
+                    readOnly 
+                    value={csvUrl} 
+                    className="text-xs min-w-0 w-auto" 
+                    size={Math.max(40, csvUrl.length)}
+                    data-testid="user_shop_export_csv_value" 
+                  />
+                  <div className="flex items-center gap-2 shrink-0">
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full sm:w-auto"
+                      size="icon"
                       onClick={() => createOrUpdate("csv")}
                       disabled={loading}
                       data-testid="user_shop_export_create_csv"
+                      title={csvLink ? t("refresh_export") : t("create")}
                     >
-                      {csvLink ? <RefreshCw className="mr-2 h-4 w-4" /> : <LinkIcon className="mr-2 h-4 w-4" />}
-                      {csvLink ? t("refresh_export") : t("create")}
+                      {csvLink ? <RefreshCw className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full sm:w-auto"
+                      size="icon"
                       onClick={() => void copyToClipboard(csvUrl)}
                       disabled={!csvUrl || loading}
                       data-testid="user_shop_export_copy_csv"
+                      title={t("copy_link")}
                     >
-                      <Copy className="mr-2 h-4 w-4" />
-                      {t("copy_link")}
+                      <Copy className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -194,12 +215,6 @@ export const ExportDialog = ({ storeId, open, onOpenChange }: Props) => {
             </div>
           </div>
         </div>
-
-        <DialogFooter className="flex-row justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            {t("close")}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

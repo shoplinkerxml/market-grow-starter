@@ -33,6 +33,7 @@ export type UserProtectedOutletContext = {
   contentBlocked?: boolean;
   bootstrapping?: boolean;
   authLoader?: AuthLoaderMeta;
+  sidebarCollapsed?: boolean;
 };
 
 export type MenuSectionModel = {

@@ -28,11 +28,6 @@ export const PageHeader = ({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold">{title}</h1>
-          {description && (
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              {description}
-            </p>
-          )}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>
