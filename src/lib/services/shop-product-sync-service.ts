@@ -151,7 +151,9 @@ export class ShopProductSyncService {
     if (!userId) return;
 
     const uids = Array.from(new Set([String(userId), "current"]));
-    const storeIds = Object.keys(deletedByStore);
+    const storeIds = Object.keys(deletedByStore).length > 0 
+      ? Object.keys(deletedByStore) 
+      : (storeIdsToRemove || []);
 
     // Suppress realtime updates for these stores to avoid double-counting
     for (const uid of uids) {
@@ -168,7 +170,9 @@ export class ShopProductSyncService {
     void categoryNamesByStore;
 
     const removeSet = new Set((storeIdsToRemove || storeIds).map((s) => String(s)).filter(Boolean));
-    if (removeSet.size > 0 && productIds.length > 0) {
+    const productIdsSet = new Set(productIds.map(String));
+    
+    if (removeSet.size > 0 && productIdsSet.size > 0) {
       for (const uid of uids) {
         queryClient.setQueriesData(
           {
@@ -187,7 +191,7 @@ export class ShopProductSyncService {
                 const products = Array.isArray(p?.products) ? p.products : [];
                 const nextProducts = products.map((prod: any) => {
                   const pid = String(prod?.id ?? "");
-                  if (!pid || !productIds.includes(pid)) return prod;
+                  if (!pid || !productIdsSet.has(pid)) return prod;
                   const prevIds = Array.isArray(prod?.linkedStoreIds) ? prod.linkedStoreIds.map(String) : [];
                   if (prevIds.length === 0) return prod;
                   const nextIds = prevIds.filter((sid) => !removeSet.has(String(sid)));
