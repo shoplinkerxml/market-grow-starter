@@ -429,6 +429,9 @@ export const commonDictionary: Dictionary = {
   cannot_delete_base_currency: { uk: "Неможливо видалити базову валюту", en: "Cannot delete base currency" },
   auth_processing: { uk: "Обробка авторизації…", en: "Processing authentication…" },
   back: { uk: "Назад", en: "Back" },
+  updating_data: { uk: "Оновлення даних", en: "Updating Data" },
+  updating_data_desc: { uk: "Будь ласка, зачекайте, поки ми синхронізуємо ваші дані з сервером...", en: "Please wait while we synchronize your data with the server..." },
+  please_wait: { uk: "Будь ласка, зачекайте...", en: "Please wait..." },
   breadcrumb_dashboard: { uk: "Дашборд", en: "Dashboard" },
   btn_add: { uk: "Додати", en: "Add" },
   btn_upload: { uk: "Завантажити", en: "Upload" },
@@ -637,4 +640,7 @@ export const commonDictionary: Dictionary = {
     uk: "Актуальні дані на всіх маркетплейсах 24/7", 
     en: "Up-to-date data on all marketplaces 24/7" 
   },
+  data_updated: { uk: "Дані оновлено", en: "Data updated" },
+  update_failed: { uk: "Помилка оновлення", en: "Update failed" },
+  refresh_data: { uk: "Оновити дані", en: "Refresh data" },
 };

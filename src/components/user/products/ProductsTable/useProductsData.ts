@@ -4,7 +4,7 @@ import { useProductsRealtime } from "@/hooks/useProductsRealtime";
 import { useProductLinksRealtime } from "@/hooks/useProductLinksRealtime";
 import { ProductService } from "@/lib/product-service";
 import { UserAuthService } from "@/lib/user-auth-service";
-import { ShopService, type ShopAggregated } from "@/lib/shop-service";
+import { type ShopAggregated } from "@/lib/shop-service";
 import { ShopCountsService } from "@/lib/shop-counts";
 import type { ProductRow } from "./columns";
 
@@ -215,12 +215,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
         ? ((authMe as any).userStores as Array<{ id: string; store_name: string }>)
         : [];
       if (rows.length > 0) return mapUserStoresToAgg(rows);
-      try {
-        const shops = await ShopService.getShopsAggregated({ force: false });
-        if (Array.isArray(shops) && shops.length > 0) return shops as ShopAggregated[];
-      } catch {
-        void 0;
-      }
+      
       return [];
     },
     enabled: !storeId,
@@ -251,16 +246,6 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
     if (cachedRows && cachedRows.length > 0) {
       const mapped = mapUserStoresToAgg(cachedRows);
       queryClient.setQueryData<ShopAggregated[]>(shopsMenuKey, mapped);
-    }
-
-    try {
-      const shops = await ShopService.getShopsAggregated({ force: true });
-      if (Array.isArray(shops) && shops.length > 0) {
-        queryClient.setQueryData<ShopAggregated[]>(shopsMenuKey, shops);
-        return;
-      }
-    } catch {
-      void 0;
     }
 
     await queryClient.fetchQuery({

@@ -31,14 +31,12 @@ interface ShopsListProps {
   onDelete?: (id: string) => void;
   onCreateNew?: () => void;
   onShopsLoaded?: (count: number, limitInfo?: ShopLimitInfo | null) => void;
-  refreshTrigger?: number;
 }
 
 export const ShopsList = ({ 
   onDelete, 
   onCreateNew, 
   onShopsLoaded,
-  refreshTrigger 
 }: ShopsListProps) => {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -99,27 +97,6 @@ export const ShopsList = ({
       });
     } catch { void 0; }
   }, [shops, queryClient, uid]);
-
-  // Інвалідація при зміні refreshTrigger
-  useEffect(() => {
-    if ((refreshTrigger ?? 0) > 0) {
-      (async () => {
-        try {
-          try {
-            ShopService.clearAllCaches();
-          } catch {
-            void 0;
-          }
-          const fresh = await ShopService.getShopsAggregated({ force: true, forceCounts: true });
-          queryClient.setQueryData<ShopWithMarketplace[]>(["user", uid, "shops"], () => {
-            return Array.isArray(fresh) ? (fresh as ShopWithMarketplace[]) : [];
-          });
-        } catch {
-          queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"] });
-        }
-      })();
-    }
-  }, [refreshTrigger, queryClient, uid]);
 
   // ============================================================================
   // Realtime синхронізація (оптимістичні оновлення)

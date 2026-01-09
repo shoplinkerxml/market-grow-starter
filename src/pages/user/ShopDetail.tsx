@@ -17,6 +17,7 @@ import { useI18n } from '@/i18n';
 import { ShopService, type ShopAggregated } from '@/lib/shop-service';
 import { ProductService, type Product } from '@/lib/product-service';
 import { useShopRealtimeSync } from "@/hooks/useShopRealtimeSync";
+import { RefreshDataButton } from '@/components/RefreshDataButton';
 
 export const ShopDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -123,6 +124,17 @@ export const ShopDetail = () => {
     [shopId, t]
   );
 
+  const handleRefresh = async () => {
+    // 1. Invalidate shop details and force refetch
+    await queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"], exact: false });
+    // 2. Clear product caches (since products might change too)
+    ProductService.clearAllProductsCaches();
+    // 3. Re-fetch current shop details
+    await ShopService.getShopsAggregated({ force: true });
+    // 4. Also refresh products table
+    await queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
+  };
+
   if (isLoading) {
     return (
       <FullPageLoader
@@ -213,6 +225,7 @@ export const ShopDetail = () => {
               >
                 <Share2 className="h-4 w-4" />
               </Button>
+              <RefreshDataButton onRefresh={handleRefresh} />
             </div>
           }
         />

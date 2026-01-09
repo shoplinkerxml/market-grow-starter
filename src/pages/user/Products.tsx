@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { DialogNoOverlay, DialogNoOverlayContent, DialogNoOverlayHeader, DialogNoOverlayTitle } from '@/components/ui/dialog-no-overlay';
 import { useQueryClient } from '@tanstack/react-query';
+import { RefreshDataButton } from '@/components/RefreshDataButton';
 
 export const Products = () => {
   const { t } = useI18n();
@@ -24,6 +25,7 @@ export const Products = () => {
   const [deletingName, setDeletingName] = useState<string | null>(null);
   const { tariffLimits, user } = useOutletContext<{ tariffLimits: Array<{ limit_name: string; value: number }>; user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
+  const pageSize = 50; // Default page size
 
   const queryClient = useQueryClient();
   useEffect(() => {
@@ -40,6 +42,17 @@ export const Products = () => {
     }));
   }, []);
 
+  const handleRefresh = async () => {
+    // 1. Clear local cache to ensure we don't serve stale data from memory
+    ProductService.clearAllProductsCaches();
+
+    // 2. Invalidate React Query cache to trigger UI update (this will cause the table to refetch visible rows)
+    await queryClient.invalidateQueries({ queryKey: ["user", uid], exact: false });
+    
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+
   const handleEdit = (product: Product) => {
     navigate(`/user/products/edit/${product.id}`);
   };
@@ -51,6 +64,7 @@ export const Products = () => {
     }
     navigate('/user/products/new-product');
   };
+
 
   const handleDelete = async (product: Product) => {
     const baseKey = ["user", uid, "products"] as const;
@@ -108,7 +122,7 @@ export const Products = () => {
               <Package className="h-4 w-4" />
               <span>{limitInfo.current} / {limitInfo.max}</span>
             </Badge>
-            
+            <RefreshDataButton onRefresh={handleRefresh} />
           </div>
         }
       />

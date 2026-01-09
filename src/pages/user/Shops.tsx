@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SessionValidator } from '@/lib/session-validation';
 import { useOutletContext } from 'react-router-dom';
+import { RefreshDataButton } from '@/components/RefreshDataButton';
 
 type ViewMode = 'list' | 'create';
 
@@ -22,7 +23,6 @@ export const Shops = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [shopsCount, setShopsCount] = useState(0);
   const [limitInfo, setLimitInfo] = useState<ShopLimitInfo>({ current: 0, max: 0, canCreate: false });
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const queryClient = useQueryClient();
   const { tariffLimits, user } = useOutletContext<{ tariffLimits: Array<{ limit_name: string; value: number }>; user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
@@ -77,7 +77,6 @@ export const Shops = () => {
 
   const handleCreateSuccess = () => {
     setViewMode('list');
-    setRefreshTrigger((prev) => prev + 1);
   };
 
   const handleDelete = async (id: string) => {
@@ -92,6 +91,14 @@ export const Shops = () => {
       const message = (error as Error)?.message || t('failed_delete_shop');
       toast.error(message);
     }
+  };
+
+  const handleRefresh = async () => {
+    // 1. Clear service caches to ensure fresh data
+    try { ShopService.clearAllCaches(); } catch { void 0; }
+    
+    // 2. Invalidate shops query to trigger refetch via React Query
+    await queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"] });
   };
 
   return (
@@ -116,15 +123,6 @@ export const Shops = () => {
                   <Store className="h-4 w-4" />
                   <span>{limitInfo.current} / {limitInfo.max}</span>
                 </Badge>
-                <Button 
-                  variant="ghost"
-                  size="icon"
-                  className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                  title={t('refresh') || 'Оновити'}
-                  onClick={() => setRefreshTrigger((prev) => prev + 1)}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
                 {shopsCount > 0 && (
                   <Button 
                     onClick={handleCreateNew}
@@ -137,6 +135,7 @@ export const Shops = () => {
                     <Plus className="h-4 w-4" />
                   </Button>
                 )}
+                <RefreshDataButton onRefresh={handleRefresh} />
               </>
             )}
             {viewMode !== 'list' && (
@@ -156,7 +155,6 @@ export const Shops = () => {
           onDelete={handleDelete}
           onCreateNew={handleCreateNew}
           onShopsLoaded={handleShopsLoaded}
-          refreshTrigger={refreshTrigger}
         />
       )}
 
