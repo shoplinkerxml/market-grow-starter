@@ -50,7 +50,7 @@ export function ProductsTableView({
 }) {
   const { t, table, storeId, onCreateNew, canCreate, loading } = useProductsTableContext();
   const tableElRef = useRef<HTMLTableElement | null>(null);
-  const rowHeight = 44;
+  const rowHeight = 72;
   const { virtualStart, virtualEnd } = useVirtualRows(enableVirtual, table.getRowModel().rows.length, tableElRef, rowHeight);
 
   if (!loading && (pageInfo?.total ?? rows.length) === 0) {
@@ -153,7 +153,12 @@ export function ProductsTableView({
                   </>
                 ) : (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id} data-state={row.getIsSelected() && "selected"} className="hover:bg-muted/50">
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                      className="hover:bg-muted/50"
+                      style={{ height: rowHeight }}
+                    >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                       ))}

@@ -103,7 +103,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="h-6 w-6 p-0 mx-auto border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+            className="h-6 w-6 p-0 mx-auto border border-neutral-300 text-neutral-500 bg-neutral-100 hover:bg-neutral-200"
             aria-label={t("menu_stores")}
             data-testid={`user_products_store_add_trigger_${product.id}`}
           >

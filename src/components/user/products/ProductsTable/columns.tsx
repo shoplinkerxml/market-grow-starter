@@ -32,16 +32,12 @@ export type ProductRow = Product & {
 
 const ProductThumbnail = React.memo(({
   product,
-  hasStores,
   onClick,
 }: {
   product: ProductRow;
-  hasStores: boolean;
   onClick: () => void;
 }) => {
-  const sizeCls = hasStores
-    ? "h-[clamp(2.25rem,4vw,3rem)] w-[clamp(2.25rem,4vw,3rem)]"
-    : "h-[clamp(1.75rem,3vw,2.5rem)] w-[clamp(1.75rem,3vw,2.5rem)]";
+  const sizeCls = "h-[clamp(2.25rem,4vw,3rem)] w-[clamp(2.25rem,4vw,3rem)]";
 
   const baseUrl = product.mainImageUrl || "";
   const { src, onError } = useResolvedImageSrc({ url: baseUrl, width: IMAGE_SIZES.THUMB, fallbackUrl: baseUrl });
@@ -181,13 +177,11 @@ function createPhotoColumn(config: ColumnConfig): ColumnDef<ProductRow> {
     size: 56,
     cell: ({ row }) => {
       const product = row.original;
-      const hasStores = Array.isArray(product.linkedStoreIds) && product.linkedStoreIds.length > 0;
       
       return (
         <div className="flex items-center justify-start" data-testid="user_products_photo">
           <ProductThumbnail
             product={product}
-            hasStores={hasStores}
             onClick={() => config.onEdit?.(product)}
           />
         </div>
