@@ -38,7 +38,6 @@ import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useI18n } from "@/i18n";
-import { buildXlsxBlobFromRows, readXlsxToRows } from "@/components/user/products/ProductsTable/ImportExport/xlsx";
 
 // Keep local type consistent with ProductFormTabs
 export interface ProductParam {
@@ -59,6 +58,73 @@ type Props = {
   onAddParam?: () => void;
   onReplaceData?: (rows: ProductParam[]) => void;
 };
+
+const PARAMS_EXPORT_COLUMNS = ["name", "value", "paramid", "valueid", "order_index"] as const;
+
+function parseCsvRow(line: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (ch === "," && !inQuotes) {
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map((s) => s.trim());
+}
+
+function buildCsv(rows: ProductParam[]): string {
+  const header = PARAMS_EXPORT_COLUMNS.join(",");
+  const payload = rows.map((r, idx) =>
+    [
+      JSON.stringify(r.name || ""),
+      JSON.stringify(r.value || ""),
+      JSON.stringify(r.paramid || ""),
+      JSON.stringify(r.valueid || ""),
+      String(typeof r.order_index === "number" ? r.order_index : idx),
+    ].join(","),
+  );
+  return [header, ...payload].join("\n");
+}
+
+function buildNdjson(rows: ProductParam[]): string {
+  return rows
+    .map((r, idx) =>
+      JSON.stringify({
+        name: String(r.name || ""),
+        value: String(r.value || ""),
+        paramid: r.paramid ? String(r.paramid) : "",
+        valueid: r.valueid ? String(r.valueid) : "",
+        order_index: typeof r.order_index === "number" ? r.order_index : idx,
+      }),
+    )
+    .join("\n");
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function downloadText(text: string, filename: string, mime: string) {
+  const blob = new Blob([text], { type: mime });
+  downloadBlob(blob, filename);
+}
 
 export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSelected, onSelectionChange, onAddParam, onReplaceData }: Props) {
   const { t } = useI18n();
@@ -183,25 +249,34 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
     onPaginationChange: setPagination,
   });
 
+  const tableRef = React.useRef(table);
+  tableRef.current = table;
+
   const selectedIndices = React.useMemo(() => {
-    return table
-      .getSelectedRowModel()
-      .flatRows.map((r) => r.index);
-  }, [table]);
+    const byId = table.getRowModel().rowsById;
+    const out: number[] = [];
+    for (const [id, selected] of Object.entries(rowSelection)) {
+      if (!selected) continue;
+      const idx = byId[id]?.index;
+      if (typeof idx === "number") out.push(idx);
+    }
+    return out;
+  }, [rowSelection, table]);
 
   React.useEffect(() => {
     onSelectionChange?.(selectedIndices);
   }, [selectedIndices, onSelectionChange]);
 
+  const dataLength = data.length;
   React.useEffect(() => {
     setRowSelection({});
-  }, [data]);
+  }, [dataLength]);
 
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 520px)");
     const apply = () => {
-      const valueCol = table.getColumn("value");
-      const paramCol = table.getColumn("paramid");
+      const valueCol = tableRef.current?.getColumn("value");
+      const paramCol = tableRef.current?.getColumn("paramid");
       if (mq.matches) {
         valueCol?.toggleVisibility(false);
         paramCol?.toggleVisibility(false);
@@ -212,101 +287,75 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
     apply();
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
-  }, [table]);
+  }, []);
 
-  const buildCsv = (rows: ProductParam[]) => {
-    const header = ["name","value","paramid","valueid","order_index"].join(",");
-    const payload = rows.map(r => [
-      JSON.stringify(r.name || ""),
-      JSON.stringify(r.value || ""),
-      JSON.stringify(r.paramid || ""),
-      JSON.stringify(r.valueid || ""),
-      String(typeof r.order_index === "number" ? r.order_index : 0)
-    ].join(","));
-    return [header, ...payload].join("\n");
-  };
-  const buildNdjson = (rows: ProductParam[]) => {
-    return rows
-      .map((r, idx) =>
-        JSON.stringify({
-          name: String(r.name || ""),
-          value: String(r.value || ""),
-          paramid: r.paramid ? String(r.paramid) : "",
-          valueid: r.valueid ? String(r.valueid) : "",
-          order_index: typeof r.order_index === "number" ? r.order_index : idx,
-        }),
-      )
-      .join("\n");
-  };
-  const downloadText = (text: string, filename: string, mime: string) => {
-    const blob = new Blob([text], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
-  const downloadBlob = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
-  const handleExportCsv = () => {
-    const csv = buildCsv(data);
-    downloadText(csv, "product-params.csv", "text/csv;charset=utf-8");
-  };
-  const handleExportJson = () => {
-    const json = buildNdjson(data);
-    downloadText(json, "product-params.json", "application/json;charset=utf-8");
-  };
-  const handleExportXlsx = () => {
-    const columns = ["name", "value", "paramid", "valueid", "order_index"] as const;
-    const rows = (data || []).map((r, idx) => ({
-      name: String(r.name || ""),
-      value: String(r.value || ""),
-      paramid: r.paramid ? String(r.paramid) : "",
-      valueid: r.valueid ? String(r.valueid) : "",
-      order_index: typeof r.order_index === "number" ? r.order_index : idx,
-    }));
-    const blob = buildXlsxBlobFromRows(rows, columns, "params");
-    downloadBlob(blob, "product-params.xlsx");
-  };
+  const handleExport = React.useCallback(
+    async (format: "csv" | "json" | "xlsx") => {
+      if (format === "csv") {
+        const csv = buildCsv(data);
+        downloadText(csv, "product-params.csv", "text/csv;charset=utf-8");
+        return;
+      }
+      if (format === "json") {
+        const json = buildNdjson(data);
+        downloadText(json, "product-params.json", "application/json;charset=utf-8");
+        return;
+      }
+      const { buildXlsxBlobFromRows } = await import("@/components/user/products/ProductsTable/ImportExport/xlsx");
+      const rows = (data || []).map((r, idx) => ({
+        name: String(r.name || ""),
+        value: String(r.value || ""),
+        paramid: r.paramid ? String(r.paramid) : "",
+        valueid: r.valueid ? String(r.valueid) : "",
+        order_index: typeof r.order_index === "number" ? r.order_index : idx,
+      }));
+      const blob = buildXlsxBlobFromRows(rows, PARAMS_EXPORT_COLUMNS, "params");
+      downloadBlob(blob, "product-params.xlsx");
+    },
+    [data],
+  );
+
+  const handleExportCsv = React.useCallback(() => {
+    void handleExport("csv");
+  }, [handleExport]);
+
+  const handleExportJson = React.useCallback(() => {
+    void handleExport("json");
+  }, [handleExport]);
+
+  const handleExportXlsx = React.useCallback(() => {
+    void handleExport("xlsx");
+  }, [handleExport]);
+
   const triggerImport = React.useCallback((accept: string) => {
     const el = fileInputRef.current;
     if (!el) return;
     el.accept = accept;
     el.click();
   }, []);
-  const openPreview = (rows: ProductParam[], filename: string) => {
+  const openPreview = React.useCallback((rows: ProductParam[], filename: string) => {
     setPreviewRows(rows);
     setPreviewFilename(filename);
     setPreviewOpen(true);
-  };
-  const confirmReplace = () => {
+  }, []);
+  const confirmReplace = React.useCallback(() => {
     if (previewRows.length === 0) {
       setPreviewOpen(false);
       return;
     }
     onReplaceData?.(previewRows);
     setPreviewOpen(false);
-  };
-  const cancelPreview = () => {
+  }, [onReplaceData, previewRows]);
+  const cancelPreview = React.useCallback(() => {
     setPreviewOpen(false);
     setPreviewRows([]);
     setPreviewFilename("");
-  };
-  const processFile = async (file: File) => {
+  }, []);
+  const processFile = React.useCallback(async (file: File) => {
     const name = (file.name || "").toLowerCase();
     let rows: ProductParam[] = [];
     if (name.endsWith(".xlsx")) {
+      const { readXlsxToRows } = await import("@/components/user/products/ProductsTable/ImportExport/xlsx");
       const sheetRows = await readXlsxToRows(file);
       rows = (sheetRows || [])
         .map((r, idx) => {
@@ -390,54 +439,64 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
     } else {
       toast.error(t('invalid_file_type'));
     }
-  };
-  const parseCsvRow = (line: string) => {
-    const out: string[] = [];
-    let cur = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        inQuotes = !inQuotes;
-        continue;
-      }
-      if (ch === ',' && !inQuotes) {
-        out.push(cur);
-        cur = "";
-      } else {
-        cur += ch;
-      }
-    }
-    out.push(cur);
-    return out.map(s => s.trim());
-  };
-  const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+  }, [openPreview, t]);
+  const handleFileChange = React.useCallback<React.ChangeEventHandler<HTMLInputElement>>((e) => {
     const file = e.target.files?.[0] || null;
     e.currentTarget.value = "";
     if (!file) return;
-    await processFile(file);
-  };
-  const handleDrop: React.DragEventHandler<HTMLDivElement> = async (e) => {
+    void processFile(file);
+  }, [processFile]);
+
+  const handleDrop = React.useCallback<React.DragEventHandler<HTMLDivElement>>((e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
     if (!onReplaceData) return;
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
-    await processFile(file);
-  };
-  const handleDragOver: React.DragEventHandler<HTMLDivElement> = (e) => {
+    void processFile(file);
+  }, [onReplaceData, processFile]);
+  const handleDragOver = React.useCallback<React.DragEventHandler<HTMLDivElement>>((e) => {
     if (!onReplaceData) return;
     e.preventDefault();
     e.stopPropagation();
     setDragActive(true);
-  };
-  const handleDragLeave: React.DragEventHandler<HTMLDivElement> = (e) => {
+  }, [onReplaceData]);
+  const handleDragLeave = React.useCallback<React.DragEventHandler<HTMLDivElement>>((e) => {
     if (!onReplaceData) return;
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-  };
+  }, [onReplaceData]);
+
+  const canDeleteSelected = selectedIndices.length > 0;
+  const handleDeleteSelected = React.useCallback(() => {
+    if (!onDeleteSelected) return;
+    if (selectedIndices.length === 0) return;
+    onDeleteSelected(selectedIndices);
+    table.resetRowSelection();
+  }, [onDeleteSelected, selectedIndices, table]);
+
+  const handleAddParam = React.useCallback(() => {
+    onAddParam?.();
+  }, [onAddParam]);
+
+  const handleFilterChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      table.getColumn("name")?.setFilterValue(event.target.value);
+    },
+    [table],
+  );
+
+  const triggerImportXlsx = React.useCallback(() => {
+    triggerImport(".xlsx");
+  }, [triggerImport]);
+  const triggerImportCsv = React.useCallback(() => {
+    triggerImport(".csv");
+  }, [triggerImport]);
+  const triggerImportJson = React.useCallback(() => {
+    triggerImport(".json,.jsonl,.ndjson");
+  }, [triggerImport]);
 
   return (
     <div className="flex flex-col gap-3" data-testid="parametersDataTable_root">
@@ -448,7 +507,7 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-              onChange={(event) => table.getColumn("name")?.setFilterValue(event.target.value)}
+              onChange={handleFilterChange}
               className="pl-9 h-8 py-1"
               data-testid="parametersDataTable_filter"
             />
@@ -464,7 +523,7 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
           {onAddParam && (
             <Button
               type="button"
-              onClick={onAddParam}
+              onClick={handleAddParam}
               variant="ghost"
               size="icon"
               className="h-8 w-8 hover:bg-transparent"
@@ -501,15 +560,15 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
                       {t("upload")}
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
-                      <DropdownMenuItem onClick={() => triggerImport(".xlsx")} data-testid="parametersDataTable_import_xlsx">
+                      <DropdownMenuItem onClick={triggerImportXlsx} data-testid="parametersDataTable_import_xlsx">
                         <FileSpreadsheet className="h-4 w-4 mr-2" />
                         xlsx
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => triggerImport(".csv")} data-testid="parametersDataTable_import_csv">
+                      <DropdownMenuItem onClick={triggerImportCsv} data-testid="parametersDataTable_import_csv">
                         <FileText className="h-4 w-4 mr-2" />
                         csv
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => triggerImport(".json,.jsonl,.ndjson")} data-testid="parametersDataTable_import_json">
+                      <DropdownMenuItem onClick={triggerImportJson} data-testid="parametersDataTable_import_json">
                         <File className="h-4 w-4 mr-2" />
                         json
                       </DropdownMenuItem>
@@ -541,29 +600,19 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
               <input ref={fileInputRef} className="hidden" type="file" accept=".xlsx,.csv,.json,.jsonl,.ndjson" onChange={handleFileChange} />
             </>
           )}
-          {(() => {
-            const canDeleteSelected = selectedIndices.length > 0;
-            return (
-              <Button
-                type="button"
-                onClick={() => {
-                  if (selectedIndices.length > 0) {
-                    onDeleteSelected?.(selectedIndices);
-                    table.resetRowSelection();
-                  }
-                }}
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 hover:bg-transparent"
-                disabled={!canDeleteSelected}
-                aria-disabled={!canDeleteSelected}
-                data-testid="parametersDataTable_deleteSelected"
-                aria-label={t('btn_delete_selected')}
-              >
-                <Trash2 className={`h-4 w-4 transition-colors ${!canDeleteSelected ? 'text-muted-foreground' : ''}`} />
-              </Button>
-            );
-          })()}
+          <Button
+            type="button"
+            onClick={handleDeleteSelected}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:bg-transparent"
+            disabled={!canDeleteSelected}
+            aria-disabled={!canDeleteSelected}
+            data-testid="parametersDataTable_deleteSelected"
+            aria-label={t('btn_delete_selected')}
+          >
+            <Trash2 className={`h-4 w-4 transition-colors ${!canDeleteSelected ? 'text-muted-foreground' : ''}`} />
+          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
