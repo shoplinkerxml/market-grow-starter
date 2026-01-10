@@ -50,7 +50,8 @@ Deno.serve(async (req) => {
       supabaseClient
         .from('user_stores')
         .select('id, store_name')
-        .eq('user_id', userId),
+        .eq('user_id', userId)
+        .eq('is_active', true),
 
       // Total products
       supabaseClient

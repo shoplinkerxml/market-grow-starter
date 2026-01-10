@@ -6,6 +6,16 @@ import { ShopCurrenciesService } from "./shop-currencies";
 import { PersistentCacheService } from "./persistent-cache-service";
 
 export class ShopService extends ShopServiceCore {
+  protected static async clearShopsCaches(): Promise<void> {
+    await super.clearShopsCaches();
+    try {
+      const { DashboardService } = await import("@/lib/dashboard-service");
+      DashboardService.clearCache();
+    } catch {
+      void 0;
+    }
+  }
+
   static async getShopsAggregated(options?: { force?: boolean; forceCounts?: boolean }) {
     if (options?.force) {
       try {
