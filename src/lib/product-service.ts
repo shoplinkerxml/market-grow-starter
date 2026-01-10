@@ -1,389 +1,90 @@
-import { supabase } from "@/integrations/supabase/client";
 import { ApiError } from "./user-service";
 import { invokeEdgeWithAuth, SessionValidator } from "./session-validation";
 import { SubscriptionValidationService } from "./subscription-validation-service";
-import { CategoryService } from "@/lib/category-service";
 import { ProductCoreService } from "@/lib/product/product-core-service";
 import { ProductLinkService } from "@/lib/product/product-link-service";
 import { ProductImageService } from "@/lib/product/product-image-service";
 import { ProductCategoryService } from "@/lib/product/product-category-service";
 import { ProductLimitService } from "@/lib/product/product-limit-service";
 import { ProductCacheManager } from "@/lib/product/product-cache-manager";
-import { RequestDeduplicatorFactory } from "./request-deduplicator";
 
-export interface Product {
-  id: string;
-  store_id: string;
-  supplier_id?: number | null;
-  external_id: string;
-  name: string;
-  name_ua?: string | null;
-  docket?: string | null;
-  docket_ua?: string | null;
-  description?: string | null;
-  description_ua?: string | null;
-  vendor?: string | null;
-  article?: string | null;
-  category_id?: number | null;
-  category_external_id?: string | null;
-  currency_id?: string | null;
-  currency_code?: string | null;
-  price?: number | null;
-  price_old?: number | null;
-  price_promo?: number | null;
-  stock_quantity: number;
-  available: boolean;
-  state: string;
-  created_at: string;
-  updated_at: string;
-  is_active?: boolean;
-}
+// New services
+import { ProductAggregatorService } from "@/lib/product/product-aggregator-service";
+import { ProductParamsService } from "@/lib/product/product-params-service";
+import { ProductStoreService } from "@/lib/product/product-store-service";
+import { ProductListService } from "@/lib/product/product-list-service";
+import { invokeEdge } from "@/lib/product/product-utils";
 
-export interface ProductParam {
-  id?: string;
-  product_id?: string;
-  name: string;
-  value: string;
-  order_index: number;
-  paramid?: string;
-  valueid?: string;
-}
+// Re-export types
+import * as Types from "@/lib/product/types";
 
-export interface ProductImage {
-  id?: string;
-  product_id?: string;
-  url: string;
-  order_index: number;
-  is_main?: boolean;
-  alt_text?: string;
-}
-
-export interface ProductAggregated extends Product {
-  mainImageUrl?: string;
-  categoryName?: string;
-  supplierName?: string;
-  linkedStoreIds?: string[];
-}
-
-export interface CreateProductData {
-  store_id?: string;
-  external_id: string;
-  name: string;
-  name_ua?: string | null;
-  docket?: string | null;
-  docket_ua?: string | null;
-  description?: string | null;
-  description_ua?: string | null;
-  vendor?: string | null;
-  article?: string | null;
-  category_id?: number | string | null;
-  category_external_id?: string | null;
-  supplier_id?: number | string | null;
-  currency_code?: string | null;
-  price?: number | null;
-  price_old?: number | null;
-  price_promo?: number | null;
-  stock_quantity?: number;
-  available?: boolean;
-  state?: string;
-  params?: ProductParam[];
-  images?: ProductImage[];
-  links?: Array<{
-    store_id: string;
-    is_active?: boolean;
-    custom_price?: number | null;
-    custom_price_promo?: number | null;
-    custom_stock_quantity?: number | null;
-    custom_available?: boolean | null;
-    custom_name?: string | null;
-    custom_description?: string | null;
-    custom_category_id?: number | null;
-  }>;
-}
-
-export interface UpdateProductData {
-  store_id?: string;
-  external_id?: string;
-  name?: string;
-  name_ua?: string | null;
-  docket?: string | null;
-  docket_ua?: string | null;
-  description?: string | null;
-  description_ua?: string | null;
-  vendor?: string | null;
-  article?: string | null;
-  category_id?: number | string | null;
-  category_external_id?: string | null;
-  supplier_id?: number | string | null;
-  currency_code?: string | null;
-  price?: number | null;
-  price_old?: number | null;
-  price_promo?: number | null;
-  stock_quantity?: number;
-  available?: boolean;
-  state?: string;
-  params?: ProductParam[];
-  images?: ProductImage[];
-}
-
-export interface ProductLimitInfo {
-  current: number;
-  max: number;
-  canCreate: boolean;
-}
-
-type ProductListPage = {
-  limit: number;
-  offset: number;
-  hasMore: boolean;
-  nextOffset: number | null;
-  total: number;
-};
-
-type ProductListResponseObj = {
-  products?: ProductAggregated[];
-  page?: ProductListPage;
-};
-
-export interface StoreProductLink {
-  is_active?: boolean;
-  custom_price?: number | null;
-  custom_price_old?: number | null;
-  custom_price_promo?: number | null;
-  custom_stock_quantity?: number | null;
-  custom_available?: boolean | null;
-  custom_name?: string | null;
-  custom_description?: string | null;
-  custom_category_id?: string | null;
-}
-
-export type StoreProductLinkPatchInput = Partial<StoreProductLink>;
+export type Product = Types.Product;
+export type ProductParam = Types.ProductParam;
+export type ProductImage = Types.ProductImage;
+export type ProductAggregated = Types.ProductAggregated;
+export type CreateProductData = Types.CreateProductData;
+export type UpdateProductData = Types.UpdateProductData;
+export type ProductLimitInfo = Types.ProductLimitInfo;
+export type ProductListPage = Types.ProductListPage;
+export type ProductListResponseObj = Types.ProductListResponseObj;
+export type StoreProductLink = Types.StoreProductLink;
+export type StoreProductLinkPatchInput = Types.StoreProductLinkPatchInput;
 
 export class ProductService {
-  private static userStoresDeduplicator = RequestDeduplicatorFactory.create<
-    Array<{
-      id: string;
-      store_name: string;
-      store_url: string | null;
-      is_active: boolean;
-      productsCount: number;
-      categoriesCount: number;
-    }>
-  >("product-service:userStores", {
-    ttl: 180_000, // 3 min TTL for store list
-    maxSize: 20,
-    enableMetrics: true,
-    errorStrategy: "remove",
-  });
-
-  private static castNullableNumber(value: unknown): number | null {
-    if (value === undefined || value === null || value === "") return null;
-    const n = Number(value);
-    return Number.isFinite(n) ? n : null;
-  }
-
-  private static edgeError(
-    error: { context?: { status?: number }; status?: number; statusCode?: number; message?: string } | null,
-    fallbackKey: string,
-  ): never {
-    const status = (error?.context?.status ?? error?.status ?? error?.statusCode) as number | undefined;
-    const message = (error?.message as string | undefined) || undefined;
-    if (status === 403) throw new ApiError("permission_denied", 403, "PERMISSION_DENIED");
-    if (status === 400) throw new ApiError("products_limit_reached", 400, "LIMIT_REACHED");
-    if (status === 422) throw new ApiError("validation_error", 422, "VALIDATION_ERROR");
-    throw new ApiError(message || fallbackKey, status || 500);
-  }
-
+  
   private static async invokeEdge<T>(name: string, body: Record<string, unknown>): Promise<T> {
-    try {
-      return await invokeEdgeWithAuth<T>(name, body);
-    } catch (error) {
-      ProductService.edgeError(error as any, name);
-      throw new ApiError(name, 500);
-    }
+    return await invokeEdge<T>(name, body);
   }
 
-  static async getUserLookups(): Promise<{
-    suppliers: Array<{ id: string; supplier_name: string }>;
-    currencies: Array<{ id: number; name: string; code: string; status: boolean }>;
-    supplierCategoriesMap: Record<
-      string,
-      Array<{
-        id: string;
-        name: string;
-        external_id: string;
-        supplier_id: string;
-        parent_external_id: string | null;
-      }>
-    >;
-  }> {
-    const resp = await ProductService.invokeEdge<{
-      suppliers?: any[];
-      currencies?: any[];
-      supplierCategoriesMap?: Record<string, any[]>;
-    }>("get-user-lookups", {});
-    const result = {
-      suppliers: Array.isArray(resp.suppliers) ? resp.suppliers : [],
-      currencies: Array.isArray(resp.currencies) ? resp.currencies : [],
-      supplierCategoriesMap: resp.supplierCategoriesMap || {},
-    };
-    return result;
+  static async getUserLookups() {
+    return await ProductAggregatorService.getUserLookups();
   }
 
   /** Получение store_ids текущего пользователя (через функции) */
   private static async getUserStoreIds(): Promise<string[]> {
-    const stores = await ProductService.getUserStores();
-    return stores.filter((s) => s.is_active).map((s) => s.id);
+    return await ProductStoreService.getUserStoreIds();
   }
 
   /** Получение полной информации о магазинах пользователя (только функции + кэш) */
-  static async getUserStores(): Promise<
-    Array<{
-      id: string;
-      store_name: string;
-      store_url: string | null;
-      is_active: boolean;
-      productsCount: number;
-      categoriesCount: number;
-    }>
-  > {
-    const uid = await SessionValidator.validateSession()
-      .then((v) => (v?.user?.id ? String(v.user.id) : "current"))
-      .catch(() => "current");
-    const inflightKey = `userStores:${uid}`;
-    return await ProductService.userStoresDeduplicator.dedupe(inflightKey, async () => {
-      try {
-        const { UserAuthService } = await import("@/lib/user-auth-service");
-        const authMe = await UserAuthService.fetchAuthMe();
-        if (Array.isArray((authMe as any)?.userStores)) {
-          return (authMe.userStores || []).map((s: any) => ({
-            id: String(s.id),
-            store_name: String(s.store_name || ""),
-            store_url: null,
-            is_active: true,
-            productsCount: 0,
-            categoriesCount: 0,
-          }));
-        }
-      } catch {
-        void 0;
-      }
-
-      const { ShopService } = await import("@/lib/shop-service");
-      const shops = await ShopService.getShopsAggregated();
-      const mapped = (shops || []).map((s) => ({
-        id: String(s.id),
-        store_name: String(s.store_name || ""),
-        store_url: s.store_url ? String(s.store_url) : null,
-        is_active: !!s.is_active,
-        productsCount: Number(s.productsCount ?? 0),
-        categoriesCount: Number(s.categoriesCount ?? 0),
-      }));
-      return mapped;
-    });
+  static async getUserStores() {
+    return await ProductStoreService.getUserStores();
   }
 
-  static async getUserMasterProducts(): Promise<ProductAggregated[]> {
-    try {
-      const resp = await ProductService.invokeEdge<ProductListResponseObj>("user-products-list", {});
-      const rows = Array.isArray(resp?.products) ? resp.products! : [];
-      return rows;
-    } catch {
-      const fb = await ProductService.fetchProductsPageFallback(null, 50, 0);
-      return fb.products;
-    }
+  static async getUserMasterProducts(): Promise<Types.ProductAggregated[]> {
+    return await ProductListService.getUserMasterProducts();
   }
 
-  static async getStoreProducts(storeId: string): Promise<ProductAggregated[]> {
-    if (!storeId || storeId.trim() === "") {
-      throw new Error("Store ID is required");
-    }
-    try {
-      const resp = await ProductService.invokeEdge<ProductListResponseObj>("store-products-list", {
-        store_id: String(storeId),
-      });
-      const rows = Array.isArray(resp?.products) ? resp.products! : [];
-      return rows;
-    } catch {
-      const fb = await ProductService.fetchProductsPageFallback(String(storeId), 50, 0);
-      return fb.products;
-    }
+  static async getStoreProducts(storeId: string): Promise<Types.ProductAggregated[]> {
+    return await ProductListService.getStoreProducts(storeId);
   }
 
   static async getUserMasterProductsPage(
     limit: number,
     options?: { bypassCache?: boolean },
-  ): Promise<{
-    products: ProductAggregated[];
-    page: ProductListPage;
-  }> {
-    try {
-      const fresh = await ProductService.invokeEdge<ProductListResponseObj>("user-products-list", {
-        limit,
-        offset: 0,
-        bypassCache: options?.bypassCache === true,
-      });
-      const products = Array.isArray(fresh?.products) ? fresh.products! : [];
-      const page: ProductListPage = {
-        limit,
-        offset: 0,
-        hasMore: !!fresh?.page?.hasMore,
-        nextOffset: fresh?.page?.nextOffset ?? null,
-        total: fresh?.page?.total ?? products.length,
-      };
-      return { products, page };
-    } catch (error) {
-      const fb = await ProductService.fetchProductsPageFallback(null, limit, 0);
-      return fb;
-    }
+  ) {
+    return await ProductListService.getUserMasterProductsPage(limit, options);
   }
 
   static async getStoreProductsPage(
     storeId: string,
     limit: number,
     options?: { bypassCache?: boolean },
-  ): Promise<{
-    products: ProductAggregated[];
-    page: ProductListPage;
-  }> {
-    if (!storeId || storeId.trim() === "") {
-      throw new Error("Store ID is required");
-    }
-
-    try {
-      const fresh = await ProductService.invokeEdge<ProductListResponseObj>("store-products-list", {
-        store_id: String(storeId),
-        limit,
-        offset: 0,
-        bypassCache: options?.bypassCache === true,
-      });
-      const products = Array.isArray(fresh?.products) ? fresh.products! : [];
-      const page: ProductListPage = {
-        limit,
-        offset: 0,
-        hasMore: !!fresh?.page?.hasMore,
-        nextOffset: fresh?.page?.nextOffset ?? null,
-        total: fresh?.page?.total ?? products.length,
-      };
-      return { products, page };
-    } catch (error) {
-      const fb = await ProductService.fetchProductsPageFallback(String(storeId), limit, 0);
-      return fb;
-    }
+  ) {
+    return await ProductListService.getStoreProductsPage(storeId, limit, options);
   }
 
   /**
    * @deprecated Використовуй getStoreProducts(storeId)
    */
-  static async getProductsForStore(storeId: string): Promise<Product[]> {
+  static async getProductsForStore(storeId: string): Promise<Types.Product[]> {
     const productsAgg = await ProductService.getStoreProducts(storeId);
-    return productsAgg as unknown as Product[];
+    return productsAgg as unknown as Types.Product[];
   }
 
   /**
    * @deprecated Використовуй getUserMasterProducts() або getStoreProducts(storeId)
    */
-  static async getProductsAggregated(storeId?: string | null): Promise<ProductAggregated[]> {
+  static async getProductsAggregated(storeId?: string | null): Promise<Types.ProductAggregated[]> {
     if (storeId) {
       return ProductService.getStoreProducts(storeId);
     }
@@ -397,40 +98,11 @@ export class ProductService {
     storeId: string | null,
     limit: number,
     options?: { bypassCache?: boolean },
-  ): Promise<{
-    products: ProductAggregated[];
-    page: ProductListPage;
-  }> {
+  ) {
     if (storeId) {
       return ProductService.getStoreProductsPage(storeId, limit, options);
     }
     return ProductService.getUserMasterProductsPage(limit, options);
-  }
-
-  private static async fetchProductsPageFallback(
-    storeId: string | null,
-    limit: number,
-    offset: number,
-  ): Promise<{ products: ProductAggregated[]; page: ProductListPage }> {
-    // Retry with bypassCache=true, but allow errors to propagate
-    const resp = await ProductService.invokeEdge<ProductListResponseObj>(
-      storeId ? "store-products-list" : "user-products-list",
-      {
-        ...(storeId ? { store_id: String(storeId) } : {}),
-        limit,
-        offset,
-        bypassCache: true,
-      },
-    );
-    const products = Array.isArray(resp?.products) ? resp.products : [];
-    const page: ProductListPage = {
-      limit,
-      offset,
-      hasMore: !!resp?.page?.hasMore,
-      nextOffset: resp?.page?.nextOffset ?? null,
-      total: resp?.page?.total ?? products.length,
-    };
-    return { products, page };
   }
 
   static async getProductsPage(
@@ -438,48 +110,8 @@ export class ProductService {
     limit: number,
     offset: number,
     options?: { bypassCache?: boolean; force?: boolean },
-  ): Promise<{
-    products: ProductAggregated[];
-    page: {
-      limit: number;
-      offset: number;
-      hasMore: boolean;
-      nextOffset: number | null;
-      total: number;
-    };
-  }> {
-    if (options?.force) {
-      try {
-        ProductCacheManager.clearAllProductsCaches();
-      } catch {
-        void 0;
-      }
-    }
-    return await ProductCacheManager.getProductsPageCached(
-      storeId,
-      limit,
-      offset,
-      async () => {
-        // Direct call without swallowing errors.
-        // If invokeEdge fails, it should throw, preventing cache from storing empty data.
-        const resp = await ProductService.invokeEdge<ProductListResponseObj>(storeId ? "store-products-list" : "user-products-list", {
-          ...(storeId ? { store_id: storeId } : {}),
-          limit,
-          offset,
-          bypassCache: options?.bypassCache || options?.force,
-        });
-        const products = Array.isArray(resp?.products) ? resp!.products! : [];
-        const page: ProductListPage = {
-          limit,
-          offset,
-          hasMore: !!resp?.page?.hasMore,
-          nextOffset: resp?.page?.nextOffset ?? null,
-          total: resp?.page?.total ?? products.length,
-        };
-        return { products, page };
-      },
-      { bypassCache: options?.bypassCache || options?.force }
-    );
+  ) {
+    return await ProductListService.getProductsPage(storeId, limit, offset, options);
   }
 
   static updateFirstPageCaches(
@@ -491,7 +123,7 @@ export class ProductService {
 
   static patchProductCaches(
     productId: string,
-    patch: Partial<ProductAggregated>,
+    patch: Partial<Types.ProductAggregated>,
     storeId?: string | null,
   ) {
     ProductCacheManager.patchProductCaches(productId, patch, storeId);
@@ -517,15 +149,15 @@ export class ProductService {
   static async getStoreProductLink(
     productId: string,
     storeId: string,
-  ): Promise<StoreProductLink | null> {
+  ): Promise<Types.StoreProductLink | null> {
     return await ProductLinkService.getStoreProductLink(productId, storeId);
   }
 
   static async updateStoreProductLink(
     productId: string,
     storeId: string,
-    patch: Partial<StoreProductLinkPatchInput>,
-  ): Promise<StoreProductLink | null> {
+    patch: Partial<Types.StoreProductLinkPatchInput>,
+  ): Promise<Types.StoreProductLink | null> {
     return await ProductLinkService.updateStoreProductLink(productId, storeId, patch);
   }
 
@@ -552,19 +184,19 @@ export class ProductService {
       docket?: string | null;
       docket_ua?: string | null;
       state?: string;
-      images?: ProductImage[];
-      params?: ProductParam[];
-      linkPatch?: StoreProductLinkPatchInput;
+      images?: Types.ProductImage[];
+      params?: Types.ProductParam[];
+      linkPatch?: Types.StoreProductLinkPatchInput;
     },
-  ): Promise<{ product_id: string; link?: StoreProductLink | null } | null> {
-    const out = await ProductService.invokeEdge<{ product_id?: string; link?: StoreProductLink | null }>(
+  ): Promise<{ product_id: string; link?: Types.StoreProductLink | null } | null> {
+    const out = await ProductService.invokeEdge<{ product_id?: string; link?: Types.StoreProductLink | null }>(
       "save-store-product-edit",
       { product_id: productId, store_id: storeId, ...payload },
     );
     const pid = out?.product_id ? String(out.product_id) : null;
     if (pid) {
       try {
-        const patch: Partial<ProductAggregated> = {};
+        const patch: Partial<Types.ProductAggregated> = {};
         if (payload.name !== undefined) patch.name = payload.name as string;
         if (payload.name_ua !== undefined) patch.name_ua = payload.name_ua ?? null;
         if (payload.price !== undefined) patch.price = payload.price ?? null;
@@ -632,7 +264,7 @@ export class ProductService {
   }
 
   /** Лимит продуктов для текущего пользователя */
-  static async getProductLimit(): Promise<ProductLimitInfo> {
+  static async getProductLimit(): Promise<Types.ProductLimitInfo> {
     return await ProductLimitService.getProductLimit();
   }
 
@@ -649,66 +281,57 @@ export class ProductService {
     return await ProductLimitService.getProductsCountCached();
   }
 
-  /** Полный список продуктов текущего пользователя (по функциям с пагинацией + кэш) */
-  static async getProducts(): Promise<Product[]> {
-    const sessionValidation = await SessionValidator.ensureValidSession();
-    if (!sessionValidation.isValid) {
-      throw new Error("Invalid session: " + (sessionValidation.error || "Session expired"));
+  static clearAllProductsCaches(): void {
+    try {
+      ProductCacheManager.clearAllProductsCaches();
+    } catch {
+      void 0;
     }
-
-    const limit = 50;
-    let offset = 0;
-    const all: ProductAggregated[] = [];
-
-    while (true) {
-      const { products, page } = await ProductService.getProductsPage(null, limit, offset);
-      all.push(...products);
-      if (!page.hasMore) break;
-      if (page.nextOffset == null) break;
-      if (page.nextOffset <= offset) break;
-      offset = page.nextOffset;
-      if (all.length >= 1000) break;
-    }
-
-    return all as unknown as Product[];
-  }
-
-  /** Параметры товара: через product-edit-data */
-  static async getProductParams(productId: string): Promise<ProductParam[]> {
-    const sessionValidation = await SessionValidator.ensureValidSession();
-    if (!sessionValidation.isValid) {
-      throw new Error("Invalid session: " + (sessionValidation.error || "Session expired"));
+    
+    try {
+      ProductStoreService.clearCache();
+    } catch {
+      void 0;
     }
 
     try {
-      const { data, error } = await supabase
-        .from("store_product_params")
-        .select("id,name,value,order_index,paramid,valueid")
-        .eq("product_id", String(productId))
-        .order("order_index", { ascending: true });
-      if (error) throw error;
-      return (data || []).map((p) => ({
-        id: String(p.id),
-        product_id: String(productId),
-        name: String(p.name || ""),
-        value: String(p.value || ""),
-        order_index: Number(p.order_index || 0),
-        paramid: p.paramid == null ? undefined : String(p.paramid),
-        valueid: p.valueid == null ? undefined : String(p.valueid),
-      }));
+      ProductLimitService.invalidateProductLimitCache();
     } catch {
-      const edit = await ProductService.getProductEditData(productId);
-      return edit.params || [];
+      void 0;
     }
+
+    // Invalidate Supplier Cache
+    import("@/lib/supplier-service").then(({ SupplierService }) => {
+      SupplierService.clearSuppliersCache();
+    }).catch(() => void 0);
+
+    // Invalidate Dashboard Cache
+    import("@/lib/dashboard-service").then(({ DashboardService }) => {
+      DashboardService.clearCache();
+    }).catch(() => void 0);
+  }
+
+  static clearAllCaches(): void {
+    ProductService.clearAllProductsCaches();
+  }
+
+  /** Полный список продуктов текущего пользователя (по функциям с пагинацией + кэш) */
+  static async getProducts(): Promise<Types.Product[]> {
+    return await ProductListService.getProducts();
+  }
+
+  /** Параметры товара: через product-edit-data */
+  static async getProductParams(productId: string): Promise<Types.ProductParam[]> {
+    return await ProductParamsService.getProductParams(productId);
   }
 
   /** Изображения товара: через product-edit-data */
-  static async getProductImages(productId: string): Promise<ProductImage[]> {
+  static async getProductImages(productId: string): Promise<Types.ProductImage[]> {
     return await ProductImageService.getProductImages(productId);
   }
 
   /** Получение товара по ID: через product-edit-data */
-  static async getProductById(id: string): Promise<Product | null> {
+  static async getProductById(id: string): Promise<Types.Product | null> {
     return await ProductCoreService.getProductById(id);
   }
 
@@ -716,192 +339,17 @@ export class ProductService {
   static async getProductEditData(
     productId: string,
     storeId?: string,
-  ): Promise<{
-    product: Product | null;
-    link: StoreProductLink | null;
-    images: ProductImage[];
-    params: ProductParam[];
-    supplier?: { id: number; supplier_name: string } | null;
-    categoryName?: string | null;
-    shop?: { id: string; store_name: string } | null;
-    storeCategories?: Array<{
-      store_category_id: number;
-      category_id: number;
-      name: string;
-      store_external_id: string | null;
-      is_active: boolean;
-    }>;
-    suppliers?: Array<{ id: string; supplier_name: string }>;
-    currencies?: Array<{
-      id: number;
-      name: string;
-      code: string;
-      status: boolean | null;
-    }>;
-    categories?: Array<{
-      id: string;
-      name: string;
-      external_id: string;
-      supplier_id: string;
-      parent_external_id: string | null;
-    }>;
-    supplierCategoriesMap?: Record<
-      string,
-      Array<{
-        id: string;
-        name: string;
-        external_id: string;
-        supplier_id: string;
-        parent_external_id: string | null;
-      }>
-    >;
-  }> {
-    if (!String(productId || "").trim()) {
-      throw new Error("product_id_required");
-    }
-    let resp: {
-      product?: Product | null;
-      link?: StoreProductLink | null;
-      images?: ProductImage[];
-      params?: ProductParam[];
-      supplier?: { id: number; supplier_name: string } | null;
-      categoryName?: string | null;
-      shop?: { id: string; store_name: string } | null;
-      storeCategories?: Array<{
-        store_category_id: number;
-        category_id: number;
-        name: string;
-        store_external_id: string | null;
-        is_active: boolean;
-      }>;
-      suppliers?: Array<{ id: string; supplier_name: string }>;
-      currencies?: Array<{ id: number; name: string; code: string; status: boolean | null }>;
-      categories?: Array<{
-        id: string;
-        name: string;
-        external_id: string;
-        supplier_id: string;
-        parent_external_id: string | null;
-      }>;
-      supplierCategoriesMap?: Record<string, Array<{
-        id: string;
-        name: string;
-        external_id: string;
-        supplier_id: string;
-        parent_external_id: string | null;
-      }>>;
-    };
-    try {
-      resp = await invokeEdgeWithAuth(
-        "product-edit-data",
-        storeId
-          ? { product_id: String(productId), store_id: String(storeId) }
-          : { product_id: String(productId) },
-      );
-    } catch (error) {
-      this.edgeError(error as any, "failed_load_product_edit");
-      throw new ApiError("failed_load_product_edit", 500);
-    }
-
-    const rawImages = Array.isArray(resp?.images) ? resp.images : [];
-    const images = rawImages
-      .map((img: any, idx: number) => {
-        const rawOrder =
-          typeof img?.order_index === "number" ? img.order_index : Number(img?.order_index);
-        const order_index = Number.isFinite(rawOrder) ? rawOrder : idx;
-        const base = img || {};
-        return {
-          ...base,
-          id: base.id != null ? String(base.id) : undefined,
-          product_id: base.product_id != null ? String(base.product_id) : String(productId),
-          url: String(base.url || ""),
-          order_index,
-          is_main: base.is_main === true,
-          alt_text: base.alt_text == null ? undefined : String(base.alt_text),
-        } as ProductImage;
-      })
-      .sort((a, b) => Number(a.order_index || 0) - Number(b.order_index || 0));
-
-    const rawParams = Array.isArray(resp?.params) ? resp.params : [];
-    const normalizeId = (v: unknown): string | undefined => {
-      const s = v == null ? "" : String(v).trim();
-      return s ? s : undefined;
-    };
-    const params = rawParams
-      .map((p: any, idx: number) => {
-        const rawOrder =
-          typeof p?.order_index === "number" ? p.order_index : Number(p?.order_index);
-        const order_index = Number.isFinite(rawOrder) ? rawOrder : idx;
-        const base = p || {};
-        return {
-          ...base,
-          id: base.id != null ? String(base.id) : undefined,
-          product_id: base.product_id != null ? String(base.product_id) : String(productId),
-          name: String(base.name || ""),
-          value: String(base.value || ""),
-          order_index,
-          paramid: normalizeId(base.paramid),
-          valueid: normalizeId(base.valueid),
-        } as ProductParam;
-      })
-      .sort((a, b) => Number(a.order_index || 0) - Number(b.order_index || 0));
-
-    return {
-      product: (resp?.product || null) as Product | null,
-      link: (resp?.link || null) as StoreProductLink | null,
-      images,
-      params,
-      supplier: (resp?.supplier || null) as {
-        id: number;
-        supplier_name: string;
-      } | null,
-      categoryName: (resp?.categoryName ?? null) as string | null,
-      shop: (resp?.shop ?? null) as { id: string; store_name: string } | null,
-      storeCategories: (resp?.storeCategories || []) as Array<{
-        store_category_id: number;
-        category_id: number;
-        name: string;
-        store_external_id: string | null;
-        is_active: boolean;
-      }>,
-      suppliers: (resp?.suppliers || []) as Array<{
-        id: string;
-        supplier_name: string;
-      }>,
-      currencies: (resp?.currencies || []) as Array<{
-        id: number;
-        name: string;
-        code: string;
-        status: boolean | null;
-      }>,
-      categories: (resp?.categories || []) as Array<{
-        id: string;
-        name: string;
-        external_id: string;
-        supplier_id: string;
-        parent_external_id: string | null;
-      }>,
-      supplierCategoriesMap: (resp?.supplierCategoriesMap ||
-        {}) as Record<
-        string,
-        Array<{
-          id: string;
-          name: string;
-          external_id: string;
-          supplier_id: string;
-          parent_external_id: string | null;
-        }>
-      >,
-    };
+  ) {
+    return await ProductAggregatorService.getProductEditData(productId, storeId);
   }
 
   /** Один продукт по ID */
-  static async getProduct(id: string): Promise<Product> {
+  static async getProduct(id: string): Promise<Types.Product> {
     return await ProductCoreService.getProduct(id);
   }
 
   /** Создание нового продукта (через функцию create-product) */
-  static async createProduct(productData: CreateProductData): Promise<Product> {
+  static async createProduct(productData: Types.CreateProductData): Promise<Types.Product> {
     const product = await ProductCoreService.createProduct(productData);
     try {
       ProductService.clearMasterProductsCaches();
@@ -919,7 +367,7 @@ export class ProductService {
     return product;
   }
 
-  static async duplicateProduct(id: string): Promise<Product> {
+  static async duplicateProduct(id: string): Promise<Types.Product> {
     const product = await ProductCoreService.duplicateProduct(id);
     try {
       ProductService.clearAllFirstPageCaches();
@@ -930,7 +378,7 @@ export class ProductService {
   }
 
   /** Обновление товара через функцию update-product */
-  static async updateProduct(id: string, productData: UpdateProductData): Promise<void> {
+  static async updateProduct(id: string, productData: Types.UpdateProductData): Promise<void> {
     const productId = await ProductCoreService.updateProduct(id, productData);
     void productId;
     return;
@@ -972,30 +420,8 @@ export class ProductService {
     ProductCacheManager.clearStoreProductsCaches(storeId);
   }
 
-  static clearAllProductsCaches(): void {
-    ProductCacheManager.clearAllProductsCaches();
-  }
-
-  /** Проверка только валидности сессии (без дополнительных запросов) */
-  private static async ensureCanMutateProducts(): Promise<void> {
-    const sessionValidation = await SessionValidator.ensureValidSession();
-    if (!sessionValidation.isValid) {
-      throw new Error("Invalid session: " + (sessionValidation.error || "Session expired"));
-    }
-  }
-
-  /** Проверка права на создание (сессия + актуальная подписка) */
-  private static async ensureCanCreateProduct(): Promise<void> {
-    const sessionValidation = await SessionValidator.ensureValidSession();
-    if (!sessionValidation.isValid || !sessionValidation.user?.id) {
-      throw new Error("Invalid session");
-    }
-    const subscription = await SubscriptionValidationService.getValidSubscription(sessionValidation.user.id);
-    if (!subscription) throw new Error("No valid subscription");
-  }
-
   /** Батчевое обновление/вставка товаров напрямую через upsert */
-  static async bulkUpsertProducts(rows: Array<UpdateProductData & { id: string; store_id?: string }>): Promise<{ upserted: number }>{
+  static async bulkUpsertProducts(rows: Array<Types.UpdateProductData & { id: string; store_id?: string }>): Promise<{ upserted: number }>{
     const out = await ProductCoreService.bulkUpsertProducts(rows);
     try {
       ProductService.clearAllProductsCaches();
@@ -1005,33 +431,9 @@ export class ProductService {
     ProductService.invalidateProductLimitCache();
     return out;
   }
+
   /** Агрегированные справочники для страницы создания товара */
-  static async getNewProductLookup(): Promise<{
-    suppliers: Array<{ id: string; supplier_name: string }>;
-    currencies: Array<{ id: number; name: string; code: string; status: boolean | null }>;
-    supplierCategoriesMap: Record<string, Array<{
-      id: string;
-      name: string;
-      external_id: string;
-      supplier_id: string;
-      parent_external_id: string | null;
-    }>>;
-  }> {
-    const resp = await ProductService.invokeEdge<{
-      suppliers?: Array<{ id: string; supplier_name: string }>;
-      currencies?: Array<{ id: number; name: string; code: string; status: boolean | null }>;
-      supplierCategoriesMap?: Record<string, Array<{
-        id: string;
-        name: string;
-        external_id: string;
-        supplier_id: string;
-        parent_external_id: string | null;
-      }>>;
-    }>("new-product-lookup", {});
-    return {
-      suppliers: Array.isArray(resp.suppliers) ? resp.suppliers : [],
-      currencies: Array.isArray(resp.currencies) ? resp.currencies : [],
-      supplierCategoriesMap: resp.supplierCategoriesMap || {},
-    };
+  static async getNewProductLookup() {
+    return await ProductAggregatorService.getNewProductLookup();
   }
 }

@@ -45,15 +45,16 @@ export const Products = () => {
   // Force cache clear on mount to ensure fresh data on page reload/navigation
   useEffect(() => {
     const init = async () => {
-      ProductService.clearAllProductsCaches();
+      ProductService.clearAllCaches();
       await queryClient.invalidateQueries({ queryKey: ["user", uid], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard"], exact: false });
     };
     init();
   }, [queryClient, uid]);
 
   const handleRefresh = async () => {
     // 1. Clear local cache to ensure we don't serve stale data from memory
-    ProductService.clearAllProductsCaches();
+    ProductService.clearAllCaches();
 
     // 2. Force fetch first page to update cache
     try {
@@ -64,6 +65,7 @@ export const Products = () => {
 
     // 3. Invalidate React Query cache to trigger UI update (this will cause the table to refetch visible rows)
     await queryClient.invalidateQueries({ queryKey: ["user", uid], exact: false });
+    await queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard"], exact: false });
     
     setRefreshTrigger((prev) => prev + 1);
   };
@@ -112,7 +114,7 @@ export const Products = () => {
       await ProductService.deleteProduct(product.id);
       
       // Force refresh cache after delete
-      ProductService.clearAllProductsCaches();
+      ProductService.clearAllCaches();
       try {
         await ProductService.getProductsPage(null, pageSize, 0, { force: true });
       } catch { void 0; }
@@ -120,6 +122,7 @@ export const Products = () => {
       toast.success(t('product_deleted'));
       // Optional background revalidation to sync with server, does not block UI
       queryClient.invalidateQueries({ queryKey: baseKey, exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard"], exact: false });
     } catch (error: unknown) {
       for (const [k, v] of prevQueries) {
         queryClient.setQueryData(k, v);

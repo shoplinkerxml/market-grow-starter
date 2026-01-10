@@ -264,7 +264,16 @@ export class SupplierService {
       SupplierService.setSuppliersCache(userId, next);
     }
     try {
+      const { PersistentCacheService } = await import("@/lib/persistent-cache-service");
       PersistentCacheService.invalidateSuppliers();
+    } catch {
+      void 0;
+    }
+
+    // Invalidate Dashboard Cache
+    try {
+      const { DashboardService } = await import("@/lib/dashboard-service");
+      DashboardService.clearCache();
     } catch {
       void 0;
     }

@@ -210,13 +210,14 @@ export const ProductEdit = () => {
       await ProductService.updateProduct(id, payload);
       
       // Force refresh cache after update
-      ProductService.clearAllProductsCaches();
+      ProductService.clearAllCaches();
       try {
         await ProductService.getProductsPage(null, 50, 0, { force: true });
       } catch { void 0; }
 
       toast.success(t('product_updated'));
       queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
+      await queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard"], exact: false });
       navigate('/user/products');
     } catch (error) {
       console.error('Failed to save product:', error);

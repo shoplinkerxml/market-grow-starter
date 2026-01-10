@@ -25,6 +25,16 @@ export class ShopService extends ShopServiceCore {
     } catch {
       void 0;
     }
+
+    // Invalidate Dashboard Cache
+    void (async () => {
+      try {
+        const { DashboardService } = await import("@/lib/dashboard-service");
+        DashboardService.clearCache();
+      } catch {
+        void 0;
+      }
+    })();
   }
 
   static invalidateInternalCache(): void {

@@ -152,7 +152,7 @@ export const ProductCreate = () => {
       });
 
       // Force refresh cache after create
-      ProductService.clearAllProductsCaches();
+      ProductService.clearAllCaches();
       try {
         await ProductService.getProductsPage(null, 50, 0, { force: true });
       } catch { void 0; }
@@ -161,6 +161,7 @@ export const ProductCreate = () => {
         const v = typeof prev === "number" ? prev : current;
         return Math.max(0, v + 1);
       });
+      await queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard"], exact: false });
       toast.success(t('product_created'));
       navigate('/user/products');
     } catch {

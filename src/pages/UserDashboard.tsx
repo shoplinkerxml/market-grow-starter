@@ -6,12 +6,17 @@ import { Separator } from "@/components/ui/separator";
 import { UserProfile as UserProfileType } from "@/lib/user-auth-schemas";
 import { UserMenuItem } from "@/lib/user-menu-service";
 import { useI18n } from "@/i18n";
-import { User, Settings, TrendingUp, BarChart3, Activity, Plus, Crown, CreditCard } from "lucide-react";
+import { User, Settings, TrendingUp, BarChart3, Activity, Plus, Crown, CreditCard, Package, Store } from "lucide-react";
 import type { TariffLimit } from "@/lib/tariff-service";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShopService } from "@/lib/shop-service";
 import { ProductService } from "@/lib/product-service";
+import { useQuery } from "@tanstack/react-query";
+import { SupplierService } from "@/lib/supplier-service";
+import { ProductLimitService } from "@/lib/product/product-limit-service";
+import { DashboardService } from "@/lib/dashboard-service";
 
 type SubscriptionEntity = {
   tariff_id?: number;
@@ -73,6 +78,13 @@ const UserDashboard = () => {
     id?: number;
   }[]>([]);
   
+  const { data: dashboardStats } = useQuery({
+    queryKey: ["user", user.id, "dashboard-stats"],
+    queryFn: async () => {
+      return await DashboardService.getDashboardStats();
+    },
+    enabled: !!user.id
+  });
   
   useEffect(() => {
     const result = subscription;
@@ -104,53 +116,94 @@ const UserDashboard = () => {
       {/* Breadcrumb */}
       <Breadcrumb items={breadcrumbs} />
 
-      {tariffName && !expired ? (
-        <Alert className="relative rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 w-fit border-emerald-200 bg-emerald-50 text-emerald-900">
-          <AlertCircle />
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+        {/* Tariff Block */}
+        {tariffName && !expired ? (
+          <Alert className="relative rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 border-emerald-200 bg-emerald-50 text-emerald-900 h-full">
+            <AlertCircle />
+            <AlertTitle className="col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight">
+              {isDemo ? `${t("demo_trial_title_prefix")} ${durationDays ?? 7}${t("demo_trial_title_suffix")}` : t("active_tariff_title")}
+            </AlertTitle>
+            <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
+              {isDemo ? <p>{t("demo_trial_desc")}</p> : null}
+              {!isDemo && <div className="flex items-center gap-2">
+                  {isLifetime ? <Crown className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
+                  <span><strong>{tariffName}</strong>{endDate ? ` — ${t("end_date")}: ${formatDateDdMmYyyy(endDate)}` : ""}</span>
+                </div>}
+              <ul className="list-inside list-disc text-sm">
+                {limits.map(l => (
+                  <li key={l.id ?? `${l.limit_name}`}>{l.limit_name} - {l.value}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900 h-full">
+            <AlertTitle>
+              {t("subscription_expired") || "Ваш тариф закончился"}
+            </AlertTitle>
+            <AlertDescription>
+              <span>
+                {t("please_select_new_tariff") || "Пожалуйста, выберите новый тариф, чтобы продолжить работу."}
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Suppliers Block */}
+        <Alert className="relative rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 border-emerald-200 bg-emerald-50 text-emerald-900 h-full">
+          <Package />
           <AlertTitle className="col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight">
-            {isDemo ? `${t("demo_trial_title_prefix")} ${durationDays ?? 7}${t("demo_trial_title_suffix")}` : t("active_tariff_title")}
+            {t('suppliers_title')}
           </AlertTitle>
           <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
-            {isDemo ? <p>{t("demo_trial_desc")}</p> : null}
-            {!isDemo && <div className="flex items-center gap-2">
-                {isLifetime ? <Crown className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
-                <span><strong>{tariffName}</strong>{endDate ? ` — ${t("end_date")}: ${formatDateDdMmYyyy(endDate)}` : ""}</span>
-              </div>}
             <ul className="list-inside list-disc text-sm">
-              {limits.map(l => (
-                <li key={l.id ?? `${l.limit_name}`}>{l.limit_name} - {l.value}</li>
+              {dashboardStats?.suppliers?.map((supplier) => (
+                <li key={supplier.id}>
+                  {supplier.supplier_name} - {supplier.productCount} {t('products_count_suffix')}
+                </li>
               ))}
+              {(!dashboardStats?.suppliers?.length) && (
+                <li>{t('no_suppliers')}</li>
+              )}
             </ul>
           </AlertDescription>
         </Alert>
-      ) : (
-        <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900">
-          <AlertTitle>
-            {t("subscription_expired") || "Ваш тариф закончился"}
+
+        {/* Shops Block */}
+        <Alert className="relative rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 border-emerald-200 bg-emerald-50 text-emerald-900 h-full">
+          <Store />
+          <AlertTitle className="col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight">
+            {t('shops_title')}
           </AlertTitle>
-          <AlertDescription>
-            <span>
-              {t("please_select_new_tariff") || "Пожалуйста, выберите новый тариф, чтобы продолжить работу."}
-            </span>
+          <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
+            <ul className="list-inside list-disc text-sm">
+              {dashboardStats?.stores?.map((store) => (
+                <li key={store.id}>
+                  {store.store_name} - {store.productsCount || 0} {t('products_count_suffix')}
+                </li>
+              ))}
+              {(!dashboardStats?.stores?.length) && (
+                <li>{t('no_shops')}</li>
+              )}
+            </ul>
           </AlertDescription>
         </Alert>
-      )}
 
-      
-
-      {/* Recent Activity Section */}
-      
-
-      {/* Settings Quick Access */}
-      
-
-      {/* Additional Content for Scroll Testing */}
-      
-
-      {/* More content to ensure scrolling */}
-      {[1, 2, 3].map(section => (
-        <div key={section}></div>
-      ))}
+        {/* Totals Block */}
+        <Alert className="relative rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 border-emerald-200 bg-emerald-50 text-emerald-900 h-full">
+          <Activity />
+          <AlertTitle className="col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight">
+            {t('totals_title')}
+          </AlertTitle>
+          <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
+            <ul className="list-inside list-disc text-sm">
+              <li>{t('total_products')}: <strong>{dashboardStats?.totalProducts || 0}</strong></li>
+              <li>{t('total_categories')}: <strong>{dashboardStats?.totalCategories || 0}</strong></li>
+            </ul>
+          </AlertDescription>
+        </Alert>
+      </div>
     </div>;
 };
 export default UserDashboard;
