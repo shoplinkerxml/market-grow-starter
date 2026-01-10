@@ -111,7 +111,7 @@ export const ExportDialog = ({ storeId, open, onOpenChange }: Props) => {
       <DialogContent
         className={cn(
           "max-w-[95vw] w-full overflow-x-hidden border border-emerald-200",
-          "sm:w-fit sm:max-w-[90vw]",
+          "sm:max-w-lg",
           sidebarCollapsed === false && "min-[1393px]:left-[calc(50%+8rem)]",
           sidebarCollapsed === true && "min-[1393px]:left-[calc(50%+2rem)]"
         )}
@@ -145,6 +145,7 @@ export const ExportDialog = ({ storeId, open, onOpenChange }: Props) => {
                   <Input 
                     readOnly 
                     value={xmlUrl} 
+                    placeholder={t("export_link_placeholder")}
                     className="text-xs min-w-0 w-auto" 
                     size={Math.max(40, xmlUrl.length)}
                     data-testid="user_shop_export_xml_value" 
@@ -182,6 +183,7 @@ export const ExportDialog = ({ storeId, open, onOpenChange }: Props) => {
                   <Input 
                     readOnly 
                     value={csvUrl} 
+                    placeholder={t("export_link_placeholder")}
                     className="text-xs min-w-0 w-auto" 
                     size={Math.max(40, csvUrl.length)}
                     data-testid="user_shop_export_csv_value" 

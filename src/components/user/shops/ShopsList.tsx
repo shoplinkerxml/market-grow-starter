@@ -254,16 +254,23 @@ export const ShopsList = ({
   // ============================================================================
   const handleDeleteConfirm = async () => {
     if (!deleteDialog.shop) return;
+    const id = String(deleteDialog.shop.id);
+    const previousShops = queryClient.getQueryData<ShopWithMarketplace[]>(["user", uid, "shops"]);
 
+    // 1. Optimistic Update
+    setDeleteDialog({ open: false, shop: null });
+    queryClient.setQueryData<ShopWithMarketplace[]>(["user", uid, "shops"], (prev) => {
+      if (!Array.isArray(prev)) return prev;
+      return prev.filter((s) => String(s.id) !== id);
+    });
+    toast.success(t('shop_deleted'));
+
+    // 2. Background Request
     try {
-      const id = String(deleteDialog.shop.id);
       await onDelete?.(id);
-      setDeleteDialog({ open: false, shop: null });
-      queryClient.setQueryData<ShopWithMarketplace[]>(["user", uid, "shops"], (prev) => {
-        if (!Array.isArray(prev)) return prev;
-        return prev.filter((s) => String(s.id) !== id);
-      });
     } catch (error: unknown) {
+      // 3. Rollback on error
+      queryClient.setQueryData(["user", uid, "shops"], previousShops);
       const message = typeof (error as { message?: string }).message === 'string' 
         ? (error as { message?: string }).message 
         : '';
@@ -375,7 +382,7 @@ export const ShopsList = ({
         open={deleteDialog.open} 
         onOpenChange={(open) => setDeleteDialog({ open, shop: null })}
       >
-        <AlertDialogContent>
+        <AlertDialogContent noOverlay>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Trash2 className="h-4 w-4 text-muted-foreground" />

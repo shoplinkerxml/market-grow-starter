@@ -133,4 +133,8 @@ export const shopsDictionary: Dictionary = {
     en: "Check the link or return to the shops list.",
   },
   go_to_shops: { uk: "До магазинів", en: "Back to shops" },
+  export_link_placeholder: {
+    uk: "Посилання з'явиться тут після генерації",
+    en: "Link will appear here after generation",
+  },
 };

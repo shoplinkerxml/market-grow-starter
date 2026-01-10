@@ -75,21 +75,35 @@ export const Shops = () => {
     setViewMode('list');
   };
 
-  const handleCreateSuccess = () => {
+  const handleCreateSuccess = (newShop?: any) => {
+    if (newShop) {
+      queryClient.setQueryData(["user", uid, "shops"], (old: any) => {
+        const item = {
+          ...newShop,
+          productsCount: 0,
+          categoriesCount: 0
+        };
+        if (!Array.isArray(old)) return [item];
+        // Prevent duplicates
+        if (old.some((s: any) => String(s.id) === String(item.id))) return old;
+        return [item, ...old];
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"] });
     setViewMode('list');
   };
 
   const handleDelete = async (id: string) => {
     try {
       await ShopService.deleteShop(id);
-      toast.success(t('shop_deleted'));
-      try { queryClient.invalidateQueries({ queryKey: ["auth", "me"], exact: true }); } catch { void 0; }
-      try { queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false }); } catch { void 0; }
-      try { queryClient.removeQueries({ queryKey: ["user", uid, "shops"], exact: false }); } catch { void 0; }
-      try { ProductService.clearAllProductsCaches(); } catch { void 0; }
-    } catch (error) {
-      const message = (error as Error)?.message || t('failed_delete_shop');
-      toast.error(message);
+    } finally {
+      try { 
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["user", uid, "products"] }),
+          queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"] })
+        ]);
+        ProductService.clearAllProductsCaches(); 
+      } catch { void 0; }
     }
   };
 

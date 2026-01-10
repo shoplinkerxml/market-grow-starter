@@ -437,7 +437,7 @@ export const StoreProductEdit = () => {
         breadcrumbItems={[
           { label: t("breadcrumb_home"), href: "/user/dashboard" },
           { label: t("shops_title"), href: "/user/shops" },
-          { label: productData.shopName || storeId, href: `/user/shops/${storeId}` },
+          { label: productData.shopName || (uiState.loading ? "..." : storeId), href: `/user/shops/${storeId}` },
           { label: productData.categoryName || "—", current: true },
         ]}
         actions={

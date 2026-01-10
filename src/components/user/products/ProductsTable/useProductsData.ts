@@ -105,7 +105,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
   }, [productsQuery.isFetching]);
 
   useEffect(() => {
-    const total = pageInfo?.total ?? items.length;
+    const total = Math.max(pageInfo?.total ?? 0, items.length);
     onProductsLoadedRef.current?.(total);
   }, [items.length, pageInfo]);
 
@@ -139,7 +139,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
       const next = readStoreProductsCount();
       if (!next) return;
 
-      const baseline = Math.max(0, Number(pageInfo?.total ?? items.length) || 0);
+      const baseline = Math.max(0, Math.max(Number(pageInfo?.total ?? 0), items.length));
       if (next.source === "shopsList" && next.count < baseline) return;
       onProductsLoadedRef.current?.(next.count);
     };

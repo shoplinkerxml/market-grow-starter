@@ -556,12 +556,26 @@ export class ShopServiceCore {
 
       if (/401|Unauthorized|403|Forbidden/i.test(msg)) throw e;
 
-      if (/409|Conflict/i.test(msg)) {
-        await this.cleanupShopDependencies(id);
-        await this.invokeEdge<{ ok: boolean }>("delete-shop", { id });
+      // Fallback: Try direct deletion if Edge Function fails (e.g. config error)
+      try {
+        console.warn("Edge delete failed, trying direct DB delete...", e);
+        // Clean up links first
+        await supabase.from("store_product_links").delete().eq("store_id", id);
+        // Then delete shop
+        const { error } = await supabase.from("user_stores").delete().eq("id", id);
+        if (error) throw error;
         await this.clearShopsCaches();
-      } else {
-        throw e;
+        return;
+      } catch (directError) {
+        console.error("Direct delete also failed:", directError);
+        // If direct delete fails, throw original or new error
+        if (/409|Conflict/i.test(msg)) {
+          await this.cleanupShopDependencies(id);
+          await this.invokeEdge<{ ok: boolean }>("delete-shop", { id });
+          await this.clearShopsCaches();
+        } else {
+          throw e;
+        }
       }
     }
   }

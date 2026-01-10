@@ -44,6 +44,9 @@ export const ExportService = {
 
   invalidateLinksCache(storeId: string, userId?: string | null): void {
     ExportService.cache.remove(ExportService.makeLinksCacheKey(storeId, userId));
+    // Also remove from deduplicator to force fresh fetch
+    const inflightKey = DedupeKeyBuilder.simple(["list", storeId, userId || "current"]);
+    ExportService.deduplicator.remove(inflightKey);
   },
 
   async listForStore(storeId: string): Promise<ExportLink[]> {
