@@ -28,12 +28,14 @@ import { useShops } from "@/hooks/useShops";
 type ShopWithMarketplace = ShopAggregated;
 
 interface ShopsListProps {
+  userId?: string | null;
   onDelete?: (id: string) => void;
   onCreateNew?: () => void;
   onShopsLoaded?: (count: number, limitInfo?: ShopLimitInfo | null) => void;
 }
 
 export const ShopsList = ({ 
+  userId,
   onDelete, 
   onCreateNew, 
   onShopsLoaded,
@@ -42,7 +44,7 @@ export const ShopsList = ({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useOutletContext<{ user: { id?: string } | null }>();
-  const uid = user?.id ? String(user.id) : "current";
+  const uid = userId ?? (user?.id ? String(user.id) : "current");
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; shop: ShopWithMarketplace | null }>({
     open: false,
     shop: null
@@ -71,18 +73,6 @@ export const ShopsList = ({
   useEffect(() => { 
     onShopsLoadedRef.current?.(shopsLength, null); 
   }, [shopsLength]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const v = await SessionValidator.validateSession();
-        const uid = String(v?.user?.id || "");
-        setCurrentUserId(uid || null);
-      } catch { 
-        setCurrentUserId(null); 
-      }
-    })();
-  }, []);
   
   // Нормализация счетчиков: если товаров 0 — категории 0
   useEffect(() => {

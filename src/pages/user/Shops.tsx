@@ -48,20 +48,14 @@ export const Shops = () => {
   }, [tariffLimits]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const v = await SessionValidator.validateSession();
-        const userId = String(v?.user?.id || '');
-        if (!userId) return;
-        const channel = supabase
-          .channel(`shop_limit_${userId}`)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'user_subscriptions', filter: `user_id=eq.${userId}` }, () => {
-            queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"] });
-          })
-          .subscribe();
-        return () => { try { supabase.removeChannel(channel); } catch { void 0; } };
-      } catch { /* noop */ }
-    })();
+    if (!uid || uid === "current") return;
+    const channel = supabase
+      .channel(`shop_limit_${uid}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_subscriptions', filter: `user_id=eq.${uid}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"] });
+      })
+      .subscribe();
+    return () => { try { supabase.removeChannel(channel); } catch { void 0; } };
   }, [queryClient, uid]);
 
   // No forced refresh on mount; React Query in ShopsList handles initial fetch
@@ -191,6 +185,7 @@ export const Shops = () => {
 
       {viewMode === 'list' && (
         <ShopsList
+          userId={uid}
           onDelete={handleDelete}
           onCreateNew={handleCreateNew}
           onShopsLoaded={handleShopsLoaded}

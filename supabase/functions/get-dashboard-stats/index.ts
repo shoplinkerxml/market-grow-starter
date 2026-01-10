@@ -6,6 +6,32 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const REDIS_REST_URL =
+  Deno.env.get('UPSTASH_REDIS_REST_URL') || Deno.env.get('REDIS_REST_URL') || ''
+const REDIS_REST_TOKEN =
+  Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || Deno.env.get('REDIS_REST_TOKEN') || ''
+const DASHBOARD_STATS_TTL = 60 // 1 minute cache in Redis
+
+async function redisPipeline(commands: any[]): Promise<any[] | null> {
+  if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
+  try {
+    const base = REDIS_REST_URL.replace(/\/+$/, '')
+    const res = await fetch(`${base}/pipeline`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${REDIS_REST_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(commands),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return Array.isArray(json) ? json : null
+  } catch {
+    return null
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -145,13 +171,23 @@ Deno.serve(async (req) => {
       productsCount: shopCounts[String(s.id)] || 0
     })) || []
 
+    const responseData = {
+      suppliers: transformedSuppliers,
+      stores: transformedShops,
+      totalProducts: totalProducts || 0,
+      totalCategories: totalCategoriesCount
+    }
+
+    // Cache in Redis (fire and forget)
+    if (REDIS_REST_URL && REDIS_REST_TOKEN) {
+      const cacheKey = `dashboard:stats:${userId}`
+      redisPipeline([
+        ['SET', cacheKey, JSON.stringify(responseData), 'EX', DASHBOARD_STATS_TTL]
+      ]).catch(err => console.error('Redis cache error:', err))
+    }
+
     return new Response(
-      JSON.stringify({
-        suppliers: transformedSuppliers,
-        stores: transformedShops,
-        totalProducts: totalProducts || 0,
-        totalCategories: totalCategoriesCount
-      }),
+      JSON.stringify(responseData),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }

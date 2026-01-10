@@ -90,6 +90,11 @@ export class PrefetchService {
   private static async prefetchShops(signal: AbortSignal): Promise<void> {
     if (signal.aborted) return;
     
+    // Lazy load shops only when needed (e.g. visiting Shops page)
+    // This avoids unnecessary "user-shops-list" request on Dashboard load
+    return; 
+    
+    /* 
     try {
       // Use requestIdleCallback for non-blocking prefetch
       if (typeof requestIdleCallback !== "undefined") {
@@ -116,11 +121,17 @@ export class PrefetchService {
     } catch {
       // Silently ignore
     }
+    */
   }
 
   private static async prefetchSuppliers(signal: AbortSignal): Promise<void> {
     if (signal.aborted) return;
     
+    // Lazy load suppliers only when needed
+    // This avoids unnecessary requests on Dashboard load
+    return;
+    
+    /*
     try {
       // Use requestIdleCallback for non-blocking prefetch
       if (typeof requestIdleCallback !== "undefined") {
@@ -147,6 +158,7 @@ export class PrefetchService {
     } catch {
       // Silently ignore
     }
+    */
   }
 
   /**

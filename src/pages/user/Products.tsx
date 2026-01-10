@@ -42,16 +42,6 @@ export const Products = () => {
     }));
   }, []);
 
-  // Force cache clear on mount to ensure fresh data on page reload/navigation
-  useEffect(() => {
-    const init = async () => {
-      ProductService.clearAllCaches();
-      await queryClient.invalidateQueries({ queryKey: ["user", uid], exact: false });
-      await queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard"], exact: false });
-    };
-    init();
-  }, [queryClient, uid]);
-
   const handleRefresh = async () => {
     // 1. Clear local cache to ensure we don't serve stale data from memory
     ProductService.clearAllCaches();

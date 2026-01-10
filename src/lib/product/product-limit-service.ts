@@ -53,24 +53,26 @@ export class ProductLimitService {
   }
 
   static async getProductsCount(): Promise<number> {
-    try {
-      await ProductLimitService.ensureValidSession();
-      const resp = await ProductLimitService.invokeEdge<{
-        products?: unknown[];
-        page?: { total?: number };
-      }>("user-products-list", { store_id: null, limit: 1, offset: 0 });
-      const totalFromPage = resp?.page?.total;
-      const total =
-        typeof totalFromPage === "number"
-          ? totalFromPage
-          : Array.isArray(resp?.products)
-          ? resp.products.length
-          : 0;
-      return total || 0;
-    } catch (error) {
-      console.error("Get products count error:", error);
-      return 0;
-    }
+    return await ProductLimitService.deduplicator.dedupe("count", async () => {
+      try {
+        await ProductLimitService.ensureValidSession();
+        const resp = await ProductLimitService.invokeEdge<{
+          products?: unknown[];
+          page?: { total?: number };
+        }>("user-products-list", { store_id: null, limit: 1, offset: 0 });
+        const totalFromPage = resp?.page?.total;
+        const total =
+          typeof totalFromPage === "number"
+            ? totalFromPage
+            : Array.isArray(resp?.products)
+            ? resp.products.length
+            : 0;
+        return total || 0;
+      } catch (error) {
+        console.error("Get products count error:", error);
+        return 0;
+      }
+    });
   }
 
   static async getProductsCountCached(): Promise<number> {
