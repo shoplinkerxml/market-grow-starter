@@ -10,7 +10,7 @@ import { ShopService, type Shop, type CreateShopData, type UpdateShopData } from
 import { useMarketplaces } from '@/hooks/useMarketplaces';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { DialogNoOverlay, DialogNoOverlayContent, DialogNoOverlayHeader, DialogNoOverlayTitle, DialogNoOverlayDescription } from '@/components/ui/dialog';
+import { DialogNoOverlay, DialogNoOverlayContent, DialogNoOverlayHeader, DialogNoOverlayTitle, DialogNoOverlayDescription } from '@/components/ui/dialog-no-overlay';
 
 interface ShopFormProps {
   shop?: Shop | null;

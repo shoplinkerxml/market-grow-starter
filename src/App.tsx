@@ -52,7 +52,8 @@ const ProductCreate = lazy(() => import("./pages/user/ProductCreate").then(m => 
 const ProductEdit = lazy(() => import("./pages/user/ProductEdit").then(m => ({ default: m.ProductEdit })));
 const StoreProducts = lazy(() => import("./pages/user/StoreProducts").then(m => ({ default: m.StoreProducts })));
 const ShopSettings = lazy(() => import("./pages/user/ShopSettings"));
-import { StoreProductEdit } from "./pages/user/StoreProductEdit";
+const StoreProductEdit = lazy(() => import("./pages/user/StoreProductEdit").then(m => ({ default: m.StoreProductEdit })));
+const ErrorPage = lazy(() => import("./pages/ErrorPage"));
 
 const LegacyUserShopsRedirect = () => {
   const params = useParams();
@@ -224,7 +225,10 @@ const App = () => {
   }, []);
 
   const router = useMemo(() => createBrowserRouter([
-    { path: "/", element: <Index /> },
+    {
+      errorElement: <ErrorPage />,
+      children: [
+        { path: "/", element: <Index /> },
     { path: "/docs", element: <ApiDocs /> },
     { path: "/export/:format/:token", element: <ExportPublic /> },
     { path: "/admin-auth", element: <AdminAuth /> },
@@ -278,6 +282,8 @@ const App = () => {
       ],
     },
     { path: "*", element: <NotFound /> },
+      ],
+    },
   ], {
     future: ({
       v7_relativeSplatPath: true,
