@@ -137,4 +137,7 @@ export const shopsDictionary: Dictionary = {
     uk: "Посилання з'явиться тут після генерації",
     en: "Link will appear here after generation",
   },
+  saving_shop: { uk: "Збереження магазину...", en: "Saving shop..." },
+  creating_shop: { uk: "Створення магазину...", en: "Creating shop..." },
+  refreshing_shops: { uk: "Оновлення списку...", en: "Refreshing list..." },
 };

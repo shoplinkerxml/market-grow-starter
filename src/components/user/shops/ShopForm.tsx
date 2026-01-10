@@ -4,13 +4,13 @@ import { Label } from '@/components/ui/label';
 import { InputGroup, InputGroupAddon, InputGroupText, InputGroupInput } from '@/components/ui/input-group';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save, X, Store, Tag, Loader2 } from 'lucide-react';
+import { Save, X, Store, Tag } from 'lucide-react';
 import { useI18n } from "@/i18n";
 import { ShopService, type Shop, type CreateShopData, type UpdateShopData } from '@/lib/shop-service';
 import { useMarketplaces } from '@/hooks/useMarketplaces';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { DialogNoOverlay, DialogNoOverlayContent, DialogNoOverlayHeader, DialogNoOverlayTitle, DialogNoOverlayDescription } from '@/components/ui/dialog-no-overlay';
+import { PageLoadingModal } from '@/components/LoadingSkeletons';
 
 interface ShopFormProps {
   shop?: Shop | null;
@@ -80,23 +80,28 @@ export const ShopForm = ({ shop, onSuccess, onCancel }: ShopFormProps) => {
     try {
       setLoading(true);
       
+      let result: Shop;
       if (shop) {
         // Update existing shop
-        await ShopService.updateShop(shop.id, formData as UpdateShopData);
+        result = await ShopService.updateShop(shop.id, formData as UpdateShopData);
         toast.success(t('shop_updated'));
       } else {
         // Create new shop
-        await ShopService.createShop(formData);
+        result = await ShopService.createShop(formData);
         toast.success(t('shop_created'));
       }
       
-      onSuccess?.();
+      await onSuccess?.(result);
     } catch (error: any) {
       toast.error(error?.message || t('failed_save_shop'));
     } finally {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return <PageLoadingModal title={shop ? t('saving_shop') : t('creating_shop')} />;
+  }
 
   return (
     <Card className="max-w-2xl mx-auto">
@@ -178,20 +183,6 @@ export const ShopForm = ({ shop, onSuccess, onCancel }: ShopFormProps) => {
           </div>
         </form>
       </CardContent>
-
-      <DialogNoOverlay open={loading} onOpenChange={() => void 0} modal={false}>
-        <DialogNoOverlayContent position="top-right" variant="info" className="p-4 w-[min(18rem,92vw)]" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
-          <DialogNoOverlayHeader>
-            <DialogNoOverlayTitle className="text-sm flex items-center gap-2">
-              <Loader2 className="h-[1rem] w-[1rem] animate-spin text-emerald-600" />
-              {shop ? (t('saving_changes') || 'Збереження...') : (t('creating_shop') || 'Створення магазину...')}
-            </DialogNoOverlayTitle>
-            <DialogNoOverlayDescription className="sr-only">
-              {shop ? t('saving_changes') : t('creating_shop')}
-            </DialogNoOverlayDescription>
-          </DialogNoOverlayHeader>
-        </DialogNoOverlayContent>
-      </DialogNoOverlay>
     </Card>
   );
 };

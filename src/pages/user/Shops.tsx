@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { SessionValidator } from '@/lib/session-validation';
 import { useOutletContext } from 'react-router-dom';
 import { RefreshDataButton } from '@/components/RefreshDataButton';
+import { PageLoadingModal } from '@/components/LoadingSkeletons';
 
 type ViewMode = 'list' | 'create';
 
@@ -23,6 +24,7 @@ export const Shops = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [shopsCount, setShopsCount] = useState(0);
   const [limitInfo, setLimitInfo] = useState<ShopLimitInfo>({ current: 0, max: 0, canCreate: false });
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const { tariffLimits, user } = useOutletContext<{ tariffLimits: Array<{ limit_name: string; value: number }>; user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
@@ -75,7 +77,7 @@ export const Shops = () => {
     setViewMode('list');
   };
 
-  const handleCreateSuccess = (newShop?: any) => {
+  const handleCreateSuccess = async (newShop?: any) => {
     if (newShop) {
       queryClient.setQueryData(["user", uid, "shops"], (old: any) => {
         const item = {
@@ -89,18 +91,34 @@ export const Shops = () => {
         return [item, ...old];
       });
     }
-    queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"] });
+    
+    setIsRefreshing(true);
     setViewMode('list');
+    
+    // Force refetch from DB
+    try {
+      await ShopService.getShopsAggregated({ force: true });
+      await queryClient.invalidateQueries({ 
+        queryKey: ["user", uid, "shops"],
+        refetchType: 'all'
+      });
+    } catch (e) {
+      console.error("Failed to refetch shops:", e);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await ShopService.deleteShop(id);
+      // Force refetch from DB to ensure cache is consistent
+      await ShopService.getShopsAggregated({ force: true });
     } finally {
       try { 
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["user", uid, "products"] }),
-          queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"] })
+          queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"], refetchType: 'all' })
         ]);
         ProductService.clearAllProductsCaches(); 
       } catch { void 0; }
@@ -178,6 +196,8 @@ export const Shops = () => {
           onCancel={handleBackToList}
         />
       )}
+
+      {isRefreshing && <PageLoadingModal title={t('refreshing_shops')} />}
     </div>
   );
 };
