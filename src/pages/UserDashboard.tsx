@@ -31,7 +31,6 @@ type SubscriptionEntity = {
   };
 };
 import { Breadcrumb, type BreadcrumbItem } from "@/components/ui/breadcrumb";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
  
 interface UserDashboardContextType {
@@ -117,115 +116,126 @@ const UserDashboard = () => {
       {/* Breadcrumb */}
       <Breadcrumb items={breadcrumbs} />
 
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-        {/* Tariff Block */}
-        {tariffName && !expired ? (
-          <Alert className="relative rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 border-emerald-200 bg-emerald-50 text-emerald-900 h-full">
-            <AlertCircle />
-            <AlertTitle className="col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight">
-              {isDemo ? `${t("demo_trial_title_prefix")} ${durationDays ?? 7}${t("demo_trial_title_suffix")}` : t("active_tariff_title")}
-            </AlertTitle>
-            <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
-              {isDemo ? <p>{t("demo_trial_desc")}</p> : null}
-              {!isDemo && <div className="flex items-center gap-2">
-                  {isLifetime ? <Crown className="h-4 w-4" /> : <CreditCard className="h-4 w-4" />}
-                  <span><strong>{tariffName}</strong>{endDate ? ` — ${t("end_date")}: ${formatDateDdMmYyyy(endDate)}` : ""}</span>
-                </div>}
-              <ul className="list-inside list-disc text-sm">
-                {limits.map(l => (
-                  <li key={l.id ?? `${l.limit_name}`}>{l.limit_name} - {l.value}</li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900 h-full">
-            <AlertTitle>
-              {t("subscription_expired") || "Ваш тариф закончился"}
-            </AlertTitle>
-            <AlertDescription>
-              <span>
-                {t("please_select_new_tariff") || "Пожалуйста, выберите новый тариф, чтобы продолжить работу."}
-              </span>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Suppliers Block */}
-        <Alert className="relative rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 border-emerald-200 bg-emerald-50 text-emerald-900 h-full">
-          <Package />
-          <AlertTitle className="col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight">
-            {t('suppliers_title')}
-          </AlertTitle>
-          <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
-            {isStatsLoading ? (
-              <div className="space-y-2 w-full">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
+      <Card className="w-full">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            {t('menu_dashboard') || 'Dashboard'}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+            
+            {/* Tariff Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <AlertCircle className="h-4 w-4" />
+                <span>
+                  {tariffName && !expired 
+                    ? (isDemo ? `${t("demo_trial_title_prefix")} ${durationDays ?? 7}${t("demo_trial_title_suffix")}` : t("active_tariff_title"))
+                    : (t("subscription_expired") || "Ваш тариф закончился")}
+                </span>
               </div>
-            ) : (
-              <ul className="list-inside list-disc text-sm">
-                {dashboardStats?.suppliers?.map((supplier) => (
-                  <li key={supplier.id}>
-                    {supplier.supplier_name} - {supplier.productCount} {t('products_count_suffix')}
-                  </li>
-                ))}
-                {(!dashboardStats?.suppliers?.length) && (
-                  <li>{t('no_suppliers')}</li>
+              <div className="text-sm text-muted-foreground pl-6">
+                {tariffName && !expired ? (
+                  <>
+                    {isDemo ? <p className="mb-2">{t("demo_trial_desc")}</p> : null}
+                    {!isDemo && (
+                      <div className="flex items-center gap-2 mb-2">
+                        {isLifetime ? <Crown className="h-4 w-4 text-yellow-500" /> : <CreditCard className="h-4 w-4" />}
+                        <span><strong>{tariffName}</strong>{endDate ? ` — ${t("end_date")}: ${formatDateDdMmYyyy(endDate)}` : ""}</span>
+                      </div>
+                    )}
+                    <ul className="list-inside list-disc space-y-1">
+                      {limits.map(l => (
+                        <li key={l.id ?? `${l.limit_name}`}>{l.limit_name} - {l.value}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p>{t("please_select_new_tariff") || "Пожалуйста, выберите новый тариф, чтобы продолжить работу."}</p>
                 )}
-              </ul>
-            )}
-          </AlertDescription>
-        </Alert>
-
-        {/* Shops Block */}
-        <Alert className="relative rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 border-emerald-200 bg-emerald-50 text-emerald-900 h-full">
-          <Store />
-          <AlertTitle className="col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight">
-            {t('shops_title')}
-          </AlertTitle>
-          <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
-            {isStatsLoading ? (
-              <div className="space-y-2 w-full">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
               </div>
-            ) : (
-              <ul className="list-inside list-disc text-sm">
-                {dashboardStats?.stores?.map((store) => (
-                  <li key={store.id}>
-                    {store.store_name} - {store.productsCount || 0} {t('products_count_suffix')}
-                  </li>
-                ))}
-                {(!dashboardStats?.stores?.length) && (
-                  <li>{t('no_shops')}</li>
+            </div>
+
+            {/* Suppliers Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Package className="h-4 w-4" />
+                <span>{t('suppliers_title')}</span>
+              </div>
+              <div className="text-sm text-muted-foreground pl-6">
+                {isStatsLoading ? (
+                  <div className="space-y-2 w-full">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ) : (
+                  <ul className="list-inside list-disc space-y-1">
+                    {dashboardStats?.suppliers?.map((supplier) => (
+                      <li key={supplier.id}>
+                        {supplier.supplier_name} - {supplier.productCount} {t('products_count_suffix')}
+                      </li>
+                    ))}
+                    {(!dashboardStats?.suppliers?.length) && (
+                      <li>{t('no_suppliers')}</li>
+                    )}
+                  </ul>
                 )}
-              </ul>
-            )}
-          </AlertDescription>
-        </Alert>
-
-        {/* Totals Block */}
-        <Alert className="relative rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 border-emerald-200 bg-emerald-50 text-emerald-900 h-full">
-          <Activity />
-          <AlertTitle className="col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight">
-            {t('totals_title')}
-          </AlertTitle>
-          <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
-            {isStatsLoading ? (
-              <div className="space-y-2 w-full">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
               </div>
-            ) : (
-              <ul className="list-inside list-disc text-sm">
-                <li>{t('total_products')}: <strong>{dashboardStats?.totalProducts || 0}</strong></li>
-                <li>{t('total_categories')}: <strong>{dashboardStats?.totalCategories || 0}</strong></li>
-              </ul>
-            )}
-          </AlertDescription>
-        </Alert>
-      </div>
+            </div>
+
+            {/* Shops Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Store className="h-4 w-4" />
+                <span>{t('shops_title')}</span>
+              </div>
+              <div className="text-sm text-muted-foreground pl-6">
+                {isStatsLoading ? (
+                  <div className="space-y-2 w-full">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ) : (
+                  <ul className="list-inside list-disc space-y-1">
+                    {dashboardStats?.stores?.map((store) => (
+                      <li key={store.id}>
+                        {store.store_name} - {store.productsCount || 0} {t('products_count_suffix')}
+                      </li>
+                    ))}
+                    {(!dashboardStats?.stores?.length) && (
+                      <li>{t('no_shops')}</li>
+                    )}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {/* Totals Section */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Activity className="h-4 w-4" />
+                <span>{t('totals_title')}</span>
+              </div>
+              <div className="text-sm text-muted-foreground pl-6">
+                 {isStatsLoading ? (
+                  <div className="space-y-2 w-full">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ) : (
+                  <ul className="list-inside list-disc space-y-1">
+                    <li>{t('total_products')}: <strong>{dashboardStats?.totalProducts || 0}</strong></li>
+                    <li>{t('total_categories')}: <strong>{dashboardStats?.totalCategories || 0}</strong></li>
+                  </ul>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </CardContent>
+      </Card>
     </div>;
 };
 export default UserDashboard;
