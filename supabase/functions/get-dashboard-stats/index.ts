@@ -49,9 +49,10 @@ Deno.serve(async (req) => {
       // Shops
       supabaseClient
         .from('user_stores')
-        .select('id, store_name')
+        .select('id, store_name, is_active')
         .eq('user_id', userId)
-        .eq('is_active', true),
+        // Treat NULL as active to match other parts of the app
+        .or('is_active.is.null,is_active.eq.true'),
 
       // Total products
       supabaseClient
