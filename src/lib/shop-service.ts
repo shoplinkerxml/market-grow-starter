@@ -10,6 +10,7 @@ export class ShopService extends ShopServiceCore {
     if (options?.force) {
       try {
         PersistentCacheService.invalidateShops();
+        this.clearCache("shops-aggregated");
       } catch {
         void 0;
       }

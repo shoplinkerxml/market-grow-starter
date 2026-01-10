@@ -97,6 +97,7 @@ export const Shops = () => {
     
     // Force refetch from DB
     try {
+      ShopService.clearAllCaches();
       await ShopService.getShopsAggregated({ force: true });
       await queryClient.invalidateQueries({ 
         queryKey: ["user", uid, "shops"],
@@ -110,18 +111,24 @@ export const Shops = () => {
   };
 
   const handleDelete = async (id: string) => {
+    setIsRefreshing(true);
     try {
       await ShopService.deleteShop(id);
+      
       // Force refetch from DB to ensure cache is consistent
-      await ShopService.getShopsAggregated({ force: true });
-    } finally {
-      try { 
+      try {
+        ShopService.clearAllCaches();
+        await ShopService.getShopsAggregated({ force: true });
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["user", uid, "products"] }),
           queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"], refetchType: 'all' })
         ]);
         ProductService.clearAllProductsCaches(); 
-      } catch { void 0; }
+      } catch (e) {
+        console.error("Failed to refresh cache after delete:", e);
+      }
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
