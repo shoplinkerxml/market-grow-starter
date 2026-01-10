@@ -180,49 +180,6 @@ const UserProtected = () => {
     }
   }, [queryClient]);
 
-  // Prefetch магазинов при необходимости
-  useEffect(() => {
-    if (!authenticated) return;
-
-    const path = location.pathname.toLowerCase();
-    const isShopsListPage = path === '/user/shops' || path === '/user/shops/';
-    const needsShops = isShopsListPage;
-    
-    if (needsShops) {
-      ProductService.getUserStores().catch(() => void 0);
-    }
-  }, [authenticated, location.pathname]);
-
-  const prefetchData = useCallback(async () => {
-    try {
-      const path = location.pathname.toLowerCase();
-      const shouldPrefetchSuppliers = path.startsWith("/user/suppliers");
-
-      const tasks: Promise<unknown>[] = [];
-      if (shouldPrefetchSuppliers) {
-        const uid = user?.id ? String(user.id) : "current";
-        tasks.push(
-          queryClient.prefetchQuery({
-            queryKey: ["user", uid, "suppliers", "list"],
-            queryFn: async () => {
-              const { SupplierService } = await import("@/lib/supplier-service");
-              return await SupplierService.getSuppliers();
-            },
-            staleTime: 900_000,
-          }),
-        );
-      }
-      await Promise.allSettled(tasks);
-    } catch {
-      void 0;
-    }
-  }, [location.pathname, queryClient, user?.id]);
-
-  useEffect(() => {
-    if (!authenticated) return;
-    void prefetchData();
-  }, [authenticated, prefetchData]);
-
   useEffect(() => {
     if (!authenticated) return;
     if (authMeQuery.data == null) return;
@@ -234,8 +191,8 @@ const UserProtected = () => {
     prefetchDoneRef.current = key;
 
     const run = () => {
-      void import("@/lib/prefetch-service")
-        .then(({ PrefetchService }) => PrefetchService.prefetchUserData())
+      void import("@/lib/login-data-service")
+        .then(({ LoginDataService }) => LoginDataService.prefetchAll(uid))
         .catch(() => void 0);
     };
 

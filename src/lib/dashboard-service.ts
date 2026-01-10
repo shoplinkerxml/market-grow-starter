@@ -39,22 +39,23 @@ export class DashboardService {
       return cached;
     }
 
-    return await this.deduplicator.dedupe(cacheKey, async () => {
-      try {
+    try {
+      return await this.deduplicator.dedupe(cacheKey, async () => {
         const stats = await invokeEdgeWithAuth<DashboardStats>("get-dashboard-stats", {});
+        // Only cache successful responses
         this.cache.set(cacheKey, stats);
         return stats;
-      } catch (error) {
-        console.error("Failed to fetch dashboard stats:", error);
-        // Return empty stats on error to prevent crashing
-        return {
-          suppliers: [],
-          stores: [],
-          totalProducts: 0,
-          totalCategories: 0
-        };
-      }
-    });
+      });
+    } catch (error) {
+      console.error("Failed to fetch dashboard stats:", error);
+      // Return empty stats on error to prevent crashing, but do NOT cache it
+      return {
+        suppliers: [],
+        stores: [],
+        totalProducts: 0,
+        totalCategories: 0
+      };
+    }
   }
 
   static clearCache(): void {

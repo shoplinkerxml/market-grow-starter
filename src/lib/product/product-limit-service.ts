@@ -1,8 +1,14 @@
 import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
 import type { ProductLimitInfo } from "@/lib/product-service";
+import { RequestDeduplicatorFactory } from "@/lib/request-deduplicator";
 
 export class ProductLimitService {
+  private static deduplicator = RequestDeduplicatorFactory.create("product-limit-service", {
+    ttl: 10_000,
+    maxSize: 10,
+  });
+
   private static edgeError(
     error: { context?: { status?: number }; status?: number; statusCode?: number; message?: string } | null,
     fallbackKey: string,
@@ -53,8 +59,8 @@ export class ProductLimitService {
   }
 
   static async getProductsCount(): Promise<number> {
-    return await ProductLimitService.deduplicator.dedupe("count", async () => {
-      try {
+    try {
+      return await ProductLimitService.deduplicator.dedupe("count", async () => {
         await ProductLimitService.ensureValidSession();
         const resp = await ProductLimitService.invokeEdge<{
           products?: unknown[];
@@ -68,11 +74,11 @@ export class ProductLimitService {
             ? resp.products.length
             : 0;
         return total || 0;
-      } catch (error) {
-        console.error("Get products count error:", error);
-        return 0;
-      }
-    });
+      });
+    } catch (error) {
+      console.error("Get products count error:", error);
+      return 0;
+    }
   }
 
   static async getProductsCountCached(): Promise<number> {
