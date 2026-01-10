@@ -9,6 +9,8 @@ import { DesktopSidebar, MobileMenuSheet } from "@/components/user-layout/sideba
 import { UserHeader } from "@/components/user-layout/header";
 import { FullPageLoader, ProgressiveLoader } from "@/components/LoadingSkeletons";
 import type { UserMenuItem } from "@/lib/user-menu-service";
+import { useCountersRealtime } from "@/hooks/useCountersRealtime";
+import { useUserStoresRealtime } from "@/hooks/useUserStoresRealtime";
 
 function normalizeItemPath(path: string): string {
   return String(path || "").replace(/^\/+/, "");
@@ -97,6 +99,10 @@ export const UserLayoutContent = ({
   const { menuItems, menuLoading, activeMenuItem, navigateToMenuItem, refreshMenuItems, hasAccess } = useUserMenu();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Realtime sync (tabs/devices)
+  useCountersRealtime(user?.id);
+  useUserStoresRealtime(user?.id);
 
   useAutoCollapseSidebar(setSidebarCollapsed);
   useSubscriptionRedirect({
