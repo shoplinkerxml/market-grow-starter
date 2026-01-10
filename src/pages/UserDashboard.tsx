@@ -11,6 +11,7 @@ import type { TariffLimit } from "@/lib/tariff-service";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ShopService } from "@/lib/shop-service";
 import { ProductService } from "@/lib/product-service";
 import { useQuery } from "@tanstack/react-query";
@@ -78,7 +79,7 @@ const UserDashboard = () => {
     id?: number;
   }[]>([]);
   
-  const { data: dashboardStats } = useQuery({
+  const { data: dashboardStats, isLoading: isStatsLoading } = useQuery({
     queryKey: ["user", user.id, "dashboard-stats"],
     queryFn: async () => {
       return await DashboardService.getDashboardStats();
@@ -157,16 +158,23 @@ const UserDashboard = () => {
             {t('suppliers_title')}
           </AlertTitle>
           <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
-            <ul className="list-inside list-disc text-sm">
-              {dashboardStats?.suppliers?.map((supplier) => (
-                <li key={supplier.id}>
-                  {supplier.supplier_name} - {supplier.productCount} {t('products_count_suffix')}
-                </li>
-              ))}
-              {(!dashboardStats?.suppliers?.length) && (
-                <li>{t('no_suppliers')}</li>
-              )}
-            </ul>
+            {isStatsLoading ? (
+              <div className="space-y-2 w-full">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ) : (
+              <ul className="list-inside list-disc text-sm">
+                {dashboardStats?.suppliers?.map((supplier) => (
+                  <li key={supplier.id}>
+                    {supplier.supplier_name} - {supplier.productCount} {t('products_count_suffix')}
+                  </li>
+                ))}
+                {(!dashboardStats?.suppliers?.length) && (
+                  <li>{t('no_suppliers')}</li>
+                )}
+              </ul>
+            )}
           </AlertDescription>
         </Alert>
 
@@ -177,16 +185,23 @@ const UserDashboard = () => {
             {t('shops_title')}
           </AlertTitle>
           <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
-            <ul className="list-inside list-disc text-sm">
-              {dashboardStats?.stores?.map((store) => (
-                <li key={store.id}>
-                  {store.store_name} - {store.productsCount || 0} {t('products_count_suffix')}
-                </li>
-              ))}
-              {(!dashboardStats?.stores?.length) && (
-                <li>{t('no_shops')}</li>
-              )}
-            </ul>
+            {isStatsLoading ? (
+              <div className="space-y-2 w-full">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ) : (
+              <ul className="list-inside list-disc text-sm">
+                {dashboardStats?.stores?.map((store) => (
+                  <li key={store.id}>
+                    {store.store_name} - {store.productsCount || 0} {t('products_count_suffix')}
+                  </li>
+                ))}
+                {(!dashboardStats?.stores?.length) && (
+                  <li>{t('no_shops')}</li>
+                )}
+              </ul>
+            )}
           </AlertDescription>
         </Alert>
 
@@ -197,10 +212,17 @@ const UserDashboard = () => {
             {t('totals_title')}
           </AlertTitle>
           <AlertDescription className="col-start-2 grid justify-items-start gap-2 text-sm [&_p]:leading-relaxed">
-            <ul className="list-inside list-disc text-sm">
-              <li>{t('total_products')}: <strong>{dashboardStats?.totalProducts || 0}</strong></li>
-              <li>{t('total_categories')}: <strong>{dashboardStats?.totalCategories || 0}</strong></li>
-            </ul>
+            {isStatsLoading ? (
+              <div className="space-y-2 w-full">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ) : (
+              <ul className="list-inside list-disc text-sm">
+                <li>{t('total_products')}: <strong>{dashboardStats?.totalProducts || 0}</strong></li>
+                <li>{t('total_categories')}: <strong>{dashboardStats?.totalCategories || 0}</strong></li>
+              </ul>
+            )}
           </AlertDescription>
         </Alert>
       </div>

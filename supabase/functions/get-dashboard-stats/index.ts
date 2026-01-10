@@ -1,5 +1,5 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import { createClient } from '@supabase/supabase-js'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,31 +33,23 @@ Deno.serve(async (req) => {
 
     const userId = user.id
 
-    // Fetch all required data in parallel
+    // Parallel fetch of base data
     const [
       { data: suppliers, error: suppliersError },
       { data: shops, error: shopsError },
       { count: totalProducts, error: totalProductsError },
-      { count: totalCategories, error: totalCategoriesError }
+      { count: totalCategories, error: totalCategoriesError } // We'll try to count explicitly
     ] = await Promise.all([
-      // Suppliers with product count
+      // Suppliers
       supabaseClient
-        .from('suppliers')
-        .select(`
-          id,
-          supplier_name,
-          user_master_products:user_master_products!supplier_id(count)
-        `)
+        .from('user_suppliers') // Changed from 'suppliers' to 'user_suppliers' to match other functions
+        .select('id, supplier_name')
         .eq('user_id', userId),
       
-      // Shops with product count
+      // Shops
       supabaseClient
         .from('user_stores')
-        .select(`
-          id,
-          store_name,
-          store_product_links:store_product_links!store_id(count)
-        `)
+        .select('id, store_name')
         .eq('user_id', userId),
 
       // Total products
@@ -66,50 +58,97 @@ Deno.serve(async (req) => {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId),
 
-      // Total categories (assuming from store_categories or user_categories? 
-      // The user code used `stores.reduce((acc, s) => acc + (s.categoriesCount || 0), 0)` 
-      // which implies sum of categories across stores.
-      // Let's check table name. Likely `store_categories`.
-      supabaseClient
-        .from('store_categories')
-        .select('*', { count: 'exact', head: true })
-        // store_categories usually links to user_stores, so we need to filter by stores belonging to user.
-        // But RLS should handle it if set up correctly.
-        // Or we filter by store_id in (select id from user_stores where user_id = uid)
-        // Let's try simple select if RLS is on. If not, we might need a join or filter.
-        // Assuming RLS protects store_categories based on store ownership.
-        .in('store_id', (
-             await supabaseClient.from('user_stores').select('id').eq('user_id', userId)
-        ).data?.map(s => s.id) || [])
+      // Total categories - count from store_categories for user's stores
+      // Since we can't join easily in count, we might need a separate query later if this fails.
+      // But let's try to get all categories count by selecting from store_categories where store_id is in user_stores.
+      // However, we don't have the store IDs yet in this Promise.all context unless we query user_stores twice.
+      // So we will handle categories count separately or use a separate query.
+      // For now, let's just return 0 and calculate it below.
+      Promise.resolve({ count: 0, error: null }) 
     ])
 
-    if (suppliersError) throw suppliersError
-    if (shopsError) throw shopsError
+    if (suppliersError) {
+      console.error('Suppliers fetch error:', suppliersError)
+    }
+    if (shopsError) {
+      console.error('Shops fetch error:', shopsError)
+    }
+
+    // Fetch counts details
+    // 1. Product counts per supplier
+    // We fetch all products (lightweight) to aggregate in memory
+    const { data: productsData } = await supabaseClient
+      .from('user_master_products')
+      .select('id, supplier_id')
+      .eq('user_id', userId)
+
+    // 2. Product counts per shop
+    // We fetch all store links to aggregate in memory
+    // store_product_links has store_id
+    // We need to filter by stores that belong to user.
+    const storeIds = shops?.map(s => s.id) || []
     
+    let storeLinksData: any[] = []
+    if (storeIds.length > 0) {
+      const { data: links } = await supabaseClient
+        .from('store_product_links')
+        .select('store_id')
+        .in('store_id', storeIds)
+        .eq('is_active', true)
+      
+      storeLinksData = links || []
+    }
+
+    // 3. Categories count
+    // Fetch all store_categories for these stores
+    let totalCategoriesCount = 0
+    if (storeIds.length > 0) {
+        const { count } = await supabaseClient
+            .from('store_categories')
+            .select('*', { count: 'exact', head: true })
+            .in('store_id', storeIds)
+        
+        totalCategoriesCount = count || 0
+    }
+
+    // Aggregation
+    const supplierCounts: Record<string, number> = {}
+    if (productsData) {
+      for (const p of productsData) {
+        if (p.supplier_id) {
+            const sid = String(p.supplier_id)
+            supplierCounts[sid] = (supplierCounts[sid] || 0) + 1
+        }
+      }
+    }
+
+    const shopCounts: Record<string, number> = {}
+    for (const l of storeLinksData) {
+        if (l.store_id) {
+            const sid = String(l.store_id)
+            shopCounts[sid] = (shopCounts[sid] || 0) + 1
+        }
+    }
+
     // Transform data
     const transformedSuppliers = suppliers?.map(s => ({
       id: s.id,
       supplier_name: s.supplier_name,
-      productCount: s.user_master_products?.[0]?.count || 0
+      productCount: supplierCounts[String(s.id)] || 0
     })) || []
 
     const transformedShops = shops?.map(s => ({
       id: s.id,
       store_name: s.store_name,
-      productsCount: s.store_product_links?.[0]?.count || 0
+      productsCount: shopCounts[String(s.id)] || 0
     })) || []
-
-    // Calculate total categories correctly if the count query above failed or needs adjustment.
-    // The previous logic was: stores.reduce((acc, s) => acc + (s.categoriesCount || 0), 0)
-    // To replicate this accurately, we should probably count store_categories.
-    // The query above does that.
 
     return new Response(
       JSON.stringify({
         suppliers: transformedSuppliers,
         stores: transformedShops,
         totalProducts: totalProducts || 0,
-        totalCategories: totalCategories || 0
+        totalCategories: totalCategoriesCount
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
