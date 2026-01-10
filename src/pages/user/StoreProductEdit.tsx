@@ -348,6 +348,13 @@ export const StoreProductEdit = () => {
             }
           : {}),
       });
+      
+      // Force refresh cache after update
+      ProductService.clearAllProductsCaches();
+      try {
+        await ProductService.getProductsPage(storeId, 50, 0, { force: true });
+      } catch { void 0; }
+      
       queryClient.invalidateQueries({ queryKey: ["user", uid, "products", storeId], exact: false });
 
       toast.success(t("product_updated"));

@@ -412,34 +412,32 @@ export class ProductService {
     limit: number,
     offset: number,
   ): Promise<{ products: ProductAggregated[]; page: ProductListPage }> {
-    try {
-      const resp = await ProductService.invokeEdge<ProductListResponseObj>(
-        storeId ? "store-products-list" : "user-products-list",
-        {
-          ...(storeId ? { store_id: String(storeId) } : {}),
-          limit,
-          offset,
-          bypassCache: true,
-        },
-      );
-      const products = Array.isArray(resp?.products) ? resp.products : [];
-      const page: ProductListPage = {
+    // Retry with bypassCache=true, but allow errors to propagate
+    const resp = await ProductService.invokeEdge<ProductListResponseObj>(
+      storeId ? "store-products-list" : "user-products-list",
+      {
+        ...(storeId ? { store_id: String(storeId) } : {}),
         limit,
         offset,
-        hasMore: !!resp?.page?.hasMore,
-        nextOffset: resp?.page?.nextOffset ?? null,
-        total: resp?.page?.total ?? products.length,
-      };
-      return { products, page };
-    } catch {
-      return { products: [], page: { limit, offset, hasMore: false, nextOffset: null, total: 0 } };
-    }
+        bypassCache: true,
+      },
+    );
+    const products = Array.isArray(resp?.products) ? resp.products : [];
+    const page: ProductListPage = {
+      limit,
+      offset,
+      hasMore: !!resp?.page?.hasMore,
+      nextOffset: resp?.page?.nextOffset ?? null,
+      total: resp?.page?.total ?? products.length,
+    };
+    return { products, page };
   }
 
   static async getProductsPage(
     storeId: string | null,
     limit: number,
     offset: number,
+    options?: { bypassCache?: boolean; force?: boolean },
   ): Promise<{
     products: ProductAggregated[];
     page: {
@@ -450,12 +448,25 @@ export class ProductService {
       total: number;
     };
   }> {
-    return await ProductCacheManager.getProductsPageCached(storeId, limit, offset, async () => {
+    if (options?.force) {
       try {
+        ProductCacheManager.clearAllProductsCaches();
+      } catch {
+        void 0;
+      }
+    }
+    return await ProductCacheManager.getProductsPageCached(
+      storeId,
+      limit,
+      offset,
+      async () => {
+        // Direct call without swallowing errors.
+        // If invokeEdge fails, it should throw, preventing cache from storing empty data.
         const resp = await ProductService.invokeEdge<ProductListResponseObj>(storeId ? "store-products-list" : "user-products-list", {
           ...(storeId ? { store_id: storeId } : {}),
           limit,
           offset,
+          bypassCache: options?.bypassCache || options?.force,
         });
         const products = Array.isArray(resp?.products) ? resp!.products! : [];
         const page: ProductListPage = {
@@ -466,10 +477,9 @@ export class ProductService {
           total: resp?.page?.total ?? products.length,
         };
         return { products, page };
-      } catch {
-        return await ProductService.fetchProductsPageFallback(storeId ?? null, limit, offset);
-      }
-    });
+      },
+      { bypassCache: options?.bypassCache || options?.force }
+    );
   }
 
   static updateFirstPageCaches(

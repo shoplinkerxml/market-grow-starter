@@ -206,17 +206,24 @@ export const ProductEdit = () => {
       });
     } catch { void 0; }
 
-    navigate('/user/products');
-    void ProductService.updateProduct(id, payload)
-      .then(() => {
-        toast.success(t('product_updated'));
-        queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
-      })
-      .catch((error) => {
-        console.error('Failed to save product:', error);
-        toast.error(t('failed_save_product'));
-        queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
-      });
+    try {
+      await ProductService.updateProduct(id, payload);
+      
+      // Force refresh cache after update
+      ProductService.clearAllProductsCaches();
+      try {
+        await ProductService.getProductsPage(null, 50, 0, { force: true });
+      } catch { void 0; }
+
+      toast.success(t('product_updated'));
+      queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
+      navigate('/user/products');
+    } catch (error) {
+      console.error('Failed to save product:', error);
+      toast.error(t('failed_save_product'));
+      // Invalidate to be safe
+      queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
+    }
   };
 
   const pageBreadcrumbs = [

@@ -150,6 +150,13 @@ export const ProductCreate = () => {
           is_main: !!img.is_main
         }))
       });
+
+      // Force refresh cache after create
+      ProductService.clearAllProductsCaches();
+      try {
+        await ProductService.getProductsPage(null, 50, 0, { force: true });
+      } catch { void 0; }
+
       queryClient.setQueryData(["user", uid, "products", "count"], (prev: number | undefined) => {
         const v = typeof prev === "number" ? prev : current;
         return Math.max(0, v + 1);

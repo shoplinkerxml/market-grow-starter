@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Package, Trash2 } from 'lucide-react';
@@ -42,11 +42,27 @@ export const Products = () => {
     }));
   }, []);
 
+  // Force cache clear on mount to ensure fresh data on page reload/navigation
+  useEffect(() => {
+    const init = async () => {
+      ProductService.clearAllProductsCaches();
+      await queryClient.invalidateQueries({ queryKey: ["user", uid], exact: false });
+    };
+    init();
+  }, [queryClient, uid]);
+
   const handleRefresh = async () => {
     // 1. Clear local cache to ensure we don't serve stale data from memory
     ProductService.clearAllProductsCaches();
 
-    // 2. Invalidate React Query cache to trigger UI update (this will cause the table to refetch visible rows)
+    // 2. Force fetch first page to update cache
+    try {
+      await ProductService.getProductsPage(null, pageSize, 0, { force: true });
+    } catch {
+      void 0;
+    }
+
+    // 3. Invalidate React Query cache to trigger UI update (this will cause the table to refetch visible rows)
     await queryClient.invalidateQueries({ queryKey: ["user", uid], exact: false });
     
     setRefreshTrigger((prev) => prev + 1);
@@ -94,6 +110,13 @@ export const Products = () => {
       });
 
       await ProductService.deleteProduct(product.id);
+      
+      // Force refresh cache after delete
+      ProductService.clearAllProductsCaches();
+      try {
+        await ProductService.getProductsPage(null, pageSize, 0, { force: true });
+      } catch { void 0; }
+
       toast.success(t('product_deleted'));
       // Optional background revalidation to sync with server, does not block UI
       queryClient.invalidateQueries({ queryKey: baseKey, exact: false });
