@@ -34,6 +34,10 @@ function isUuidLike(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ""));
 }
 
+function isNumericId(value: string): boolean {
+  return /^[0-9]+$/.test(String(value || ""));
+}
+
 function legacyParseStoreEntityId(entityId: string): { storeId: string; kind: "products" | "categories" } | null {
   // Legacy: store:<storeId>:products | store:<storeId>:categories
   const parts = String(entityId || "").split(":");
@@ -67,6 +71,19 @@ function parseStoreCounter(row: CounterRow, userId: string): { storeId: string; 
   return null;
 }
 
+function parseSupplierProductsCounter(row: CounterRow, userId: string): { supplierId: number; count: number } | null {
+  // Format observed: counter_type = products, entity_id = <supplier_id_number>
+  const entityId = String(row.entity_id || "");
+  const ct = String(row.counter_type || "");
+  if (ct !== "products") return null;
+  if (entityId === String(userId)) return null;
+  if (isUuidLike(entityId)) return null;
+  if (!isNumericId(entityId)) return null;
+  const supplierId = Number(entityId);
+  if (!Number.isFinite(supplierId)) return null;
+  return { supplierId, count: Math.max(0, Number(row.count) || 0) };
+}
+
 function isUserTotalCounter(row: CounterRow, userId: string): row is CounterRow {
   const entityId = String(row.entity_id || "");
   const ct = String(row.counter_type || "");
@@ -96,13 +113,9 @@ export function useCountersRealtime(userId: string | null | undefined) {
       ShopCountsService.set(queryClient, uid, storeId, { productsCount, categoriesCount });
     }
 
-    // Dashboard stats use their own memory cache -> clear + invalidate react-query
-    try {
-      DashboardService.clearCache();
-    } catch {
-      void 0;
-    }
-    queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard-stats"], exact: true });
+    // NOTE: do NOT invalidate dashboard here.
+    // Dashboard uses edge response which historically was computed from other tables.
+    // We keep dashboard in sync by applying counters updates directly in handleChange.
 
     pending.clear();
   }, [queryClient, userId]);
@@ -159,7 +172,28 @@ export function useCountersRealtime(userId: string | null | undefined) {
         return;
       }
 
-      // 2) Per-user totals -> update dashboard cache immediately (no refetch)
+      // 2) Supplier product counters -> update dashboard suppliers list (no refetch)
+      const supplierParsed = parseSupplierProductsCounter(row, uid);
+      if (supplierParsed) {
+        // ensure in-memory service cache won't keep stale values
+        try {
+          DashboardService.clearCache();
+        } catch {
+          void 0;
+        }
+
+        queryClient.setQueryData<any>(["user", uid, "dashboard-stats"], (prev) => {
+          const base = prev && typeof prev === "object" ? prev : { suppliers: [], stores: [], totalProducts: 0, totalCategories: 0 };
+          const suppliers = Array.isArray((base as any).suppliers) ? (base as any).suppliers : [];
+          const nextSuppliers = suppliers.map((s: any) =>
+            Number(s?.id) === supplierParsed.supplierId ? { ...s, productCount: supplierParsed.count } : s,
+          );
+          return { ...base, suppliers: nextSuppliers };
+        });
+        return;
+      }
+
+      // 3) Per-user totals -> update dashboard cache immediately (no refetch)
       if (isUserTotalCounter(row, uid)) {
         const count = Math.max(0, Number(row.count) || 0);
 
@@ -175,7 +209,6 @@ export function useCountersRealtime(userId: string | null | undefined) {
           const ct = String(row.counter_type || "");
           if (ct === "products") return { ...base, totalProducts: count };
           if (ct === "categories") return { ...base, totalCategories: count };
-          // shops/suppliers totals might be used in other widgets later; keep untouched for now
           return base;
         });
       }
