@@ -29,8 +29,13 @@ type RealtimePayload = {
   old: CounterRow | null;
 };
 
-function parseStoreEntityId(entityId: string): { storeId: string; kind: "products" | "categories" } | null {
-  // Expected: store:<storeId>:products | store:<storeId>:categories
+function isUuidLike(value: string): boolean {
+  // good-enough check for store ids (uuid)
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+function legacyParseStoreEntityId(entityId: string): { storeId: string; kind: "products" | "categories" } | null {
+  // Legacy: store:<storeId>:products | store:<storeId>:categories
   const parts = String(entityId || "").split(":");
   if (parts.length !== 3) return null;
   if (parts[0] !== "store") return null;
@@ -39,6 +44,33 @@ function parseStoreEntityId(entityId: string): { storeId: string; kind: "product
   if (!storeId) return null;
   if (kind !== "products" && kind !== "categories") return null;
   return { storeId, kind };
+}
+
+function counterKey(row: Pick<CounterRow, "counter_type" | "entity_id">): string {
+  return `${String(row.counter_type)}:${String(row.entity_id)}`;
+}
+
+function parseStoreCounter(row: CounterRow, userId: string): { storeId: string; kind: "products" | "categories" } | null {
+  // Primary format we see in DB: counter_type = products|categories, entity_id = <store_uuid>
+  const entityId = String(row.entity_id || "");
+  const ct = String(row.counter_type || "");
+
+  // New format
+  if ((ct === "products" || ct === "categories") && isUuidLike(entityId) && entityId !== String(userId)) {
+    return { storeId: entityId, kind: ct as "products" | "categories" };
+  }
+
+  // Legacy format
+  const legacy = legacyParseStoreEntityId(entityId);
+  if (legacy) return legacy;
+
+  return null;
+}
+
+function isUserTotalCounter(row: CounterRow, userId: string): row is CounterRow {
+  const entityId = String(row.entity_id || "");
+  const ct = String(row.counter_type || "");
+  return entityId === String(userId) && (ct === "products" || ct === "categories" || ct === "shops" || ct === "suppliers");
 }
 
 /**
@@ -89,8 +121,23 @@ export function useCountersRealtime(userId: string | null | undefined) {
 
     const handleLocalMutation = (e: CustomEvent<{ entityIds: string[] }>) => {
       const ids = e.detail?.entityIds || [];
-      ids.forEach((id) => suppressedRef.current.add(String(id)));
-      setTimeout(() => ids.forEach((id) => suppressedRef.current.delete(String(id))), SUPPRESSION_WINDOW_MS);
+      ids.forEach((raw) => {
+        const id = String(raw);
+        suppressedRef.current.add(id);
+        // Support storeId-only suppression (we don't always know counter_type at call site)
+        suppressedRef.current.add(`products:${id}`);
+        suppressedRef.current.add(`categories:${id}`);
+      });
+      setTimeout(
+        () =>
+          ids.forEach((raw) => {
+            const id = String(raw);
+            suppressedRef.current.delete(id);
+            suppressedRef.current.delete(`products:${id}`);
+            suppressedRef.current.delete(`categories:${id}`);
+          }),
+        SUPPRESSION_WINDOW_MS,
+      );
     };
     window.addEventListener(COUNTERS_MUTATION_EVENT as any, handleLocalMutation as EventListener);
 
@@ -98,19 +145,40 @@ export function useCountersRealtime(userId: string | null | undefined) {
       const row = payload.new || payload.old;
       if (!row?.entity_id) return;
 
-      const entityId = String(row.entity_id);
-      if (suppressedRef.current.has(entityId)) return;
+      const suppressKey = counterKey(row);
+      const legacyKey = String(row.entity_id || "");
+      if (suppressedRef.current.has(suppressKey) || suppressedRef.current.has(legacyKey)) return;
+      const parsed = parseStoreCounter(row, uid);
+      if (parsed) {
+        const count = Math.max(0, Number(row.count) || 0);
+        const current = pendingRef.current.get(parsed.storeId) || {};
+        if (parsed.kind === "products") current.products = count;
+        else current.categories = count;
+        pendingRef.current.set(parsed.storeId, current);
+        scheduleFlush();
+        return;
+      }
 
-      const parsed = parseStoreEntityId(entityId);
-      if (!parsed) return;
+      // 2) Per-user totals -> update dashboard cache immediately (no refetch)
+      if (isUserTotalCounter(row, uid)) {
+        const count = Math.max(0, Number(row.count) || 0);
 
-      const count = Math.max(0, Number(row.count) || 0);
-      const current = pendingRef.current.get(parsed.storeId) || {};
-      if (parsed.kind === "products") current.products = count;
-      else current.categories = count;
-      pendingRef.current.set(parsed.storeId, current);
+        // ensure in-memory service cache won't keep stale values
+        try {
+          DashboardService.clearCache();
+        } catch {
+          void 0;
+        }
 
-      scheduleFlush();
+        queryClient.setQueryData<any>(["user", uid, "dashboard-stats"], (prev) => {
+          const base = prev && typeof prev === "object" ? prev : { suppliers: [], stores: [], totalProducts: 0, totalCategories: 0 };
+          const ct = String(row.counter_type || "");
+          if (ct === "products") return { ...base, totalProducts: count };
+          if (ct === "categories") return { ...base, totalCategories: count };
+          // shops/suppliers totals might be used in other widgets later; keep untouched for now
+          return base;
+        });
+      }
     };
 
     type RealtimeChannelApi = { on: (...args: unknown[]) => RealtimeChannelApi; subscribe: () => unknown };
