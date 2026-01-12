@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
     if (storeIds.length > 0) {
       const [
         { count: pCount, error: pError },
-        { count: cCount, error: cError },
+        { data: storeCategoryRows, error: cError },
         { data: pData, error: pDataError },
         { data: lData, error: lError }
       ] = await Promise.all([
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
         
         supabaseClient
           .from('store_store_categories')
-          .select('*', { count: 'exact', head: true })
+          .select('category_id')
           .in('store_id', storeIds)
           .eq('is_active', true),
         
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
       if (lError) console.error('Links error:', lError)
 
       totalProducts = pCount || 0
-      totalCategories = cCount || 0
+      totalCategories = new Set((storeCategoryRows || []).map((r: any) => String(r?.category_id ?? '')).filter(Boolean)).size
       productsData = pData || []
       storeLinksData = lData || []
     }
