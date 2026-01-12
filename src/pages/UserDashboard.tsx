@@ -143,7 +143,7 @@ const UserDashboard = () => {
                     {!isDemo && (
                       <div className="flex items-center gap-2 mb-2">
                         {isLifetime ? <Crown className="h-4 w-4 text-yellow-500" /> : <CreditCard className="h-4 w-4" />}
-                        <span><strong>{tariffName}</strong>{endDate ? ` — ${t("end_date")}: ${formatDateDdMmYyyy(endDate)}` : ""}</span>
+                        <span><strong>{tariffName}</strong>{endDate ? ` — ${t("until")} ${formatDateDdMmYyyy(endDate)}` : ""}</span>
                       </div>
                     )}
                     <ul className="list-inside list-disc space-y-1">
