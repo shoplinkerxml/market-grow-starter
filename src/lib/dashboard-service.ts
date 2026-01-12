@@ -27,7 +27,7 @@ export class DashboardService {
 
   private static cache = UnifiedCacheManager.create("dashboard-service", {
     mode: "memory",
-    defaultTtlMs: 300_000, // 5 minutes cache
+    defaultTtlMs: 5_000, // 5 seconds - short TTL since edge now reads fresh from counters
     maxSize: 10,
   });
 

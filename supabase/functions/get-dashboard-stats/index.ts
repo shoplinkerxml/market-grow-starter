@@ -10,7 +10,9 @@ const REDIS_REST_URL =
   Deno.env.get('UPSTASH_REDIS_REST_URL') || Deno.env.get('REDIS_REST_URL') || ''
 const REDIS_REST_TOKEN =
   Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || Deno.env.get('REDIS_REST_TOKEN') || ''
-const DASHBOARD_STATS_TTL = 60 // 1 minute cache in Redis
+// Disable Redis caching for dashboard - read fresh from counters table each time.
+// The counters table is updated by triggers in real time, so we always get accurate data.
+const DASHBOARD_STATS_TTL = 0 // set to 0 to disable redis caching
 
 async function redisPipeline(commands: any[]): Promise<any[] | null> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
@@ -59,26 +61,7 @@ Deno.serve(async (req) => {
 
     const userId = user.id
 
-    // 0) Try Redis cache first
-    if (REDIS_REST_URL && REDIS_REST_TOKEN) {
-      try {
-        const base = REDIS_REST_URL.replace(/\/+$/, "");
-        const cacheKey = `dashboard:stats:${userId}`;
-        const cachedRes = await fetch(`${base}/get/${encodeURIComponent(cacheKey)}`, {
-          headers: { Authorization: `Bearer ${REDIS_REST_TOKEN}` },
-        });
-        if (cachedRes.ok) {
-          const cachedJson = await cachedRes.json();
-          // Upstash returns { result: string | null }
-          const raw = cachedJson?.result;
-          if (typeof raw === "string" && raw.length > 0) {
-            return new Response(raw, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-          }
-        }
-      } catch {
-        // ignore cache errors
-      }
-    }
+    // NOTE: Redis caching disabled (TTL=0). We always read fresh from counters table.
 
     // 1) Base entities
     const [{ data: suppliers, error: suppliersError }, { data: shops, error: shopsError }] = await Promise.all([
@@ -134,14 +117,6 @@ Deno.serve(async (req) => {
       totalProducts,
       totalCategories,
     };
-
-    // Cache in Redis
-    if (REDIS_REST_URL && REDIS_REST_TOKEN) {
-      const cacheKey = `dashboard:stats:${userId}`;
-      redisPipeline([["SET", cacheKey, JSON.stringify(responseData), "EX", DASHBOARD_STATS_TTL]]).catch((err) =>
-        console.error("Redis cache error:", err),
-      );
-    }
 
     return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

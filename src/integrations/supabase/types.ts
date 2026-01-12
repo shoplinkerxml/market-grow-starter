@@ -1346,8 +1346,16 @@ export type Database = {
       get_user_product_limit: { Args: { p_user_id: string }; Returns: number }
       is_admin: { Args: never; Returns: boolean }
       is_owner_supplier: { Args: { p_supplier_id: number }; Returns: boolean }
+      recompute_category_counters_for_store: {
+        Args: { p_store_id: string }
+        Returns: undefined
+      }
       update_counter: {
         Args: { p_counter_type: string; p_delta: number; p_entity_id: string }
+        Returns: undefined
+      }
+      upsert_counter_value: {
+        Args: { p_count: number; p_counter_type: string; p_entity_id: string }
         Returns: undefined
       }
       user_stats: {
