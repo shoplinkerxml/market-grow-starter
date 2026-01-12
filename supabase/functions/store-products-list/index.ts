@@ -98,6 +98,33 @@ function getImagePublicUrl(r2Key: string | null, fallbackUrl: string): string {
   return `${cleanBase}/${r2Key}`
 }
 
+type MainImageInfo = { r2Key: string | null; url: string | null }
+
+async function fetchMainImagesMap(client: any, productIds: string[]): Promise<Map<string, MainImageInfo>> {
+  const ids = (productIds || []).map(String).filter(Boolean)
+  if (ids.length === 0) return new Map()
+
+  const { data, error } = await client
+    .from('store_product_images')
+    .select('id,product_id,is_main,order_index,r2_key_thumb,r2_key_card,r2_key_original,url')
+    .in('product_id', ids)
+    .order('is_main', { ascending: false })
+    .order('order_index', { ascending: true })
+    .order('id', { ascending: true })
+
+  if (error || !Array.isArray(data)) return new Map()
+
+  const out = new Map<string, MainImageInfo>()
+  for (const row of data as any[]) {
+    const pid = String(row?.product_id || '').trim()
+    if (!pid || out.has(pid)) continue
+    const r2Key = (row?.r2_key_thumb || row?.r2_key_card || row?.r2_key_original) ?? null
+    const url = row?.url != null ? String(row.url) : null
+    out.set(pid, { r2Key, url })
+  }
+  return out
+}
+
 async function buildCategoriesMap(
   client: any,
   userId: string,
@@ -180,6 +207,8 @@ async function fetchStoreProducts(
     return { products: [], totalCount: linksResult.count ?? 0 }
   }
 
+  const mainImagesMap = await fetchMainImagesMap(client, productIds)
+
   const byId = new Map<string, any>()
   for (const p of productsResult.data || []) {
     byId.set(String((p as any).id), p)
@@ -189,6 +218,12 @@ async function fetchStoreProducts(
     .map((link: any) => {
       const p: any = byId.get(String(link.product_id))
       if (!p) return null
+      const mainImageInfo = mainImagesMap.get(String(link.product_id))
+      const urlFromView = p.main_image_key ? getImagePublicUrl(p.main_image_key, String(p.main_image_url || '')) : ''
+      const urlFromImages = mainImageInfo?.r2Key
+        ? getImagePublicUrl(mainImageInfo.r2Key, String(mainImageInfo.url || ''))
+        : String(mainImageInfo?.url || '')
+      const resolvedMainImageUrl = (urlFromView || urlFromImages).trim() ? (urlFromView || urlFromImages) : undefined
 
       let categoryName = p.category_name
       if (link?.custom_category_id) {
@@ -219,7 +254,7 @@ async function fetchStoreProducts(
         created_at: p.created_at,
         updated_at: p.updated_at,
         is_active: true,
-        mainImageUrl: p.main_image_key ? getImagePublicUrl(p.main_image_key, p.main_image_url) : undefined,
+        mainImageUrl: resolvedMainImageUrl,
         categoryName,
         supplierName: p.supplier_name,
         linkedStoreIds: [String(storeId)],

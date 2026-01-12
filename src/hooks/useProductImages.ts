@@ -4,6 +4,57 @@ import { ProductService } from '@/lib/product-service';
 import { ImageHelpers } from '@/utils/imageHelpers';
 import { getImageUrl } from '@/lib/imageUtils';
 
+function buildImageKey(img: ProductImage): string {
+  const objectKeyRaw = img.object_key || ImageHelpers.extractObjectKeyFromUrl(img.url);
+  const objectKeyFixed = ImageHelpers.normalizeObjectKeyExt(objectKeyRaw);
+  if (objectKeyFixed) return `k:${objectKeyFixed}`;
+  return `u:${String(img.url || '').trim()}`;
+}
+
+function dedupeImages(list: ProductImage[]): ProductImage[] {
+  const sorted = (list || []).slice().sort((a, b) => {
+    const ao = typeof a.order_index === 'number' ? a.order_index : 0;
+    const bo = typeof b.order_index === 'number' ? b.order_index : 0;
+    if (ao !== bo) return ao - bo;
+    const aid = String(a.id || a.object_key || a.url || '');
+    const bid = String(b.id || b.object_key || b.url || '');
+    return aid.localeCompare(bid);
+  });
+
+  const out: ProductImage[] = [];
+  const idxByKey = new Map<string, number>();
+
+  for (const img of sorted) {
+    const key = buildImageKey(img);
+    const existingIdx = idxByKey.get(key);
+    if (existingIdx == null) {
+      idxByKey.set(key, out.length);
+      out.push(img);
+      continue;
+    }
+    const current = out[existingIdx];
+    if (!current?.is_main && img.is_main) {
+      out[existingIdx] = img;
+    }
+  }
+
+  let mainAssigned = false;
+  const normalized = out.map((img, idx) => {
+    const isMain = !!img.is_main;
+    if (isMain && !mainAssigned) {
+      mainAssigned = true;
+      return { ...img, is_main: true, order_index: idx };
+    }
+    return { ...img, is_main: false, order_index: idx };
+  });
+
+  if (!mainAssigned && normalized.length > 0) {
+    normalized[0] = { ...normalized[0], is_main: true };
+  }
+
+  return normalized;
+}
+
 export function useProductImages(productId?: string, preloadedImages?: ProductImage[]) {
   const [images, setImages] = useState<ProductImage[]>(preloadedImages || []);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -15,7 +66,15 @@ export function useProductImages(productId?: string, preloadedImages?: ProductIm
 
   const addImages = useCallback((newImages: ProductImage[]) => {
     setImages(prev => {
-      const combined = [...prev, ...newImages];
+      const existing = new Set(prev.map(buildImageKey));
+      const merged = [...prev];
+      for (const img of newImages || []) {
+        const key = buildImageKey(img);
+        if (existing.has(key)) continue;
+        existing.add(key);
+        merged.push(img);
+      }
+      const combined = dedupeImages(merged);
       imagesRef.current = combined;
       return combined;
     });
@@ -38,9 +97,13 @@ export function useProductImages(productId?: string, preloadedImages?: ProductIm
         object_key: objectKeyFixed || undefined,
       } as ProductImage;
     }));
-    setImages(resolved as ProductImage[]);
-    imagesRef.current = resolved;
-  }, [productId]);
+    const next = dedupeImages(resolved as ProductImage[]);
+    setImages(next);
+    imagesRef.current = next;
+    if (activeIndex >= next.length) {
+      setActiveIndex(Math.max(0, next.length - 1));
+    }
+  }, [productId, activeIndex]);
 
   const removeImage = useCallback(async (index: number) => {
     const target = imagesRef.current[index];
