@@ -178,9 +178,6 @@ async function fetchAllProducts(
 
   const storeIds = stores.map((s: any) => s.id)
 
-  // 1. Получаем ID уникальных товаров из мастер-таблицы (для правильной пагинации и подсчета)
-  // Мы запрашиваем store_products, чтобы получить уникальные товары (мастер-записи),
-  // игнорируя дубликаты из связей (store_product_links), которые есть в products_with_details.
   const { data: masterProducts, error: masterError, count } = await client
     .from('store_products')
     .select('id, store_id, created_at', { count: 'exact' })
@@ -195,7 +192,6 @@ async function fetchAllProducts(
   const productIds = masterProducts.map((p: any) => String(p.id))
   const masterStoreMap = new Map(masterProducts.map((p: any) => [String(p.id), String(p.store_id)]))
 
-  // 2. Получаем детали для этих товаров через VIEW
   const { data: detailsData, error: detailsError } = await client
     .from('products_with_details')
     .select('*')
@@ -203,18 +199,12 @@ async function fetchAllProducts(
 
   if (detailsError) {
     console.error('Error fetching details:', detailsError)
-    // В случае ошибки получения деталей, возвращаем пустой список, но с правильным каунтом?
-    // Лучше вернуть ошибку или пустой список.
     return { products: [], totalCount: count ?? 0 }
   }
 
-  // 3. Собираем данные, выбирая только мастер-запись для каждого товара
-  // Это исключает дубликаты, если товар привязан к нескольким магазинам
   const data = productIds.map((pid: string) => {
     const masterStoreId = masterStoreMap.get(pid)
-    // Ищем запись в деталях, которая соответствует мастер-магазину
     const detail = detailsData?.find((d: any) => String(d.id) === pid && String(d.store_id) === masterStoreId)
-    // Fallback: берем первую попавшуюся запись с таким ID, если мастер-запись не найдена в VIEW
     return detail || detailsData?.find((d: any) => String(d.id) === pid)
   }).filter((p: any) => p)
 
