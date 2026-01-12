@@ -110,9 +110,10 @@ Deno.serve(async (req) => {
           .in('store_id', storeIds),
         
         supabaseClient
-          .from('store_categories')
+          .from('store_store_categories')
           .select('*', { count: 'exact', head: true })
-          .in('store_id', storeIds),
+          .in('store_id', storeIds)
+          .eq('is_active', true),
         
         supabaseClient
           .from('store_products')
@@ -121,7 +122,7 @@ Deno.serve(async (req) => {
 
         supabaseClient
           .from('store_product_links')
-          .select('store_id')
+          .select('store_id, custom_category_id, store_products!inner(category_id,category_external_id)')
           .in('store_id', storeIds)
           .eq('is_active', true)
       ])
@@ -137,7 +138,6 @@ Deno.serve(async (req) => {
       storeLinksData = lData || []
     }
 
-    // Aggregation
     const supplierCounts: Record<string, number> = {}
     if (productsData) {
       for (const p of productsData) {
@@ -149,14 +149,29 @@ Deno.serve(async (req) => {
     }
 
     const shopCounts: Record<string, number> = {}
+    const shopCategorySets = new Map<string, Set<string>>()
     for (const l of storeLinksData) {
-        if (l.store_id) {
-            const sid = String(l.store_id)
-            shopCounts[sid] = (shopCounts[sid] || 0) + 1
-        }
+      if (!l?.store_id) continue
+      const sid = String(l.store_id)
+      shopCounts[sid] = (shopCounts[sid] || 0) + 1
+
+      const base = (l as any)?.store_products || {}
+      const customCat = (l as any)?.custom_category_id
+      const catKey =
+        customCat != null
+          ? `ext:${String(customCat)}`
+          : base?.category_id != null
+            ? `cat:${String(base.category_id)}`
+            : base?.category_external_id != null
+              ? `ext:${String(base.category_external_id)}`
+              : null
+
+      if (catKey) {
+        if (!shopCategorySets.has(sid)) shopCategorySets.set(sid, new Set<string>())
+        shopCategorySets.get(sid)!.add(catKey)
+      }
     }
 
-    // Transform data
     const transformedSuppliers = suppliers?.map(s => ({
       id: s.id,
       supplier_name: s.supplier_name,
@@ -168,6 +183,56 @@ Deno.serve(async (req) => {
       store_name: s.store_name,
       productsCount: shopCounts[String(s.id)] || 0
     })) || []
+
+    if (SUPABASE_SERVICE_ROLE_KEY && storeIds.length > 0) {
+      try {
+        const entityIds: string[] = []
+        for (const sid of storeIds) {
+          const storeId = String(sid)
+          entityIds.push(`store:${storeId}:products`)
+          entityIds.push(`store:${storeId}:categories`)
+        }
+
+        const { data: existingRows } = await supabaseClient
+          .from('counters')
+          .select('id, entity_id, counter_type')
+          .in('entity_id', entityIds)
+
+        const existingByEntity = new Map<string, { id: string; counter_type: string }>()
+        for (const r of existingRows || []) {
+          if (!(r as any)?.entity_id || !(r as any)?.id) continue
+          existingByEntity.set(String((r as any).entity_id), { id: String((r as any).id), counter_type: String((r as any).counter_type || 'store') })
+        }
+
+        const updates: Array<{ id: string; count: number }> = []
+        const inserts: Array<{ entity_id: string; counter_type: string; count: number }> = []
+
+        for (const sid of storeIds) {
+          const storeId = String(sid)
+          const productsEntityId = `store:${storeId}:products`
+          const categoriesEntityId = `store:${storeId}:categories`
+
+          const productsCount = Math.max(0, Number(shopCounts[storeId] ?? 0) || 0)
+          const categoriesCountRaw = shopCategorySets.get(storeId)?.size ?? 0
+          const categoriesCount = productsCount === 0 ? 0 : Math.max(0, Number(categoriesCountRaw) || 0)
+
+          const exP = existingByEntity.get(productsEntityId)
+          if (exP) updates.push({ id: exP.id, count: productsCount })
+          else inserts.push({ entity_id: productsEntityId, counter_type: 'store', count: productsCount })
+
+          const exC = existingByEntity.get(categoriesEntityId)
+          if (exC) updates.push({ id: exC.id, count: categoriesCount })
+          else inserts.push({ entity_id: categoriesEntityId, counter_type: 'store', count: categoriesCount })
+        }
+
+        await Promise.all([
+          ...updates.map((u) => supabaseClient.from('counters').update({ count: u.count }).eq('id', u.id)),
+          inserts.length > 0 ? supabaseClient.from('counters').insert(inserts) : Promise.resolve(null),
+        ])
+      } catch (e) {
+        console.error('Counters sync error:', e)
+      }
+    }
 
     const responseData = {
       suppliers: transformedSuppliers,
