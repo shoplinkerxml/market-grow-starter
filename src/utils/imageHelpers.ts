@@ -77,7 +77,23 @@ export const ImageHelpers = {
 
   async ensureAbsoluteUrl(previewUrl: string, objectKeyRaw?: string | null): Promise<string> {
     const url = String(previewUrl || '');
-    if (/^https?:\/\//i.test(url)) return url;
+    if (/^https?:\/\//i.test(url)) {
+      try {
+        const u = new URL(url);
+        const host = String(u.host || '');
+        const base = R2Storage.getR2PublicBaseUrl();
+        let baseHost = '';
+        try {
+          baseHost = base ? new URL(base).host : '';
+        } catch {}
+        const isR2 = host.includes('r2.dev') || host.includes('cloudflarestorage.com') || (baseHost ? host === baseHost : false);
+        if (isR2) {
+          const extracted = R2Storage.extractObjectKeyFromUrl(url);
+          if (extracted) return R2Storage.makePublicUrl(extracted);
+        }
+      } catch {}
+      return url;
+    }
     const key = String(objectKeyRaw || url || '').replace(/^\/+/, '');
     const base = R2Storage.getR2PublicBaseUrl();
     if (base) return `${base}/${key}`;

@@ -56,9 +56,22 @@ export class ProductImageService {
     const images = Array.isArray(payload?.images) ? payload.images : [];
     return images
       .map((img, idx) => {
-        const url = String((img as any)?.url || "");
+        const urlRaw = String((img as any)?.url || "").trim();
         const r2 = (img as any)?.r2_key_original;
-        const resolvedUrl = url.trim() ? url : r2 ? R2Storage.makePublicUrl(String(r2)) : "";
+        let resolvedUrl = "";
+        if (urlRaw) {
+          resolvedUrl = urlRaw;
+          try {
+            const u = new URL(urlRaw);
+            const host = String(u.host || "");
+            if (host.includes("r2.dev") || host.includes("cloudflarestorage.com")) {
+              const extracted = R2Storage.extractObjectKeyFromUrl(urlRaw);
+              if (extracted) resolvedUrl = R2Storage.makePublicUrl(extracted);
+            }
+          } catch {}
+        } else if (r2) {
+          resolvedUrl = R2Storage.makePublicUrl(String(r2));
+        }
         return {
           id: (img as any)?.id != null ? String((img as any).id) : undefined,
           product_id: String(productId),

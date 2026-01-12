@@ -99,7 +99,7 @@ export default function ParamsSection(props: Props) {
                   {props.t('btn_cancel')}
                 </Button>
                 <Button type="button" onClick={props.saveParamModal} data-testid="productForm_modal_save">
-                  {props.editingParamIndex === null ? props.t('btn_create') : props.t('btn_update')}
+                  {props.editingParamIndex === null ? props.t('add_characteristic') : props.t('btn_update')}
                 </Button>
               </DialogFooter>
             </DialogContent>
