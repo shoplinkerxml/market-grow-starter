@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('Missing Supabase environment variables')
@@ -140,9 +141,18 @@ function processParams(paramRows: any[], productId: string) {
   }))
 }
 
-async function handleBatchRequest(supabase: any, productIds: string[], storeId: string | null) {
+async function getUserStoreIds(supabase: any, userId: string): Promise<string[]> {
+  const { data, error } = await supabase.from('user_stores').select('id').eq('user_id', userId)
+  if (error) throw error
+  return (data || []).map((r: any) => String(r.id)).filter(Boolean)
+}
+
+async function handleBatchRequest(supabase: any, userId: string, productIds: string[], storeId: string | null) {
   console.log(`[BATCH] Loading ${productIds.length} products`)
   const startTime = Date.now()
+
+  const storeIds = await getUserStoreIds(supabase, userId)
+  if (storeIds.length === 0) return { items: [] }
 
   // Один запрос со всеми связанными данными через JOIN
   const { data: productsData, error: productsError } = await supabase
@@ -153,6 +163,7 @@ async function handleBatchRequest(supabase: any, productIds: string[], storeId: 
       params:store_product_params(id,product_id,name,value,order_index,paramid,valueid)
     `)
     .in('id', productIds)
+    .in('store_id', storeIds)
 
   if (productsError) {
     console.error('[BATCH] Error loading products:', productsError)
@@ -185,6 +196,14 @@ async function handleSingleRequest(supabase: any, user: any, productId: string, 
   console.log(`[SINGLE] Loading product ${productId}`)
   const startTime = Date.now()
 
+  const storeIds = await getUserStoreIds(supabase, user.id)
+  if (storeIds.length === 0) {
+    throw new Error('product_not_found')
+  }
+  if (storeId && !storeIds.includes(String(storeId))) {
+    throw new Error('product_not_found')
+  }
+
   // Один большой запрос со всеми связанными данными
   const { data: productData, error: productError } = await supabase
     .from('store_products')
@@ -194,6 +213,7 @@ async function handleSingleRequest(supabase: any, user: any, productId: string, 
       params:store_product_params(id,product_id,name,value,order_index,paramid,valueid)
     `)
     .eq('id', productId)
+    .in('store_id', storeIds)
     .single()
 
   if (productError || !productData) {
@@ -360,14 +380,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
     const token = authHeader.slice('Bearer '.length).trim()
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: token ? { headers: { Authorization: `Bearer ${token}` } } : {},
     })
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const { data: { user }, error: userError } = await authClient.auth.getUser()
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: corsHeaders })
     }
+
+    const dbKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY
+    const supabase = createClient(SUPABASE_URL, dbKey)
 
     // Парсинг параметров
     let body: RequestBody = {}
@@ -392,7 +415,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // Batch запрос
     if (Array.isArray(body.product_ids) && body.product_ids.length > 0) {
       const uniqueIds = Array.from(new Set(body.product_ids)).slice(0, 1000)
-      const result = await handleBatchRequest(supabase, uniqueIds, body.store_id || null)
+      const result = await handleBatchRequest(supabase, user.id, uniqueIds, body.store_id || null)
       return new Response(JSON.stringify(result), { status: 200, headers: corsHeaders })
     }
 
