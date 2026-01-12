@@ -6,11 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+
 const REDIS_REST_URL =
   Deno.env.get('UPSTASH_REDIS_REST_URL') || Deno.env.get('REDIS_REST_URL') || ''
 const REDIS_REST_TOKEN =
   Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || Deno.env.get('REDIS_REST_TOKEN') || ''
-const DASHBOARD_STATS_TTL = 60 // 1 minute cache in Redis
+const DASHBOARD_STATS_TTL = 60
 
 async function redisPipeline(commands: any[]): Promise<any[] | null> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
@@ -38,9 +42,17 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const serviceKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY
+    if (!SUPABASE_URL || !serviceKey) {
+      return new Response(JSON.stringify({ error: 'Configuration error' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      SUPABASE_URL,
+      serviceKey,
       {
         global: {
           headers: { Authorization: req.headers.get('Authorization')! },
@@ -59,84 +71,70 @@ Deno.serve(async (req) => {
 
     const userId = user.id
 
-    // Parallel fetch of base data
     const [
       { data: suppliers, error: suppliersError },
-      { data: shops, error: shopsError },
-      { count: totalProducts, error: totalProductsError },
-      { count: totalCategories, error: totalCategoriesError } // We'll try to count explicitly
+      { data: shops, error: shopsError }
     ] = await Promise.all([
-      // Suppliers
       supabaseClient
-        .from('user_suppliers') // Changed from 'suppliers' to 'user_suppliers' to match other functions
+        .from('user_suppliers')
         .select('id, supplier_name')
         .eq('user_id', userId),
       
-      // Shops
       supabaseClient
         .from('user_stores')
         .select('id, store_name, is_active')
         .eq('user_id', userId)
-        // Treat NULL as active to match other parts of the app
-        .or('is_active.is.null,is_active.eq.true'),
-
-      // Total products
-      supabaseClient
-        .from('user_master_products')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId),
-
-      // Total categories - count from store_categories for user's stores
-      // Since we can't join easily in count, we might need a separate query later if this fails.
-      // But let's try to get all categories count by selecting from store_categories where store_id is in user_stores.
-      // However, we don't have the store IDs yet in this Promise.all context unless we query user_stores twice.
-      // So we will handle categories count separately or use a separate query.
-      // For now, let's just return 0 and calculate it below.
-      Promise.resolve({ count: 0, error: null }) 
+        .or('is_active.is.null,is_active.eq.true')
     ])
 
-    if (suppliersError) {
-      console.error('Suppliers fetch error:', suppliersError)
-    }
-    if (shopsError) {
-      console.error('Shops fetch error:', shopsError)
-    }
+    if (suppliersError) console.error('Suppliers fetch error:', suppliersError)
+    if (shopsError) console.error('Shops fetch error:', shopsError)
 
-    // Fetch counts details
-    // 1. Product counts per supplier
-    // We fetch all products (lightweight) to aggregate in memory
-    const { data: productsData } = await supabaseClient
-      .from('user_master_products')
-      .select('id, supplier_id')
-      .eq('user_id', userId)
-
-    // 2. Product counts per shop
-    // We fetch all store links to aggregate in memory
-    // store_product_links has store_id
-    // We need to filter by stores that belong to user.
     const storeIds = shops?.map(s => s.id) || []
-    
-    let storeLinksData: any[] = []
-    if (storeIds.length > 0) {
-      const { data: links } = await supabaseClient
-        .from('store_product_links')
-        .select('store_id')
-        .in('store_id', storeIds)
-        .eq('is_active', true)
-      
-      storeLinksData = links || []
-    }
 
-    // 3. Categories count
-    // Fetch all store_categories for these stores
-    let totalCategoriesCount = 0
+    let totalProducts = 0
+    let totalCategories = 0
+    let productsData: any[] = []
+    let storeLinksData: any[] = []
+
     if (storeIds.length > 0) {
-        const { count } = await supabaseClient
-            .from('store_categories')
-            .select('*', { count: 'exact', head: true })
-            .in('store_id', storeIds)
+      const [
+        { count: pCount, error: pError },
+        { count: cCount, error: cError },
+        { data: pData, error: pDataError },
+        { data: lData, error: lError }
+      ] = await Promise.all([
+        supabaseClient
+          .from('store_products')
+          .select('*', { count: 'exact', head: true })
+          .in('store_id', storeIds),
         
-        totalCategoriesCount = count || 0
+        supabaseClient
+          .from('store_categories')
+          .select('*', { count: 'exact', head: true })
+          .in('store_id', storeIds),
+        
+        supabaseClient
+          .from('store_products')
+          .select('id, supplier_id')
+          .in('store_id', storeIds),
+
+        supabaseClient
+          .from('store_product_links')
+          .select('store_id')
+          .in('store_id', storeIds)
+          .eq('is_active', true)
+      ])
+
+      if (pError) console.error('Products count error:', pError)
+      if (cError) console.error('Categories count error:', cError)
+      if (pDataError) console.error('Products data error:', pDataError)
+      if (lError) console.error('Links error:', lError)
+
+      totalProducts = pCount || 0
+      totalCategories = cCount || 0
+      productsData = pData || []
+      storeLinksData = lData || []
     }
 
     // Aggregation
@@ -175,10 +173,9 @@ Deno.serve(async (req) => {
       suppliers: transformedSuppliers,
       stores: transformedShops,
       totalProducts: totalProducts || 0,
-      totalCategories: totalCategoriesCount
+      totalCategories: totalCategories
     }
 
-    // Cache in Redis (fire and forget)
     if (REDIS_REST_URL && REDIS_REST_TOKEN) {
       const cacheKey = `dashboard:stats:${userId}`
       redisPipeline([
