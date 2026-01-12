@@ -30,6 +30,7 @@ export const usersDictionary: Dictionary = {
   price: { uk: "Ціна", en: "Price" },
   start_date: { uk: "Дата початку", en: "Start Date" },
   end_date: { uk: "Дата закінчення", en: "End Date" },
+  until: { uk: "до", en: "until" },
   status: { uk: "Статус", en: "Status" },
   no_subscriptions: { uk: "Немає підписок", en: "No Subscriptions" },
   free: { uk: "Безкоштовно", en: "Free" },
