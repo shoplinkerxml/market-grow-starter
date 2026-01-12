@@ -2,8 +2,25 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { ProductParam } from '@/components/ProductFormTabs/types';
 
+function makeParamsKey(params: ProductParam[]): string {
+  if (!Array.isArray(params) || params.length === 0) return '';
+  return params
+    .map((p) => {
+      const id = (p as any)?.id != null ? String((p as any).id) : '';
+      const order = (p as any)?.order_index != null ? String((p as any).order_index) : '';
+      const name = (p as any)?.name != null ? String((p as any).name) : '';
+      const value = (p as any)?.value != null ? String((p as any).value) : '';
+      const paramid = (p as any)?.paramid != null ? String((p as any).paramid) : '';
+      const valueid = (p as any)?.valueid != null ? String((p as any).valueid) : '';
+      return `${id}\u241f${order}\u241f${name}\u241f${value}\u241f${paramid}\u241f${valueid}`;
+    })
+    .join('\u241e');
+}
+
 export function useProductParams(preloadedParams?: ProductParam[], onChange?: (params: ProductParam[]) => void) {
   const dirtyRef = useRef(false);
+  const initialIncoming = Array.isArray(preloadedParams) ? preloadedParams : [];
+  const preloadedKeyRef = useRef<string>(makeParamsKey(initialIncoming));
   const [parameters, setParametersState] = useState<ProductParam[]>(() => (Array.isArray(preloadedParams) ? preloadedParams : []));
   const [isParamModalOpen, setIsParamModalOpen] = useState(false);
   const [editingParamIndex, setEditingParamIndex] = useState<number | null>(null);
@@ -14,6 +31,15 @@ export function useProductParams(preloadedParams?: ProductParam[], onChange?: (p
     valueid: ''
   });
   const [selectedParamRows, setSelectedParamRows] = useState<number[]>([]);
+
+  useEffect(() => {
+    const incoming = Array.isArray(preloadedParams) ? preloadedParams : [];
+    const nextKey = makeParamsKey(incoming);
+    if (nextKey === preloadedKeyRef.current) return;
+    preloadedKeyRef.current = nextKey;
+    dirtyRef.current = false;
+    setParametersState(incoming);
+  }, [preloadedParams]);
 
   useEffect(() => {
     if (dirtyRef.current) return;
