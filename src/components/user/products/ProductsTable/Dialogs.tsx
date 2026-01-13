@@ -23,7 +23,7 @@ export function CopyProgressDialog({ open, name, t }: { open: boolean; name: str
         data-testid="user_products_copy_progress"
       >
         <DialogNoOverlayHeader>
-          <DialogNoOverlayTitle className="text-sm flex items-center gap-2">
+          <DialogNoOverlayTitle className="text-sm flex items-center gap-2 text-emerald-700">
             <Loader2 className="h-[1rem] w-[1rem] animate-spin text-emerald-600" />
             {t("product_copying")}
           </DialogNoOverlayTitle>
@@ -37,6 +37,9 @@ export function CopyProgressDialog({ open, name, t }: { open: boolean; name: str
             </DialogNoOverlayDescription>
           )}
         </DialogNoOverlayHeader>
+        <div className="mt-3 h-2 w-full overflow-hidden rounded bg-muted">
+          <div className="h-full w-2/3 bg-emerald-600/70 animate-pulse" />
+        </div>
       </DialogNoOverlayContent>
     </DialogNoOverlay>
   );
@@ -54,14 +57,95 @@ export function DeleteProgressDialog({ open, t }: { open: boolean; t: (k: string
         data-testid="user_products_delete_progress"
       >
         <DialogNoOverlayHeader>
-          <DialogNoOverlayTitle className="text-sm flex items-center gap-2">
-            <Loader2 className="h-[1rem] w-[1rem] animate-spin text-emerald-600" />
+          <DialogNoOverlayTitle className="text-sm flex items-center gap-2 text-destructive">
+            <Loader2 className="h-[1rem] w-[1rem] animate-spin text-destructive" />
             {t("products_deleting")}
           </DialogNoOverlayTitle>
           <DialogNoOverlayDescription className="sr-only">
             {t("products_deleting")}
           </DialogNoOverlayDescription>
         </DialogNoOverlayHeader>
+        <div className="mt-3 h-2 w-full overflow-hidden rounded bg-muted">
+          <div className="h-full w-2/3 bg-destructive/80 animate-pulse" />
+        </div>
+      </DialogNoOverlayContent>
+    </DialogNoOverlay>
+  );
+}
+
+export function ProductImageDeleteProgressDialog({
+  open,
+  productName,
+}: {
+  open: boolean;
+  productName?: string | null;
+}) {
+  return (
+    <DialogNoOverlay open={open} onOpenChange={() => void 0} modal={false}>
+      <DialogNoOverlayContent
+        position="top-right"
+        variant="info"
+        className="p-4 w-[min(24rem,92vw)] border-0"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        data-testid="user_products_image_delete_progress"
+      >
+        <DialogNoOverlayHeader>
+          <DialogNoOverlayTitle className="text-sm flex items-center gap-2 text-destructive">
+            <Loader2 className="h-[1rem] w-[1rem] animate-spin text-destructive" />
+            Видалення фото
+          </DialogNoOverlayTitle>
+          {productName ? (
+            <DialogNoOverlayDescription className="text-xs text-muted-foreground">
+              {productName}
+            </DialogNoOverlayDescription>
+          ) : (
+            <DialogNoOverlayDescription className="sr-only">Видалення фото</DialogNoOverlayDescription>
+          )}
+        </DialogNoOverlayHeader>
+        <div className="mt-3 h-2 w-full overflow-hidden rounded bg-muted">
+          <div className="h-full w-2/3 bg-destructive/80 animate-pulse" />
+        </div>
+      </DialogNoOverlayContent>
+    </DialogNoOverlay>
+  );
+}
+
+export function ProductSaveProgressDialog({
+  open,
+  title,
+  productName,
+}: {
+  open: boolean;
+  title: string;
+  productName?: string | null;
+}) {
+  return (
+    <DialogNoOverlay open={open} onOpenChange={() => void 0} modal={false}>
+      <DialogNoOverlayContent
+        position="top-right"
+        variant="info"
+        className="p-4 w-[min(24rem,92vw)] border-0"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        data-testid="user_products_save_progress"
+      >
+        <DialogNoOverlayHeader>
+          <DialogNoOverlayTitle className="text-sm flex items-center gap-2 text-emerald-700">
+            <Loader2 className="h-[1rem] w-[1rem] animate-spin text-emerald-600" />
+            {title}
+          </DialogNoOverlayTitle>
+          {productName ? (
+            <DialogNoOverlayDescription className="text-xs text-muted-foreground">
+              {productName}
+            </DialogNoOverlayDescription>
+          ) : (
+            <DialogNoOverlayDescription className="sr-only">{title}</DialogNoOverlayDescription>
+          )}
+        </DialogNoOverlayHeader>
+        <div className="mt-3 h-2 w-full overflow-hidden rounded bg-muted">
+          <div className="h-full w-2/3 bg-emerald-600/70 animate-pulse" />
+        </div>
       </DialogNoOverlayContent>
     </DialogNoOverlay>
   );
@@ -234,8 +318,8 @@ export function DeleteDialog({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogNoOverlayHeader>
-          <DialogNoOverlayTitle className="text-sm flex items-center gap-2">
-            <Trash2 className="h-4 w-4 text-muted-foreground" />
+          <DialogNoOverlayTitle className="text-sm flex items-center gap-2 text-destructive">
+            <Trash2 className="h-4 w-4 text-destructive" />
             {t("delete_product_confirm")}
           </DialogNoOverlayTitle>
           <DialogNoOverlayDescription>

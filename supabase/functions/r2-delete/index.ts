@@ -4,6 +4,7 @@
 // но редактор Node/TypeScript может ругаться на их типы.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { S3Client, DeleteObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } from "npm:@aws-sdk/client-s3";
+import { createClient } from "npm:@supabase/supabase-js";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +17,57 @@ type DeleteBody = {
   authorization?: string;
   token?: string;
 };
+
+const base64UrlToBase64 = (input: string) => input.replace(/-/g, "+").replace(/_/g, "/");
+
+const decodeJwtSub = (authHeader: string | null) => {
+  try {
+    const token = String(authHeader || "").replace(/^Bearer\s+/i, "").trim();
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const payload = JSON.parse(
+      new TextDecoder().decode(
+        Uint8Array.from(atob(base64UrlToBase64(parts[1])), (c) => c.charCodeAt(0)),
+      ),
+    );
+    const v = payload?.sub || payload?.user_id;
+    return v != null ? String(v) : null;
+  } catch {
+    return null;
+  }
+};
+
+async function reorderImages(supabase: any, productId: string) {
+  const { data } = await supabase
+    .from("store_product_images")
+    .select("id,is_main,order_index")
+    .eq("product_id", productId)
+    .order("order_index", { ascending: true })
+    .order("id", { ascending: true });
+
+  const rows: Array<{ id: number; is_main?: boolean; order_index?: number }> = Array.isArray(data) ? data : [];
+  if (rows.length === 0) return;
+
+  let assigned = false;
+  const normalized = rows.map((r, idx) => {
+    const isMain = !assigned && r.is_main === true;
+    if (isMain) assigned = true;
+    return { id: Number(r.id), order_index: idx, is_main: isMain };
+  });
+
+  if (!normalized.some((r) => r.is_main) && normalized.length > 0) {
+    normalized[0] = { ...normalized[0], is_main: true };
+  }
+
+  await Promise.all(
+    normalized.map((r) =>
+      supabase
+        .from("store_product_images")
+        .update({ order_index: r.order_index, is_main: r.is_main })
+        .eq("id", r.id),
+    ),
+  );
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -80,6 +132,43 @@ serve(async (req) => {
     });
 
     const m = objectKey.match(/^products\/([^\/]+)\/([^\/]+)\/(.+)$/);
+    const productIdFromKey = m?.[1] ? String(m[1]) : null;
+    const imageIdFromKey = m?.[2] ? String(m[2]) : null;
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const canTouchDb = !!(SUPABASE_URL && SERVICE_KEY && productIdFromKey && imageIdFromKey && auth);
+
+    let supabase: any = null;
+    let userId: string | null = null;
+
+    if (canTouchDb) {
+      supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+      userId = decodeJwtSub(auth);
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'unauthorized', message: 'Invalid token' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: productRow } = await supabase
+        .from("store_products")
+        .select("id,store_id,user_stores!inner(id,user_id,is_active)")
+        .eq("id", productIdFromKey)
+        .maybeSingle();
+
+      const userStoreRaw: any = (productRow as any)?.user_stores;
+      const userStore = Array.isArray(userStoreRaw) ? (userStoreRaw[0] || null) : userStoreRaw;
+
+      if (!productRow || !userStore || String(userStore.user_id) !== String(userId) || userStore.is_active === false) {
+        return new Response(JSON.stringify({ error: "forbidden" }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     if (m) {
       const prefix = `products/${m[1]}/${m[2]}/`;
       try {
@@ -87,6 +176,13 @@ serve(async (req) => {
         const keys = (listed.Contents || []).map((o) => o.Key).filter((k): k is string => !!k);
         if (keys.length > 0) {
           await s3.send(new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: keys.map((k) => ({ Key: k })) } }));
+          if (supabase && productIdFromKey && imageIdFromKey) {
+            const imgId = Number(imageIdFromKey);
+            if (Number.isFinite(imgId)) {
+              await supabase.from("store_product_images").delete().eq("id", imgId).eq("product_id", productIdFromKey);
+              await reorderImages(supabase, productIdFromKey);
+            }
+          }
           return new Response(JSON.stringify({ success: true, deleted: keys.length, prefix }), {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -97,6 +193,13 @@ serve(async (req) => {
       }
     }
     await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: objectKey }));
+    if (supabase && productIdFromKey && imageIdFromKey) {
+      const imgId = Number(imageIdFromKey);
+      if (Number.isFinite(imgId)) {
+        await supabase.from("store_product_images").delete().eq("id", imgId).eq("product_id", productIdFromKey);
+        await reorderImages(supabase, productIdFromKey);
+      }
+    }
 
     return new Response(JSON.stringify({ success: true, deleted: 1 }), {
       status: 200,

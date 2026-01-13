@@ -20,6 +20,7 @@ import { ImageHelpers } from "@/utils/imageHelpers";
 import { useI18n } from "@/i18n";
 import { getImageUrl, IMAGE_SIZES } from "@/lib/imageUtils";
 import { useQueryClient } from "@tanstack/react-query";
+import { ProductImageDeleteProgressDialog, ProductSaveProgressDialog } from "./ProductsTable/Dialogs";
 
 interface ProductFormTabsProps {
   product?: any | null;
@@ -47,6 +48,15 @@ export const ProductFormTabs = ({ product, onSuccess, onCancel }: ProductFormTab
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [imageDeleteProgress, setImageDeleteProgress] = useState<{ open: boolean; productName: string | null }>({
+    open: false,
+    productName: null,
+  });
+  const [saveProgress, setSaveProgress] = useState<{ open: boolean; title: string; productName: string | null }>({
+    open: false,
+    title: "",
+    productName: null,
+  });
   const [activeTab, setActiveTab] = useState("basic");
   const isSavedRef = useRef(false);
   const cleanedRef = useRef(false);
@@ -364,6 +374,10 @@ export const ProductFormTabs = ({ product, onSuccess, onCancel }: ProductFormTab
 
   const removeImage = async (index: number) => {
     const target = images[index];
+    setImageDeleteProgress({
+      open: true,
+      productName: (product?.name as string | undefined) || formData.name || formData.name_ua || null,
+    });
     try {
       const objectKey = target?.object_key || (target?.url ? ImageHelpers.extractObjectKeyFromUrl(target.url) : null);
       if (objectKey) {
@@ -378,36 +392,46 @@ export const ProductFormTabs = ({ product, onSuccess, onCancel }: ProductFormTab
       }));
       setImages(reorderedImages);
       const pid = product?.id ? String(product.id) : '';
+      const first = reorderedImages[0];
+      const mainImageUrl = first
+        ? (first.object_key ? R2Storage.makePublicUrl(first.object_key) : String(first.url || ""))
+        : undefined;
       if (pid) {
-        try {
-          await ProductService.updateProduct(pid, { images: reorderedImages });
-          try {
-            const list = await ProductService.getProductImages(pid);
-            const resolved = await Promise.all((list || []).map(async (img, index2) => {
-              const objectKeyRaw = ImageHelpers.extractObjectKeyFromUrl(img.url);
-              const previewUrl = String(img.url || '');
-              const absolutePreview = objectKeyRaw ? R2Storage.makePublicUrl(objectKeyRaw) : previewUrl;
+        ProductService.patchProductCaches(pid, { mainImageUrl: mainImageUrl || undefined });
+        queryClient.setQueriesData(
+          {
+            predicate: (q) => {
+              const k = q.queryKey as unknown[];
+              return Array.isArray(k) && k.length >= 3 && k[0] === "user" && k[2] === "products";
+            },
+          },
+          (old: any) => {
+            if (!old) return old;
+            const patchRow = (row: any) => {
+              if (!row || String(row.id) !== String(pid)) return row;
+              return { ...row, mainImageUrl: mainImageUrl || undefined };
+            };
+            if (Array.isArray(old)) return old.map(patchRow);
+            if (typeof old === "object" && Array.isArray((old as any).pages)) {
+              const prev = old as any;
               return {
-                id: img.id,
-                url: absolutePreview,
-                alt_text: img.alt_text || '',
-                order_index: typeof img.order_index === 'number' ? img.order_index : index2,
-                is_main: !!img.is_main,
-                object_key: objectKeyRaw || undefined,
-              } as ProductImage;
-            }));
-            setImages(resolved);
-          } catch {}
-          toast.success(t('image_deleted_successfully'));
-        } catch (e) {
-          toast.error(t('operation_failed'));
-        }
-      } else {
-        toast.success(t('image_deleted_successfully'));
+                ...prev,
+                pages: prev.pages.map((p: any) => {
+                  const products = Array.isArray(p?.products) ? p.products : [];
+                  return { ...p, products: products.map(patchRow) };
+                }),
+              };
+            }
+            return old;
+          },
+        );
       }
+      toast.success(t('image_deleted_successfully'));
     } catch (error) {
       console.error('Failed to delete image from R2:', error);
       toast.error(t('failed_delete_image'));
+    } finally {
+      setImageDeleteProgress({ open: false, productName: null });
     }
   };
 
@@ -528,6 +552,11 @@ export const ProductFormTabs = ({ product, onSuccess, onCancel }: ProductFormTab
       return;
     }
 
+    setSaveProgress({
+      open: true,
+      title: product ? "Оновлення товару" : "Створення товару",
+      productName: formData.name || formData.name_ua || (product?.name as string | undefined) || null,
+    });
     setLoading(true);
 
     try {
@@ -603,11 +632,14 @@ export const ProductFormTabs = ({ product, onSuccess, onCancel }: ProductFormTab
       toast.error('Помилка збереження товару');
     } finally {
       setLoading(false);
+      setSaveProgress({ open: false, title: "", productName: null });
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6" data-testid="productFormTabs_form">
+      <ProductSaveProgressDialog open={saveProgress.open} title={saveProgress.title} productName={saveProgress.productName} />
+      <ProductImageDeleteProgressDialog open={imageDeleteProgress.open} productName={imageDeleteProgress.productName} />
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" data-testid="productFormTabs_tabs">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6" data-testid="productFormTabs_header">
           <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 gap-2 h-auto sm:h-9" data-testid="productFormTabs_tabsList">
