@@ -234,5 +234,5 @@ export function useCountersRealtime(userId: string | null | undefined) {
         void 0;
       }
     };
-  }, [scheduleFlush, userId]);
+  }, [queryClient, scheduleFlush, userId]);
 }

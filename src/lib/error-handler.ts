@@ -5,6 +5,8 @@
  * for profile-related operations across the application.
  */
 
+import { CACHE_TTL, UnifiedCacheManager } from "./cache-utils";
+
 
 /**
  * Profile operation error types
@@ -391,77 +393,52 @@ export function validateProfileData(data: { email?: string; name?: string; id?: 
  * Provides better cache management with different TTL settings
  */
 class ProfileCache {
-  private static cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>();
-  private static DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
-  private static EXISTENCE_TTL = 2 * 60 * 1000; // 2 minutes for existence checks
-  private static MAX_SIZE = 500;
+  private static readonly CACHE_NAMESPACE = "profile";
+  private static readonly MAX_SIZE = 500;
+  private static cache = UnifiedCacheManager.create(ProfileCache.CACHE_NAMESPACE, {
+    mode: "memory",
+    defaultTtlMs: CACHE_TTL.profilesDefault,
+    maxSize: ProfileCache.MAX_SIZE,
+  });
   
   static get(key: string): unknown | null {
-    const cached = this.cache.get(key);
-    if (cached && Date.now() - cached.timestamp < cached.ttl) {
-      this.cache.delete(key);
-      this.cache.set(key, cached);
-      return cached.data;
-    }
-    this.cache.delete(key);
-    return null;
+    return this.cache.get<unknown>(key) ?? null;
   }
   
   static set(key: string, data: unknown, customTtl?: number): void {
-    const ttl = customTtl || (key.startsWith('user_existence_') || key.startsWith('exists_') 
-      ? this.EXISTENCE_TTL 
-      : this.DEFAULT_TTL);
-    
-    this.cache.delete(key);
-    this.cache.set(key, { 
-      data, 
-      timestamp: Date.now(),
-      ttl 
-    });
-
-    if (this.cache.size > this.MAX_SIZE) {
-      this.cleanup();
-      while (this.cache.size > this.MAX_SIZE) {
-        const oldestKey = this.cache.keys().next().value as string | undefined;
-        if (!oldestKey) break;
-        this.cache.delete(oldestKey);
-      }
-    }
+    const ttl =
+      customTtl ??
+      (key.startsWith("user_existence_") || key.startsWith("exists_") ? CACHE_TTL.profilesExistence : CACHE_TTL.profilesDefault);
+    this.cache.set(key, data, ttl);
   }
   
   static clear(): void {
-    this.cache.clear();
+    this.cache.clearAll();
   }
   
   /**
    * Clear all cache entries for a specific user
    */
   static clearUser(userId: string): void {
-    for (const [key] of this.cache) {
-      if (key.includes(userId)) {
-        this.cache.delete(key);
-      }
-    }
+    this.cache.clearWhere((key) => key.includes(userId));
   }
   
   /**
    * Clear cache entries by pattern
    */
   static clearPattern(pattern: string): void {
-    for (const [key] of this.cache) {
-      if (key.includes(pattern)) {
-        this.cache.delete(key);
-      }
-    }
+    this.cache.clearWhere((key) => key.includes(pattern));
   }
   
   /**
    * Get cache statistics for monitoring
    */
   static getStats(): { size: number; keys: string[] } {
+    const m = UnifiedCacheManager.getMetrics();
+    const inst = m.instances.find((i) => i.namespace === ProfileCache.CACHE_NAMESPACE && i.mode === "memory");
     return {
-      size: this.cache.size,
-      keys: Array.from(this.cache.keys())
+      size: inst?.size ?? 0,
+      keys: []
     };
   }
   
@@ -469,12 +446,7 @@ class ProfileCache {
    * Clean expired entries
    */
   static cleanup(): void {
-    const now = Date.now();
-    for (const [key, entry] of this.cache) {
-      if (now - entry.timestamp >= entry.ttl) {
-        this.cache.delete(key);
-      }
-    }
+    void 0;
   }
 }
 

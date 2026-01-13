@@ -200,10 +200,16 @@ export class RequestDeduplicator<T = unknown> {
     }
     let pruned = 0;
     for (const [k, v] of this.cache) {
-      if (v.status !== "pending" && v.expiresAt <= now) {
-        this.cache.delete(k);
-        pruned += 1;
+      if (v.expiresAt > now) continue;
+      if (v.status === "pending") {
+        try {
+          v.controller.abort();
+        } catch {
+          void 0;
+        }
       }
+      this.cache.delete(k);
+      pruned += 1;
     }
     if (pruned > 0) this.bump("prunes", pruned);
   }
@@ -233,9 +239,14 @@ export class RequestDeduplicator<T = unknown> {
 
     const existing = this.cache.get(key);
     if (existing && existing.expiresAt > now) {
-      this.bump("hits", 1);
-      return existing.promise as Promise<U>;
+      if (existing.status === "rejected" && this.errorStrategy !== "keep") {
+        this.cache.delete(key);
+      } else {
+        this.bump("hits", 1);
+        return existing.promise as Promise<U>;
+      }
     }
+    if (existing) this.cache.delete(key);
 
     this.bump("misses", 1);
 
@@ -252,7 +263,7 @@ export class RequestDeduplicator<T = unknown> {
       promise,
       controller,
       createdAt: now,
-      expiresAt: Number.POSITIVE_INFINITY,
+      expiresAt: now + this.ttlMs,
       status: "pending",
     };
 
@@ -269,8 +280,6 @@ export class RequestDeduplicator<T = unknown> {
         const cur = this.cache.get(key);
         if (cur?.promise !== promise) return;
         cur.status = "fulfilled";
-        // Always cache successful responses with TTL
-        cur.expiresAt = finishedAt + this.ttlMs;
       })
       .catch(() => {
         const finishedAt = Date.now();
@@ -279,9 +288,11 @@ export class RequestDeduplicator<T = unknown> {
         if (this.enableMetrics) this.metrics.totalDurationMs += duration;
         const cur = this.cache.get(key);
         if (cur?.promise !== promise) return;
-        cur.status = "rejected";
-        // Remove failed requests immediately for retry
-        this.cache.delete(key);
+        if (this.errorStrategy === "keep") {
+          cur.status = "rejected";
+        } else {
+          this.cache.delete(key);
+        }
       });
 
     return promise;

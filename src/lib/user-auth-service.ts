@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { ProfileService } from "./profile-service";
 import type { UserMenuItem } from "./user-menu-service";
-import { 
+import {
   RegistrationData, 
   LoginData, 
   ResetPasswordData, 
@@ -13,11 +13,10 @@ import {
 } from "./user-auth-schemas";
 import { AuthorizationErrorHandler } from "./error-handler";
 import { invokeEdgeWithAuth, SessionValidator, isAuthenticationError } from "./session-validation";
-import { removeCache } from "./cache-utils";
+import { UnifiedCacheManager } from "./cache-utils";
 import { registerUser, type RegistrationOptions } from "./user-auth-register";
 import { signInWithFacebook, signInWithGoogle, handleOAuthCallback } from "./user-auth-oauth";
 import { loginUser, logout, resetPassword, updatePassword } from "./user-auth-login";
-import { RequestDeduplicatorFactory } from "./request-deduplicator";
 import { PersistentCacheService } from "./persistent-cache-service";
 
 type UserStoreLite = { id: string; store_name: string };
@@ -31,17 +30,6 @@ type AuthMeData = {
 };
 
 export class UserAuthService {
-  private static authMeDeduplicator = RequestDeduplicatorFactory.create<AuthMeData>("user-auth-service:authMe", {
-    ttl: 300_000, // 5 min TTL - authMe data is stable
-    maxSize: 20,
-    enableMetrics: true,
-    errorStrategy: "remove",
-    maxRetries: 0,
-  });
-
-  private static getAuthMeCacheKey(userId: string): string {
-    return `auth-me:${userId}`;
-  }
   /**
    * Register a new user with email confirmation flow
    * Following Supabase email confirmation workflow:
@@ -154,9 +142,8 @@ export class UserAuthService {
   }
 
   static clearAuthMeCache(): void {
-    this.authMeDeduplicator.clear();
     try {
-      removeCache("auth-me");
+      UnifiedCacheManager.invalidatePattern(/^auth:me(?::|$)/);
     } catch {
       void 0;
     }

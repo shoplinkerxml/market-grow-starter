@@ -36,7 +36,6 @@ export interface RegistrationError {
  */
 export class UserExistenceService {
   private static readonly CACHE_PREFIX = 'user_existence_';
-  private static readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   
   /**
    * Primary method for checking if a user exists

@@ -10,7 +10,7 @@ import { R2Storage } from "@/lib/r2-storage";
 import { createBrowserRouter, RouterProvider, Navigate, Outlet, useParams } from "react-router-dom";
 import { I18nProvider } from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { removeCache, UnifiedCacheManager } from "@/lib/cache-utils";
+import { UnifiedCacheManager } from "@/lib/cache-utils";
 import { DeduplicationMonitor } from "@/lib/request-deduplicator";
 import { SessionValidator } from "@/lib/session-validation";
 // Dev diagnostics removed per request
@@ -150,7 +150,7 @@ const App = () => {
           void 0;
         }
         try {
-          UnifiedCacheManager.invalidatePattern(/^auth-me(:|$)/);
+          UnifiedCacheManager.invalidatePattern(/^auth:me(?::|$)/);
         } catch {
           void 0;
         }
@@ -175,11 +175,6 @@ const App = () => {
         try {
           queryClient.removeQueries({ queryKey: ["auth", "me"], exact: true });
           queryClient.removeQueries({ queryKey: ["auth", "session"], exact: true });
-        } catch {
-          void 0;
-        }
-        try {
-          removeCache("rq:auth:me");
         } catch {
           void 0;
         }

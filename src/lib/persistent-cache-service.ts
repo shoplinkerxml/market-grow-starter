@@ -1,9 +1,8 @@
-import { UnifiedCacheManager } from "./cache-utils";
+import { CACHE_TTL, UnifiedCacheManager } from "./cache-utils";
 import { SessionValidator } from "./session-validation";
 
 export class PersistentCacheService {
   private static readonly TTL = {
-    AUTH_ME: 24 * 60 * 60 * 1000,
     SHOPS: 30 * 60 * 1000,
     TARIFFS: 60 * 60 * 1000,
     SUPPLIERS: 30 * 60 * 1000,
@@ -14,9 +13,9 @@ export class PersistentCacheService {
 
   private static readonly SOFT_REFRESH_THRESHOLD = 2 * 60 * 1000;
 
-  private static authMeCache = UnifiedCacheManager.create("persistent:authMe", {
+  private static authMeCache = UnifiedCacheManager.create("auth:me", {
     mode: "local",
-    defaultTtlMs: PersistentCacheService.TTL.AUTH_ME,
+    defaultTtlMs: CACHE_TTL.authMe,
   });
 
   private static shopsCache = UnifiedCacheManager.create("persistent:shops", {
@@ -73,7 +72,7 @@ export class PersistentCacheService {
     const validation = await SessionValidator.validateSession();
     const userId = validation.user?.id ? String(validation.user.id) : "guest";
     const cacheKey = `user:${userId}`;
-    return PersistentCacheService.getCached(cacheKey, PersistentCacheService.authMeCache, fetchFn, PersistentCacheService.TTL.AUTH_ME);
+    return PersistentCacheService.getCached(cacheKey, PersistentCacheService.authMeCache, fetchFn, CACHE_TTL.authMe);
   }
 
   static async getShops<T>(fetchFn: () => Promise<T>): Promise<T> {

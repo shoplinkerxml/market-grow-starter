@@ -1,14 +1,19 @@
 export const CACHE_TTL = {
   productsPage: 900_000,
-  shopsList: 900_000,
+  shopsList: 1_800_000,
   categoryFilters: 300_000,
   productLinks: 120_000,
+  marketplacesList: 900_000,
   uiPrefs: 2_592_000_000,
-  tariffsList: 900_000,
-  suppliersList: 900_000,
+  tariffsList: 3_600_000,
+  suppliersList: 1_800_000,
   limits: 900_000,
   supplierCategoriesMap: 600_000,
   authMe: 86_400_000,
+  profilesDefault: 300_000,
+  profilesExistence: 120_000,
+  currencies: 3_600_000,
+  menu: 1_800_000,
 } as const;
 
 export type CacheEnvelope<T> = { data: T; expiresAt: number };
@@ -152,7 +157,7 @@ function parseEnvelope<T>(raw: string): CacheEnvelope<T> | null {
   return parsed;
 }
 
-export function readCache<T>(key: string, allowStale = false): CacheEnvelope<T> | null {
+function readEnvelopeAuto<T>(key: string, allowStale = false): CacheEnvelope<T> | null {
   try {
     const storage = getStorage();
     const session = getSessionStorage();
@@ -166,16 +171,16 @@ export function readCache<T>(key: string, allowStale = false): CacheEnvelope<T> 
     try {
       const parsed = parseEnvelope<T>(raw);
       if (!parsed) {
-        removeCache(key);
+        safeRemoveEverywhere(key);
         return null;
       }
       if (!allowStale && typeof parsed.expiresAt === "number" && parsed.expiresAt <= Date.now()) {
-        removeCache(key);
+        safeRemoveEverywhere(key);
         return null;
       }
       return parsed;
     } catch {
-      removeCache(key);
+      safeRemoveEverywhere(key);
       return null;
     }
   } catch {
@@ -183,7 +188,7 @@ export function readCache<T>(key: string, allowStale = false): CacheEnvelope<T> 
   }
 }
 
-export function writeCache<T>(key: string, data: T, ttlMs: number): void {
+function writeEnvelopeAuto<T>(key: string, data: T, ttlMs: number): void {
   try {
     const payload = JSON.stringify({ data, expiresAt: Date.now() + ttlMs });
     const storage = getStorage();
@@ -196,11 +201,7 @@ export function writeCache<T>(key: string, data: T, ttlMs: number): void {
   }
 }
 
-export function removeCache(key: string): void {
-  safeRemoveEverywhere(key);
-}
-
-export function cleanupExpired(prefix: string = CACHE_VERSION_PREFIX): void {
+function cleanupExpired(prefix: string = CACHE_VERSION_PREFIX): void {
   try {
     const storages = safeGetStorages();
     const storage = getStorage();
@@ -321,6 +322,10 @@ function safeRemoveEverywhereUsing(storages: Storage[], logicalKey: string): voi
 
 function safeRemoveEverywhere(logicalKey: string): void {
   safeRemoveEverywhereUsing(safeGetStorages(), logicalKey);
+}
+
+export function removeCache(logicalKey: string): void {
+  safeRemoveEverywhere(logicalKey);
 }
 
 function escapeRegExp(s: string): string {
@@ -450,7 +455,7 @@ class CacheInstanceImpl implements UnifiedCacheInstance {
     const mode = this.mode;
     const cached =
       mode === "auto"
-        ? readCache<T>(fullKey, allowStale)
+        ? readEnvelopeAuto<T>(fullKey, allowStale)
         : (() => {
             const { primary, secondary } = getPreferredStorages(mode);
             const raw =
@@ -508,7 +513,7 @@ class CacheInstanceImpl implements UnifiedCacheInstance {
       return;
     }
     if (this.mode === "auto") {
-      writeCache<T>(fullKey, data, ttl);
+      writeEnvelopeAuto<T>(fullKey, data, ttl);
       return;
     }
     const payload = JSON.stringify({ data, expiresAt: Date.now() + ttl });
@@ -608,5 +613,65 @@ export class UnifiedCacheManager {
       stats: inst.getStats(),
     }));
     return { instances, memoryFallbackSize: memoryCache.size };
+  }
+}
+
+export class UnifiedCacheMonitor {
+  private static monitoringTimer: ReturnType<typeof setTimeout> | null = null;
+
+  static startMonitoring(intervalMs: number = 60_000): () => void {
+    this.stopMonitoring();
+    const scheduleNext = () => {
+      this.monitoringTimer = setTimeout(() => {
+        try {
+          this.printReport();
+        } catch {
+          void 0;
+        }
+        scheduleNext();
+      }, Math.max(5_000, intervalMs));
+    };
+    scheduleNext();
+    return () => this.stopMonitoring();
+  }
+
+  static stopMonitoring(): void {
+    if (!this.monitoringTimer) return;
+    try {
+      clearTimeout(this.monitoringTimer);
+    } catch {
+      void 0;
+    }
+    this.monitoringTimer = null;
+  }
+
+  static printReport(): void {
+    const m = UnifiedCacheManager.getMetrics();
+    const rows = (m.instances || []).slice().sort((a, b) => (a.namespace < b.namespace ? -1 : a.namespace > b.namespace ? 1 : 0));
+    const header = ["Namespace", "Mode", "Size", "Reads", "Hits", "Misses", "Writes", "Removes"];
+    const data = rows.map((r) => [
+      r.namespace,
+      r.mode,
+      String(r.size),
+      String(r.stats.reads),
+      String(r.stats.hits),
+      String(r.stats.misses),
+      String(r.stats.writes),
+      String(r.stats.removes),
+    ]);
+    const all = [header, ...data];
+    const widths = header.map((_, i) => Math.max(...all.map((row) => row[i].length)));
+    const fmtRow = (cells: string[]) => "│" + cells.map((c, i) => ` ${c.padEnd(widths[i])} `).join("│") + "│";
+    const line = (left: string, mid: string, right: string, fill: string) =>
+      left + widths.map((w) => fill.repeat(w + 2)).join(mid) + right;
+    const top = line("┌", "┬", "┐", "─");
+    const sep = line("├", "┼", "┤", "─");
+    const bot = line("└", "┴", "┘", "─");
+    const out = [top, fmtRow(header), sep, ...data.map(fmtRow), bot, `memoryFallbackSize=${m.memoryFallbackSize}`].join("\n");
+    try {
+      console.log(out);
+    } catch {
+      void 0;
+    }
   }
 }

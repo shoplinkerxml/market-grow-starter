@@ -1,5 +1,5 @@
 import type { Database } from "@/integrations/supabase/types";
-import { readCache, writeCache, CACHE_TTL, UnifiedCacheManager } from "@/lib/cache-utils";
+import { CACHE_TTL, UnifiedCacheManager } from "@/lib/cache-utils";
 import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
 
 // Minimal DTO shape aligned with UI needs
@@ -58,6 +58,7 @@ function toBase(row: StoreCategoryBase): StoreCategory {
 }
 
 function invalidateCategoriesCache(): void {
+  try { UnifiedCacheManager.invalidatePattern(/^products:supplierCategoriesMap(?::|$)/); } catch {}
   try { UnifiedCacheManager.invalidatePattern(/^rq:supplierCategoriesMap(?::|$)/); } catch {}
 }
 
@@ -145,31 +146,77 @@ export const CategoryService = {
     const uid = await SessionValidator.validateSession()
       .then((v) => (v?.user?.id ? String(v.user.id) : "current"))
       .catch(() => "current");
-    const cacheKey = `rq:supplierCategoriesMap:${uid || "current"}`;
-    const env = readCache<Record<string, StoreCategoryFull[]>>(cacheKey, false);
-    if (env?.data && typeof env.data === "object") {
-      return env.data;
-    }
+    const cache = UnifiedCacheManager.create("products:supplierCategoriesMap", {
+      mode: "auto",
+      defaultTtlMs: CACHE_TTL.supplierCategoriesMap,
+    });
+    const cacheKey = `user:${uid || "current"}`;
+
+    const tryReadLegacy = (): Record<string, StoreCategoryFull[]> | null => {
+      try {
+        if (typeof window === "undefined") return null;
+        const legacyKey = `rq:supplierCategoriesMap:${uid || "current"}`;
+        const candidates = [legacyKey, `v1:${legacyKey}`];
+        const storages: Storage[] = [];
+        try { storages.push(window.localStorage); } catch { void 0; }
+        try { storages.push(window.sessionStorage); } catch { void 0; }
+        for (const s of storages) {
+          for (const k of candidates) {
+            const raw = s.getItem(k);
+            if (!raw) continue;
+            const parsed = JSON.parse(raw) as { data?: unknown; expiresAt?: unknown };
+            const expiresAt = typeof parsed?.expiresAt === "number" ? parsed.expiresAt : 0;
+            if (expiresAt > 0 && expiresAt <= Date.now()) continue;
+            const data = parsed?.data;
+            if (!data || typeof data !== "object") continue;
+            try {
+              for (const kk of candidates) s.removeItem(kk);
+            } catch {
+              void 0;
+            }
+            return data as Record<string, StoreCategoryFull[]>;
+          }
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    };
+
+    const cached = cache.get<Record<string, StoreCategoryFull[]>>(cacheKey, false);
+    const legacy = !cached ? tryReadLegacy() : null;
+    const map: Record<string, StoreCategoryFull[]> =
+      (cached && typeof cached === "object" ? cached : null) ??
+      (legacy && typeof legacy === "object" ? legacy : null) ??
+      {};
 
     const numericIds = ids.map((v) => Number(v)).filter((n) => Number.isFinite(n));
-    const map: Record<string, StoreCategoryFull[]> = {};
-    const batches = chunk(numericIds, 20);
-    for (const batch of batches) {
-      const results = await Promise.all(
-        batch.map(async (supplierId) => {
-          const resp = await invokeEdgeWithAuth<{ rows?: StoreCategoryFullRow[] }>("categories", {
-            action: "get_supplier_categories",
-            supplier_id: supplierId,
-          });
-          return { supplierId: String(supplierId), rows: resp.rows ?? [] };
-        }),
-      );
-      for (const r of results) {
-        map[r.supplierId] = r.rows.map(toFull);
+    const missing = numericIds.filter((supplierId) => {
+      const k = String(supplierId);
+      return !Array.isArray(map[k]);
+    });
+
+    if (missing.length > 0) {
+      const batches = chunk(missing, 20);
+      for (const batch of batches) {
+        const results = await Promise.all(
+          batch.map(async (supplierId) => {
+            const resp = await invokeEdgeWithAuth<{ rows?: StoreCategoryFullRow[] }>("categories", {
+              action: "get_supplier_categories",
+              supplier_id: supplierId,
+            });
+            return { supplierId: String(supplierId), rows: resp.rows ?? [] };
+          }),
+        );
+        for (const r of results) {
+          map[r.supplierId] = r.rows.map(toFull);
+        }
       }
+      cache.set(cacheKey, map, CACHE_TTL.supplierCategoriesMap);
+    } else if (legacy) {
+      cache.set(cacheKey, map, CACHE_TTL.supplierCategoriesMap);
     }
 
-    writeCache(cacheKey, map, CACHE_TTL.supplierCategoriesMap);
     return map;
   },
 
