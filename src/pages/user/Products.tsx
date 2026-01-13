@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Package, Trash2 } from 'lucide-react';
+import { Loader2, Package, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/PageHeader';
 import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
@@ -75,51 +75,20 @@ export const Products = () => {
 
 
   const handleDelete = async (product: Product) => {
-    const baseKey = ["user", uid, "products"] as const;
-    const prevQueries = queryClient.getQueriesData({ queryKey: baseKey, exact: false });
     try {
       const nameForUi = product.name_ua || product.name || product.external_id || product.id;
       setDeletingName(nameForUi);
       setIsDeleteOpen(true);
 
-      queryClient.setQueriesData({ queryKey: baseKey, exact: false }, (old: any) => {
-        if (!old) return old;
-        if (Array.isArray(old)) {
-          return (old as any[]).filter((p) => String((p as any)?.id) !== String(product.id));
-        }
-        if (typeof old === "object" && Array.isArray((old as any).pages)) {
-          const prevInf = old as any;
-          return {
-            ...prevInf,
-            pages: prevInf.pages.map((page: any) => {
-              const products = Array.isArray(page?.products) ? (page.products as any[]) : null;
-              if (!products) return page;
-              return { ...page, products: products.filter((p) => String((p as any)?.id) !== String(product.id)) };
-            }),
-          };
-        }
-        return old;
-      });
-
       await ProductService.deleteProduct(product.id);
-      
-      // Force refresh cache after delete
-      ProductService.clearAllCaches();
-      try {
-        await ProductService.getProductsPage(null, pageSize, 0, { force: true });
-      } catch { void 0; }
 
       toast.success(t('product_deleted'));
-      // Optional background revalidation to sync with server, does not block UI
-      queryClient.invalidateQueries({ queryKey: baseKey, exact: false });
       await queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard"], exact: false });
     } catch (error: unknown) {
-      for (const [k, v] of prevQueries) {
-        queryClient.setQueryData(k, v);
-      }
       console.error('Delete error:', error);
       const msg = typeof (error as { message?: unknown })?.message === 'string' ? (error as { message?: string }).message : t('failed_delete_product');
       toast.error(msg);
+      throw error;
     } finally {
       setIsDeleteOpen(false);
       setDeletingName(null);
@@ -158,13 +127,16 @@ export const Products = () => {
       <DialogNoOverlay modal={false} open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogNoOverlayContent position="top-right" variant="info" className="p-[0.75rem] w-[min(22rem,90vw)] border-0" data-testid="user_products_delete_progress">
           <DialogNoOverlayHeader>
-            <DialogNoOverlayTitle className="flex items-center gap-2">
-              <Trash2 className="h-4 w-4 text-muted-foreground" />
+            <DialogNoOverlayTitle className="flex items-center gap-2 text-destructive">
+              <Loader2 className="h-4 w-4 animate-spin text-destructive" />
               {t('deleting_product_title')}
             </DialogNoOverlayTitle>
           </DialogNoOverlayHeader>
           <div className="text-sm text-muted-foreground">
             <span>{t('deleting_product')}{deletingName ? `: ${deletingName}` : ''}</span>
+          </div>
+          <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
+            <div className="h-full w-2/3 bg-destructive/80 animate-pulse" />
           </div>
         </DialogNoOverlayContent>
       </DialogNoOverlay>

@@ -199,25 +199,25 @@ export const ProductEdit = () => {
         category_id: cidNum ?? null,
         category_external_id: formData.category_external_id || null,
       };
-      patchProductsCached(String(id), {
+      const main = mappedImages.find((i) => !!i.is_main) || mappedImages[0] || null;
+      const patchAgg: Partial<ProductAggregated> = {
         ...(patch as Partial<ProductAggregated>),
         currency_code: formData.currency_code || null,
         categoryName: catName || undefined,
-      });
+        mainImageUrl: main ? String(main.url || '') : null,
+      };
+      patchProductsCached(String(id), patchAgg);
+      try {
+        ProductService.patchProductCaches(String(id), patchAgg);
+      } catch {
+        void 0;
+      }
     } catch { void 0; }
 
     try {
       await ProductService.updateProduct(id, payload);
-      
-      // Force refresh cache after update
-      ProductService.clearAllCaches();
-      try {
-        await ProductService.getProductsPage(null, 50, 0, { force: true });
-      } catch { void 0; }
 
       toast.success(t('product_updated'));
-      queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
-      await queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard"], exact: false });
       navigate('/user/products');
     } catch (error) {
       console.error('Failed to save product:', error);

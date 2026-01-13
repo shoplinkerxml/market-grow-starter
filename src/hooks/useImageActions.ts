@@ -91,25 +91,17 @@ export function useImageActions(
   const removeImageWithR2 = useCallback(async (index: number): Promise<{ ok: boolean; errorCode?: string }> => {
     const target = images[index];
     try {
+      const objectKey = target?.object_key || (target?.url ? ImageHelpers.extractObjectKeyFromUrl(target.url) : null);
+      if (objectKey) {
+        await R2Storage.deleteFile(objectKey);
+        await R2Storage.removePendingUpload(objectKey);
+      }
       await removeImage(index);
+      toast.success('Изображение удалено');
     } catch (error) {
       console.error(error);
       toast.error('Не удалось удалить изображение');
       return { ok: false, errorCode: 'failed_delete' };
-    }
-
-    toast.success('Изображение удалено');
-
-    const objectKey = target?.object_key || (target?.url ? ImageHelpers.extractObjectKeyFromUrl(target.url) : null);
-    if (objectKey) {
-      (async () => {
-        try {
-          await R2Storage.deleteFile(objectKey);
-          await R2Storage.removePendingUpload(objectKey);
-        } catch {
-          toast.error('Не удалось удалить файл изображения из хранилища');
-        }
-      })();
     }
 
     return { ok: true };

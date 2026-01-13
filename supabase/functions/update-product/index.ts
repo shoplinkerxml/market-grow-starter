@@ -233,6 +233,7 @@ async function handleParams(
   productId: string,
   params: ParamInput[] | undefined,
 ): Promise<void> {
+  if (params === undefined) return
   await supabase.from("store_product_params").delete().eq("product_id", productId)
   if (!Array.isArray(params) || params.length === 0) return
 
