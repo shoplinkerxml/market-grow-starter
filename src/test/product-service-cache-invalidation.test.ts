@@ -20,6 +20,16 @@ vi.mock("@/lib/product/product-utils", () => ({
   invokeEdge: vi.fn(),
 }));
 
+vi.mock("@/lib/product/product-link-service", () => ({
+  ProductLinkService: {
+    removeStoreProductLink: vi.fn(),
+    bulkRemoveStoreProductLinks: vi.fn(),
+    bulkAddStoreProductLinks: vi.fn(),
+    getStoreLinksForProduct: vi.fn(),
+    invalidateStoreLinksCache: vi.fn(),
+  },
+}));
+
 vi.mock("@/lib/session-validation", () => ({
   SessionValidator: {
     ensureValidSession: vi.fn(async () => ({
@@ -38,6 +48,7 @@ vi.mock("@/lib/session-validation", () => ({
 import { ProductService } from "@/lib/product-service";
 import { ProductCoreService } from "@/lib/product/product-core-service";
 import { ProductCacheManager } from "@/lib/product/product-cache-manager";
+import { ProductLinkService } from "@/lib/product/product-link-service";
 import { UserAuthService } from "@/lib/user-auth-service";
 import { ShopService } from "@/lib/shop-service";
 import { PersistentCacheService } from "@/lib/persistent-cache-service";
@@ -91,6 +102,32 @@ describe("ProductService cache invalidation", () => {
   it("invalidates related caches on saveStoreProductEdit", async () => {
     (invokeEdge as any).mockResolvedValue({ product_id: "p1", link: null });
     await ProductService.saveStoreProductEdit("p1", "s1", { name: "n" });
+    expectRelatedInvalidations();
+  });
+
+  it("invalidates related caches on bulkAddStoreProductLinks", async () => {
+    vi.mocked(ProductLinkService.bulkAddStoreProductLinks).mockResolvedValue({
+      inserted: 1,
+      addedByStore: { s1: 1 },
+      categoryNamesByStore: {},
+    });
+    await ProductService.bulkAddStoreProductLinks([{ product_id: "p1", store_id: "s1" }]);
+    expectRelatedInvalidations();
+  });
+
+  it("invalidates related caches on bulkRemoveStoreProductLinks", async () => {
+    vi.mocked(ProductLinkService.bulkRemoveStoreProductLinks).mockResolvedValue({
+      deleted: 1,
+      deletedByStore: { s1: 1 },
+      categoryNamesByStore: {},
+    });
+    await ProductService.bulkRemoveStoreProductLinks(["p1"], ["s1"]);
+    expectRelatedInvalidations();
+  });
+
+  it("invalidates related caches on removeStoreProductLink", async () => {
+    vi.mocked(ProductLinkService.removeStoreProductLink).mockResolvedValue(undefined);
+    await ProductService.removeStoreProductLink("p1", "s1");
     expectRelatedInvalidations();
   });
 

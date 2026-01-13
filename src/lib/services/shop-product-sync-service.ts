@@ -1,8 +1,7 @@
 import { ShopCountsService } from "@/lib/shop-counts";
 import { ProductLinkService } from "@/lib/product/product-link-service";
 import { queryClient } from "@/lib/react-query";
-import { ShopService, type ShopAggregated } from "@/lib/shop-service";
-import { PersistentCacheService } from "@/lib/persistent-cache-service";
+import { ShopService } from "@/lib/shop-service";
 import { requireValidSession } from "@/lib/session-validation";
 
 type StoreLink = { product_id: string; store_id: string };
@@ -28,39 +27,22 @@ export class ShopProductSyncService {
     if (storeIds.length === 0) return;
     
     try {
-      // Fetch fresh data from server (which reads from Redis)
-      const refreshed = await ShopService.getShopsAggregated({ force: true, forceCounts: true });
-      
+      try {
+        ShopService.clearAllCaches();
+      } catch {
+        void 0;
+      }
+
       for (const uid of uids) {
-        // Update main shops list cache
-        queryClient.setQueryData(["user", uid, "shops"], refreshed);
-        queryClient.setQueryData(["user", uid, "shops", "menu"], refreshed);
-        
-        // Update individual shop counts caches
-        for (const storeId of storeIds) {
-          const found = (refreshed || []).find((s: any) => String(s?.id) === String(storeId));
-          if (!found) continue;
-          
-          const productsCount = Math.max(0, Number((found as any).productsCount ?? 0) || 0);
-          const categoriesCount = productsCount === 0 ? 0 : Math.max(0, Number((found as any).categoriesCount ?? 0) || 0);
-          
-          // Set both the counts cache and shop detail cache
-          ShopCountsService.set(queryClient, uid, storeId, { productsCount, categoriesCount });
-        }
+        ShopCountsService.invalidate(queryClient, uid, storeIds, "sync_after_bulk_mutation");
       }
-      
-      // Also bump persistent cache
-      const deltas: Record<string, number> = {};
-      for (const s of refreshed || []) {
-        const sid = String((s as any)?.id || "");
-        if (!sid || !storeIds.includes(sid)) continue;
-        deltas[sid] = 0; // Just touch to update
-      }
-      await PersistentCacheService.bumpCachedShopsCounts(deltas);
     } catch (error) {
       console.warn("[ShopProductSyncService] refreshCountersFromServer failed:", error);
-      // Fallback: invalidate caches
-      ShopService.invalidateInternalCache();
+      try {
+        ShopService.invalidateInternalCache();
+      } catch {
+        void 0;
+      }
     }
   }
 

@@ -86,6 +86,7 @@ vi.mock("@/lib/user-auth-service", () => ({
 import { EdgeClient } from "@/lib/request-handler";
 import { PersistentCacheService } from "@/lib/persistent-cache-service";
 import { UserAuthService } from "@/lib/user-auth-service";
+import { ShopCountsService } from "@/lib/shop-counts";
 import { UserMenuService } from "@/lib/user-menu-service";
 import { ShopCurrenciesService } from "@/lib/shop-currencies";
 import { ShopCategoriesService } from "@/lib/shop-categories";
@@ -150,6 +151,27 @@ describe("Service cache invalidation", () => {
     expect(UserAuthService.clearAuthMeCache).toHaveBeenCalledTimes(1);
   });
 
+  it("clears auth-me + shops persistent caches on ShopCountsService.invalidate", async () => {
+    const invalidateQueries = vi.fn();
+    const removeQueries = vi.fn();
+
+    ShopCountsService.invalidate(
+      { invalidateQueries, removeQueries } as any,
+      "u1",
+      ["s1", "s2"],
+      "test",
+    );
+
+    expect(invalidateQueries).toHaveBeenCalled();
+    expect(removeQueries).toHaveBeenCalled();
+
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(UserAuthService.clearAuthMeCache).toHaveBeenCalledTimes(1);
+    expect(PersistentCacheService.invalidateShops).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps cache invalidation contract for core mutations", () => {
     const productService = readLib("product-service.ts");
     for (const fn of [
@@ -159,6 +181,9 @@ describe("Service cache invalidation", () => {
       "static async deleteProduct",
       "static async bulkDeleteProducts",
       "static async saveStoreProductEdit",
+      "static async bulkAddStoreProductLinks",
+      "static async bulkRemoveStoreProductLinks",
+      "static async removeStoreProductLink",
     ]) {
       const body = extractFunctionBlock(productService, fn);
       expect(body).toContain("invalidateRelatedAfterProductMutation");

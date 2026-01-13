@@ -36,6 +36,7 @@ export class ProductService {
   }
 
   private static async invalidateRelatedAfterProductMutation(): Promise<void> {
+    console.info("[ProductService] invalidate_related_after_product_mutation");
     try {
       const { UserAuthService } = await import("@/lib/user-auth-service");
       UserAuthService.clearAuthMeCache();
@@ -262,13 +263,24 @@ export class ProductService {
     } catch (e) {
       console.error("ProductService.removeStoreProductLink clearStoreProductsCaches failed", e);
     }
+    try {
+      await ProductService.invalidateRelatedAfterProductMutation();
+    } catch (error) {
+      console.error("ProductService.removeStoreProductLink invalidate related caches failed", error);
+    }
   }
 
   static async bulkRemoveStoreProductLinks(
     productIds: string[],
     storeIds: string[],
   ): Promise<{ deleted: number; deletedByStore: Record<string, number>; categoryNamesByStore?: Record<string, string[]> }> {
-    return await ProductLinkService.bulkRemoveStoreProductLinks(productIds, storeIds);
+    const out = await ProductLinkService.bulkRemoveStoreProductLinks(productIds, storeIds);
+    try {
+      await ProductService.invalidateRelatedAfterProductMutation();
+    } catch (error) {
+      console.error("ProductService.bulkRemoveStoreProductLinks invalidate related caches failed", error);
+    }
+    return out;
   }
 
   static async bulkAddStoreProductLinks(payload: Array<{
@@ -281,7 +293,13 @@ export class ProductService {
     custom_stock_quantity?: number | null;
     custom_available?: boolean | null;
   }>): Promise<{ inserted: number; addedByStore: Record<string, number>; categoryNamesByStore?: Record<string, string[]> }> {
-    return await ProductLinkService.bulkAddStoreProductLinks(payload);
+    const out = await ProductLinkService.bulkAddStoreProductLinks(payload);
+    try {
+      await ProductService.invalidateRelatedAfterProductMutation();
+    } catch (error) {
+      console.error("ProductService.bulkAddStoreProductLinks invalidate related caches failed", error);
+    }
+    return out;
   }
 
   static async getStoreLinksForProduct(productId: string): Promise<string[]> {

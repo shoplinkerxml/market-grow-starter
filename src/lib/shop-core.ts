@@ -247,17 +247,6 @@ export class ShopServiceCore {
     }
   }
 
-  protected static updateShopCounters(storeId: string, update: (shop: ShopAggregated) => Partial<ShopAggregated>): void {
-    const cacheKey = "shops-aggregated";
-    const cached = this.getCached<ShopAggregated[]>(cacheKey);
-
-    if (!cached) return;
-
-    const updated = cached.map((shop) => (shop.id === storeId ? { ...shop, ...update(shop) } : shop));
-
-    this.setCache(cacheKey, updated);
-  }
-
   protected static async getShopsFallback(): Promise<ShopAggregated[]> {
     try {
       const response = await this.invokeEdge<ShopsListResponse>(
@@ -587,61 +576,6 @@ export class ShopServiceCore {
     } catch (error) {
       console.warn("Failed to cleanup shop dependencies:", error);
     }
-  }
-
-  static bumpProductsCountInCache(storeId: string, delta: number): void {
-    this.updateShopCounters(storeId, (shop) => ({
-      productsCount: Math.max(0, (shop.productsCount || 0) + delta),
-    }));
-  }
-
-  static bumpCategoriesCountInCache(storeId: string, delta: number): void {
-    this.updateShopCounters(storeId, (shop) => ({
-      categoriesCount: Math.max(0, (shop.categoriesCount || 0) + delta),
-    }));
-  }
-
-  static setProductsCountInCache(storeId: string, count: number): void {
-    const finalCount = Math.max(0, Number(count) || 0);
-    this.updateShopCounters(storeId, (shop) => ({
-      productsCount: finalCount,
-      categoriesCount: finalCount === 0 ? 0 : shop.categoriesCount,
-    }));
-  }
-
-  static setCategoriesCountInCache(storeId: string, count: number): void {
-    this.updateShopCounters(storeId, (shop) => {
-      const productsCount = shop.productsCount || 0;
-      return {
-        categoriesCount: productsCount === 0 ? 0 : Math.max(0, count),
-      };
-    });
-  }
-
-  static async recomputeStoreCounts(storeId: string): Promise<{ productsCount: number; categoriesCount: number }> {
-    if (!storeId) return { productsCount: 0, categoriesCount: 0 };
-
-    await this.ensureSession();
-    const response = await this.deduplicateRequest(`shop:recompute-counts:${storeId}`, async () => {
-      return await this.invokeEdge<ShopsListResponse>("user-shops-list", {
-        store_id: storeId,
-        includeConfig: false,
-        forceCounts: true,
-        correlationId: this.createCorrelationId(),
-      });
-    });
-
-    const shop = (response.shops || []).find((s) => String(s.id) === String(storeId));
-
-    const productsCount = Math.max(0, Number(shop?.productsCount ?? 0));
-    const categoriesCount = productsCount === 0 ? 0 : Math.max(0, Number(shop?.categoriesCount ?? 0));
-
-    this.updateShopCounters(storeId, () => ({
-      productsCount,
-      categoriesCount,
-    }));
-
-    return { productsCount, categoriesCount };
   }
 
   static async getStoreProductsCount(storeId: string): Promise<number> {

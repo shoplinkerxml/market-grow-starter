@@ -106,18 +106,9 @@ export function useCountersRealtime(userId: string | null | undefined) {
 
     const pending = pendingRef.current;
     if (pending.size === 0) return;
-
-    for (const [storeId, v] of pending.entries()) {
-      const productsCount = v.products ?? 0;
-      const categoriesCount = productsCount === 0 ? 0 : (v.categories ?? 0);
-      ShopCountsService.set(queryClient, uid, storeId, { productsCount, categoriesCount });
-    }
-
-    // NOTE: do NOT invalidate dashboard here.
-    // Dashboard uses edge response which historically was computed from other tables.
-    // We keep dashboard in sync by applying counters updates directly in handleChange.
-
+    const storeIds = Array.from(pending.keys());
     pending.clear();
+    ShopCountsService.invalidate(queryClient, uid, storeIds, "realtime_counters");
   }, [queryClient, userId]);
 
   const scheduleFlush = useCallback(() => {

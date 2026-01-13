@@ -21,14 +21,14 @@ export const useShopRealtimeSync = ({ shopId, userId, enabled = true }: UseShopR
       const { store_id, is_active } = payload.new;
       if (String(store_id) !== shopId || is_active === false) return;
       if (ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, +1)) return;
-      ShopCountsService.bumpProducts(queryClient, uid, shopId, +1);
+      ShopCountsService.invalidate(queryClient, uid, shopId, "realtime_products_delta:+1");
     };
 
     const handleDelete = (payload: any) => {
       const { store_id, is_active } = payload.old;
       if (String(store_id) !== shopId || is_active === false) return;
       if (ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, -1)) return;
-      ShopCountsService.bumpProducts(queryClient, uid, shopId, -1);
+      ShopCountsService.invalidate(queryClient, uid, shopId, "realtime_products_delta:-1");
     };
 
     const handleUpdate = (payload: any) => {
@@ -43,19 +43,19 @@ export const useShopRealtimeSync = ({ shopId, userId, enabled = true }: UseShopR
         if (wasActive !== isActive) {
           const delta = isActive ? +1 : -1;
           if (ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, delta)) return;
-          ShopCountsService.bumpProducts(queryClient, uid, shopId, delta);
+          ShopCountsService.invalidate(queryClient, uid, shopId, `realtime_products_delta:${delta}`);
         }
         return;
       }
 
       if (sidOld === shopId && wasActive) {
         if (!ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, -1)) {
-          ShopCountsService.bumpProducts(queryClient, uid, shopId, -1);
+          ShopCountsService.invalidate(queryClient, uid, shopId, "realtime_products_delta:-1");
         }
       }
       if (sidNew === shopId && isActive) {
         if (!ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, +1)) {
-          ShopCountsService.bumpProducts(queryClient, uid, shopId, +1);
+          ShopCountsService.invalidate(queryClient, uid, shopId, "realtime_products_delta:+1");
         }
       }
     };

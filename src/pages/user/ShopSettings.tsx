@@ -506,16 +506,7 @@ export default function ShopSettings() {
                                 queryClient.invalidateQueries({ queryKey: ["user", uid, "shopSettingsAgg", id] });
                                 try {
                                   const sid = String(id!);
-                                  const list = queryClient.getQueryData<any[]>(["user", uid, "shops"]) || [];
-                                  const current = Array.isArray(list) ? list.find((s: any) => String(s?.id) === sid) : null;
-                                  const prevProductsCount = Math.max(0, Number(current?.productsCount ?? 0));
-                                  const prevCategoriesCount = Math.max(0, Number(current?.categoriesCount ?? 0));
-                                  const nextCategoriesCount =
-                                    prevProductsCount === 0 ? 0 : Math.max(0, prevCategoriesCount - 1);
-                                  ShopCountsService.set(queryClient, uid, sid, {
-                                    productsCount: prevProductsCount,
-                                    categoriesCount: nextCategoriesCount,
-                                  });
+                                  ShopCountsService.invalidate(queryClient, uid, sid, "category_deleted");
                                 } catch { void 0; }
                                 setSelectedRowIds(prev => prev.filter(pid => pid !== cat.store_category_id));
                               }}>

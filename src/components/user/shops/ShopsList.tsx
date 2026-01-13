@@ -97,7 +97,7 @@ export const ShopsList = ({
       const sid = String(storeId || "").trim();
       if (!sid) return;
       if (ShopCountsService.consumeRealtimeProductsDelta(uid, sid, delta)) return;
-      ShopCountsService.bumpProducts(queryClient, uid, sid, delta);
+      ShopCountsService.invalidate(queryClient, uid, sid, `realtime_products_delta:${delta}`);
     };
 
     const upsertShopFromRow = (row: any) => {
