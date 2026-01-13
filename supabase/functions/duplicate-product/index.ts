@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { S3Client, CopyObjectCommand } from "npm:@aws-sdk/client-s3";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.1";
+import { createClient } from "@supabase/supabase-js";
 
 // ============================================================================
 // Types
@@ -63,7 +63,12 @@ type RequestBody = {
 
 type ApiResponse = {
   success?: boolean;
-  product?: StoreProduct;
+  product?: StoreProduct & {
+    supplierName?: string | null;
+    categoryName?: string | null;
+    mainImageUrl?: string | null;
+    linkedStoreIds?: string[];
+  };
   error?: string;
   message?: string;
 };
@@ -118,6 +123,78 @@ const s3 = new S3Client({
 
 function base64UrlToBase64(input: string): string {
   return input.replace(/-/g, "+").replace(/_/g, "/");
+}
+
+async function getLinkedStoreIds(productId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("store_product_links")
+    .select("store_id,is_active")
+    .eq("product_id", productId);
+  if (error) return [];
+
+  const out: string[] = [];
+  for (const r of data || []) {
+    const sid = (r as any)?.store_id != null ? String((r as any).store_id) : "";
+    const active = (r as any)?.is_active !== false;
+    if (sid && active) out.push(sid);
+  }
+  return out;
+}
+
+async function getSupplierName(userId: string, supplierId: unknown): Promise<string | null> {
+  const sid = supplierId != null ? String(supplierId) : "";
+  if (!sid) return null;
+
+  const { data, error } = await supabase
+    .from("user_suppliers")
+    .select("supplier_name")
+    .eq("user_id", userId)
+    .eq("id", sid)
+    .maybeSingle();
+  if (error) return null;
+  const name = (data as any)?.supplier_name;
+  return name != null ? String(name) : null;
+}
+
+async function getCategoryName(product: StoreProduct): Promise<string | null> {
+  const supplierId = product?.supplier_id != null ? String(product.supplier_id) : "";
+  const categoryId = product?.category_id != null ? String(product.category_id) : "";
+  const categoryExternalId = product?.category_external_id != null ? String(product.category_external_id) : "";
+
+  if (!supplierId || (!categoryId && !categoryExternalId)) return null;
+
+  const ors: string[] = [];
+  if (categoryId) ors.push(`id.eq.${categoryId}`);
+  if (categoryExternalId) ors.push(`external_id.eq.${categoryExternalId}`);
+  const or = ors.join(",");
+  if (!or) return null;
+
+  const { data, error } = await supabase
+    .from("store_categories")
+    .select("name")
+    .eq("supplier_id", supplierId)
+    .or(or)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return null;
+  const name = (data as any)?.name;
+  return name != null ? String(name) : null;
+}
+
+async function getMainImageUrl(productId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("store_product_images")
+    .select("url,is_main,order_index")
+    .eq("product_id", productId)
+    .order("is_main", { ascending: false })
+    .order("order_index", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return null;
+  const url = (data as any)?.url;
+  return url != null ? String(url) : null;
 }
 
 function decodeJwtSub(authHeader: string | null): string | null {
@@ -565,7 +642,26 @@ serve(async (req) => {
 
     console.log(`Product ${productId} successfully duplicated as ${created.id}`);
 
-    return createResponse({ success: true, product: created }, 200);
+    const [supplierName, categoryName, mainImageUrl, linkedStoreIds] = await Promise.all([
+      getSupplierName(userId, (created as any)?.supplier_id),
+      getCategoryName(created as StoreProduct),
+      getMainImageUrl(created.id),
+      getLinkedStoreIds(created.id),
+    ]);
+
+    return createResponse(
+      {
+        success: true,
+        product: {
+          ...created,
+          supplierName,
+          categoryName,
+          mainImageUrl,
+          linkedStoreIds,
+        },
+      },
+      200,
+    );
 
   } catch (error) {
     console.error("Duplicate product error:", error);

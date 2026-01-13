@@ -43,12 +43,13 @@ export function useProductsHandlers({
           run: async () => {
             const duplicated = await ProductService.duplicateProduct(product.id);
             const duplicatedRow = duplicated as unknown as ProductRow;
-            const duplicatedId = String(duplicatedRow.id);
+            const duplicatedId = String((duplicatedRow as unknown as { id?: unknown })?.id ?? "");
+            if (!duplicatedId) throw new Error("duplicate_failed");
 
             queryClient.setQueriesData({ queryKey: productsBaseKey, exact: false }, (old: any) => {
               if (!old) return old;
               const insert = (items: ProductRow[]) => {
-                const without = items.filter((p) => String(p.id) !== duplicatedId);
+                const without = items.filter((it) => String(it?.id) !== duplicatedId);
                 return [duplicatedRow, ...without];
               };
 
@@ -77,6 +78,7 @@ export function useProductsHandlers({
         });
       } catch (error) {
         console.error("Duplicate product failed", error);
+        queryClient.invalidateQueries({ queryKey: productsBaseKey, exact: false }).catch(() => void 0);
         const err = error as unknown as { message?: unknown };
         const msg = typeof err.message === "string" ? err.message : "";
         if (msg.toLowerCase().includes("ліміт") || msg.toLowerCase().includes("limit")) {
