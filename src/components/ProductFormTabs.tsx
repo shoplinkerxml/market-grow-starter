@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useCallback, useMemo, Suspense, lazy, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -23,6 +23,7 @@ import { useImageDrop } from '@/hooks/useImageDrop';
 import { useImageActions } from '@/hooks/useImageActions';
 import { mapImageErrorToToast } from '@/utils/imageErrorHelpers';
 import type { SupplierOption, CategoryOption, CurrencyOption, ProductImage, ProductParam, FormData } from './ProductFormTabs/types';
+import { ProductImageDeleteProgressDialog, ProductSaveProgressDialog } from '@/components/user/products/ProductsTable/Dialogs';
 
 const InfoTab = lazy(async () => {
   const mod = await import('./ProductFormTabs/tabs/InfoTab');
@@ -86,6 +87,17 @@ export function ProductFormTabs({
   } = useI18n();
   const [activeTab, setActiveTab] = useState('info');
   const [loading, setLoading] = useState(false);
+  const [saveProgress, setSaveProgress] = useState<{ open: boolean; title: string; productName: string | null }>({
+    open: false,
+    title: "",
+    productName: null,
+  });
+  const saveProgressTimerRef = useRef<number | null>(null);
+  const [imageDeleteProgress, setImageDeleteProgress] = useState<{ open: boolean; productName: string | null }>({
+    open: false,
+    productName: null,
+  });
+  const imageDeleteProgressTimerRef = useRef<number | null>(null);
 
   const {
     basicData,
@@ -177,6 +189,18 @@ export function ProductFormTabs({
       toast.error(t('product_name_required'));
       return;
     }
+    if (saveProgressTimerRef.current) {
+      window.clearTimeout(saveProgressTimerRef.current);
+      saveProgressTimerRef.current = null;
+    }
+    setSaveProgress({
+      open: false,
+      title: product ? t("product_btn_update") : t("product_btn_create"),
+      productName: product?.name_ua || product?.name || basicData.name_ua || basicData.name || null,
+    });
+    saveProgressTimerRef.current = window.setTimeout(() => {
+      setSaveProgress((prev) => ({ ...prev, open: true }));
+    }, 250);
     setLoading(true);
     try {
       if (onSubmit) {
@@ -191,9 +215,14 @@ export function ProductFormTabs({
       console.error('Error saving product:', error);
       toast.error(t('failed_save_product'));
     } finally {
+      if (saveProgressTimerRef.current) {
+        window.clearTimeout(saveProgressTimerRef.current);
+        saveProgressTimerRef.current = null;
+      }
+      setSaveProgress({ open: false, title: "", productName: null });
       setLoading(false);
     }
-  }, [basicData.name_ua, formData, images, markSaved, onSubmit, parameters, t]);
+  }, [basicData.name, basicData.name_ua, formData, images, markSaved, onSubmit, parameters, product, t]);
 
   const handleCancel = useCallback(() => {
     if (onCancel) {
@@ -217,6 +246,32 @@ export function ProductFormTabs({
       toast.error(mapImageErrorToToast(t, res.errorCode));
     }
   }, [addImageFromUrlAction, imageUrl, t]);
+
+  const handleRemoveImage = useCallback(async (index: number) => {
+    if (imageDeleteProgressTimerRef.current) {
+      window.clearTimeout(imageDeleteProgressTimerRef.current);
+      imageDeleteProgressTimerRef.current = null;
+    }
+
+    setImageDeleteProgress({
+      open: false,
+      productName: product?.name_ua || product?.name || basicData.name_ua || basicData.name || null,
+    });
+
+    imageDeleteProgressTimerRef.current = window.setTimeout(() => {
+      setImageDeleteProgress((prev) => ({ ...prev, open: true }));
+    }, 250);
+
+    try {
+      return await imageActions.removeImageWithR2(index);
+    } finally {
+      if (imageDeleteProgressTimerRef.current) {
+        window.clearTimeout(imageDeleteProgressTimerRef.current);
+        imageDeleteProgressTimerRef.current = null;
+      }
+      setImageDeleteProgress({ open: false, productName: null });
+    }
+  }, [basicData.name, basicData.name_ua, imageActions, product?.name, product?.name_ua]);
 
   const handleSetImageUrl = useCallback((v: string) => {
     setImageUrl(v);
@@ -312,6 +367,8 @@ export function ProductFormTabs({
   }, [onParamsChange, setParameters]);
 
   return <div className="container mx-auto px-2 sm:px-6 py-3 sm:py-6 max-w-7xl" data-testid="productFormTabs_container">
+      <ProductSaveProgressDialog open={saveProgress.open} title={saveProgress.title} productName={saveProgress.productName} />
+      <ProductImageDeleteProgressDialog open={imageDeleteProgress.open} productName={imageDeleteProgress.productName} />
       <Card className="border-0 shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -348,7 +405,7 @@ export function ProductFormTabs({
                   imageUrl={imageUrl}
                   onSetImageUrl={handleSetImageUrl}
                   onAddImageFromUrl={addImageFromUrl}
-                  onRemoveImage={imageActions.removeImageWithR2}
+                  onRemoveImage={handleRemoveImage}
                   onSetMainImage={imageActions.setMain}
                   onReorderImages={imageActions.reorder}
                   onFileUpload={handleFileUpload}
