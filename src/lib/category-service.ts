@@ -58,7 +58,7 @@ function toBase(row: StoreCategoryBase): StoreCategory {
   };
 }
 
-function invalidateCategoriesCache(): void {
+export function invalidateCategoriesCache(): void {
   try { UnifiedCacheManager.invalidatePattern(/^products:supplierCategoriesMap(?::|$)/); } catch {}
   try { UnifiedCacheManager.invalidatePattern(/^rq:supplierCategoriesMap(?::|$)/); } catch {}
 }

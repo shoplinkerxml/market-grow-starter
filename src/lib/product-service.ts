@@ -35,6 +35,36 @@ export class ProductService {
     return await invokeEdge<T>(name, body);
   }
 
+  private static async invalidateRelatedAfterProductMutation(): Promise<void> {
+    try {
+      const { UserAuthService } = await import("@/lib/user-auth-service");
+      UserAuthService.clearAuthMeCache();
+    } catch {
+      void 0;
+    }
+
+    try {
+      const { ShopService } = await import("@/lib/shop-service");
+      ShopService.clearAllCaches();
+    } catch {
+      void 0;
+    }
+
+    try {
+      const { PersistentCacheService } = await import("@/lib/persistent-cache-service");
+      PersistentCacheService.invalidateShops();
+    } catch {
+      void 0;
+    }
+
+    try {
+      const { invalidateCategoriesCache } = await import("@/lib/category-service");
+      invalidateCategoriesCache();
+    } catch {
+      void 0;
+    }
+  }
+
   static async getUserLookups() {
     return await ProductAggregatorService.getUserLookups();
   }
@@ -209,10 +239,15 @@ export class ProductService {
           const main = (payload.images || []).find((i) => !!i.is_main) || (payload.images || [])[0];
           if (main?.url) patch.mainImageUrl = String(main.url);
         }
-        ProductService.patchProductCaches(pid, patch, storeId);
+        ProductService.patchProductCaches(pid, patch);
       } catch (error) {
         console.error("ProductService.saveStoreProductEdit cache update failed", error);
       }
+    }
+    try {
+      await ProductService.invalidateRelatedAfterProductMutation();
+    } catch (error) {
+      console.error("ProductService.saveStoreProductEdit invalidate related caches failed", error);
     }
     return pid ? { product_id: pid, link: out.link } : null;
   }
@@ -362,6 +397,11 @@ export class ProductService {
     } catch (error) {
       console.error("ProductService.createProduct clear caches failed", error);
     }
+    try {
+      await ProductService.invalidateRelatedAfterProductMutation();
+    } catch (error) {
+      console.error("ProductService.createProduct invalidate related caches failed", error);
+    }
     ProductService.invalidateProductLimitCache();
     return product;
   }
@@ -373,12 +413,30 @@ export class ProductService {
     } catch (error) {
       console.error("ProductService.duplicateProduct clearAllFirstPageCaches failed", error);
     }
+    try {
+      await ProductService.invalidateRelatedAfterProductMutation();
+    } catch (error) {
+      console.error("ProductService.duplicateProduct invalidate related caches failed", error);
+    }
+    ProductService.invalidateProductLimitCache();
     return product;
   }
 
   /** Обновление товара через функцию update-product */
   static async updateProduct(id: string, productData: Types.UpdateProductData): Promise<void> {
     const productId = await ProductCoreService.updateProduct(id, productData);
+    try {
+      ProductService.clearMasterProductsCaches();
+      ProductService.clearAllProductsCaches();
+    } catch (error) {
+      console.error("ProductService.updateProduct clear caches failed", error);
+    }
+    try {
+      await ProductService.invalidateRelatedAfterProductMutation();
+    } catch (error) {
+      console.error("ProductService.updateProduct invalidate related caches failed", error);
+    }
+    ProductService.invalidateProductLimitCache();
     void productId;
     return;
   }
@@ -392,6 +450,11 @@ export class ProductService {
     } catch (error) {
       console.error("ProductService.deleteProduct clear caches failed", error);
     }
+    try {
+      await ProductService.invalidateRelatedAfterProductMutation();
+    } catch (error) {
+      console.error("ProductService.deleteProduct invalidate related caches failed", error);
+    }
     ProductService.invalidateProductLimitCache();
   }
 
@@ -402,6 +465,11 @@ export class ProductService {
       ProductService.clearAllProductsCaches();
     } catch (error) {
       console.error("ProductService.bulkDeleteProducts clear caches failed", error);
+    }
+    try {
+      await ProductService.invalidateRelatedAfterProductMutation();
+    } catch (error) {
+      console.error("ProductService.bulkDeleteProducts invalidate related caches failed", error);
     }
     ProductService.invalidateProductLimitCache();
     return out;

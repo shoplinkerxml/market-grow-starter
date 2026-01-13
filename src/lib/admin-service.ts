@@ -4,6 +4,8 @@ import { SessionValidator } from "./session-validation";
 import type { TariffInsert, TariffUpdate, TariffFeatureInsert, TariffFeatureUpdate, TariffLimitInsert, TariffLimitUpdate } from "./tariff-service";
 import { DeduplicationMonitor, GlobalRequestDeduplicator, type RequestDeduplicatorMetrics } from "./request-deduplicator";
 import { EdgeClient } from "./request-handler";
+import { PersistentCacheService } from "./persistent-cache-service";
+import { invalidateTariffsCache } from "./tariff-cache";
 
 type AdminErrorCode = 'unauthorized' | 'validation_failed' | 'db_error' | 'rpc_error' | 'not_found';
 type AdminResult<T> = { success: boolean; data?: T; errorCode?: AdminErrorCode; message?: string };
@@ -65,6 +67,28 @@ async function runDb<T>(op: () => Promise<T>): Promise<AdminResult<T>> {
 }
 
 export class AdminService {
+  private static invalidateTariffsCaches(): void {
+    try {
+      invalidateTariffsCache();
+    } catch {
+      void 0;
+    }
+    try {
+      PersistentCacheService.invalidateTariffs();
+    } catch {
+      void 0;
+    }
+  }
+
+  private static invalidateCurrenciesCaches(): void {
+    try {
+      PersistentCacheService.invalidateCurrencies();
+    } catch {
+      void 0;
+    }
+    AdminService.invalidateTariffsCaches();
+  }
+
   // ==================== TARIFF OPERATIONS ====================
   static async createTariff(data: TariffInsert): Promise<AdminResult<unknown>> {
     return runDb(async () => {
@@ -74,6 +98,7 @@ export class AdminService {
         .select('*')
         .single();
       if (error) throw error;
+      AdminService.invalidateTariffsCaches();
       return result;
     });
   }
@@ -87,6 +112,7 @@ export class AdminService {
         .select('*')
         .single();
       if (error) throw error;
+      AdminService.invalidateTariffsCaches();
       return result;
     });
   }
@@ -98,6 +124,7 @@ export class AdminService {
         .delete()
         .eq('id', id);
       if (error) throw error;
+      AdminService.invalidateTariffsCaches();
       return { success: true };
     });
   }
@@ -112,6 +139,7 @@ export class AdminService {
         .select('*')
         .single();
       if (error) throw error;
+      AdminService.invalidateTariffsCaches();
       return result;
     });
   }
@@ -125,6 +153,7 @@ export class AdminService {
         .select('*')
         .single();
       if (error) throw error;
+      AdminService.invalidateTariffsCaches();
       return result;
     });
   }
@@ -136,6 +165,7 @@ export class AdminService {
         .delete()
         .eq('id', id);
       if (error) throw error;
+      AdminService.invalidateTariffsCaches();
       return { success: true };
     });
   }
@@ -150,6 +180,7 @@ export class AdminService {
         .select('*')
         .single();
       if (error) throw error;
+      AdminService.invalidateTariffsCaches();
       return result;
     });
   }
@@ -163,6 +194,7 @@ export class AdminService {
         .select('*')
         .single();
       if (error) throw error;
+      AdminService.invalidateTariffsCaches();
       return result;
     });
   }
@@ -174,6 +206,7 @@ export class AdminService {
         .delete()
         .eq('id', id);
       if (error) throw error;
+      AdminService.invalidateTariffsCaches();
       return { success: true };
     });
   }
@@ -262,6 +295,7 @@ export class AdminService {
         .select('*')
         .single();
       if (error) throw error;
+      AdminService.invalidateCurrenciesCaches();
       return result;
     });
   }
@@ -275,6 +309,7 @@ export class AdminService {
         .select('*')
         .single();
       if (error) throw error;
+      AdminService.invalidateCurrenciesCaches();
       return result;
     });
   }
@@ -286,6 +321,7 @@ export class AdminService {
         .delete()
         .eq('id', id);
       if (error) throw error;
+      AdminService.invalidateCurrenciesCaches();
       return { success: true };
     });
   }
@@ -321,6 +357,7 @@ export class AdminService {
           if (updateError) throw updateError;
         }
       }
+      AdminService.invalidateTariffsCaches();
       const ids = Array.from(new Set(items.map(i => (i as { tariff_id?: number }).tariff_id).filter(Boolean))) as number[];
       if (ids.length) {
         const { data, error } = await supabase

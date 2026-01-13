@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { useBreadcrumbs, usePageInfo } from "@/hooks/useBreadcrumbs";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
+import { PersistentCacheService } from "@/lib/persistent-cache-service";
+import { invalidateTariffsCache } from "@/lib/tariff-cache";
 
 interface Currency {
   id: number;
@@ -117,6 +119,22 @@ const CurrencyManagement = () => {
         return;
       }
 
+      try {
+        PersistentCacheService.invalidateCurrencies();
+      } catch {
+        void 0;
+      }
+      try {
+        PersistentCacheService.invalidateTariffs();
+      } catch {
+        void 0;
+      }
+      try {
+        invalidateTariffsCache();
+      } catch {
+        void 0;
+      }
+
       await loadCurrencies();
       toast.success(t("currency_deleted"));
     } catch (error) {
@@ -176,6 +194,22 @@ const CurrencyManagement = () => {
         toast.success(t("currency_created"));
       }
       
+      try {
+        PersistentCacheService.invalidateCurrencies();
+      } catch {
+        void 0;
+      }
+      try {
+        PersistentCacheService.invalidateTariffs();
+      } catch {
+        void 0;
+      }
+      try {
+        invalidateTariffsCache();
+      } catch {
+        void 0;
+      }
+
       setIsDialogOpen(false);
       await loadCurrencies();
     } catch (error: any) {
@@ -195,6 +229,22 @@ const CurrencyManagement = () => {
         console.error("Error updating currency status:", error);
         toast.error(t("failed_update_currency_status"));
         return;
+      }
+
+      try {
+        PersistentCacheService.invalidateCurrencies();
+      } catch {
+        void 0;
+      }
+      try {
+        PersistentCacheService.invalidateTariffs();
+      } catch {
+        void 0;
+      }
+      try {
+        invalidateTariffsCache();
+      } catch {
+        void 0;
       }
 
       await loadCurrencies();

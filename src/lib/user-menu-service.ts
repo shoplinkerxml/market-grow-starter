@@ -1,4 +1,5 @@
 import { EdgeClient } from "@/lib/request-handler";
+import { PersistentCacheService } from "@/lib/persistent-cache-service";
 export interface UserMenuItem {
   id: number;
   user_id: string;
@@ -51,6 +52,21 @@ export interface MenuReorderItem {
 }
 
 export class UserMenuService {
+  private static async invalidateMenuCaches(): Promise<void> {
+    try {
+      PersistentCacheService.invalidateMenu();
+    } catch {
+      void 0;
+    }
+
+    try {
+      const { UserAuthService } = await import("@/lib/user-auth-service");
+      UserAuthService.clearAuthMeCache();
+    } catch {
+      void 0;
+    }
+  }
+
   /**
    * Auto-assign icon based on menu item properties
    * Used as fallback when no explicit icon is set
@@ -282,6 +298,7 @@ export class UserMenuService {
           content_data: defaultContent,
         },
       });
+      await this.invalidateMenuCaches();
       return resp.item as UserMenuItem;
     } catch (error) {
       console.error('Error in createMenuItem:', error);
@@ -335,6 +352,7 @@ export class UserMenuService {
         id: itemId,
         data: updateData,
       });
+      await this.invalidateMenuCaches();
       return resp.item as UserMenuItem;
     } catch (error) {
       console.error('Error in updateMenuItem:', error);
@@ -348,6 +366,7 @@ export class UserMenuService {
   static async deleteMenuItem(itemId: number, userId: string): Promise<void> {
     try {
       await EdgeClient.invokeWithRetry<{ ok: boolean }>("user-menu-items", { action: "delete", id: itemId });
+      await this.invalidateMenuCaches();
     } catch (error) {
       console.error('Error in deleteMenuItem:', error);
       throw error;
@@ -375,6 +394,7 @@ export class UserMenuService {
         action: "reorder",
         items: reorderedItems,
       });
+      await this.invalidateMenuCaches();
     } catch (error) {
       console.error('Error in reorderMenuItems:', error);
       throw error;

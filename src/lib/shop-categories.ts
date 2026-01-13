@@ -57,6 +57,7 @@ export class ShopCategoriesService extends ShopServiceCore {
     if (payload.external_id !== undefined) patch.external_id = payload.external_id;
 
     await this.invokeEdge("update-store-category", { id: payload.id, patch });
+    await this.clearShopsCaches();
   }
 
   static async deleteStoreCategoryWithProducts(storeId: string, categoryId: number): Promise<void> {
@@ -68,6 +69,7 @@ export class ShopCategoriesService extends ShopServiceCore {
       store_id: storeId,
       category_id: categoryId,
     });
+    await this.clearShopsCaches();
   }
 
   static async deleteStoreCategoriesWithProducts(storeId: string, categoryIds: number[]): Promise<void> {
@@ -77,6 +79,7 @@ export class ShopCategoriesService extends ShopServiceCore {
       store_id: storeId,
       category_ids: categoryIds,
     });
+    await this.clearShopsCaches();
   }
 
   static async ensureStoreCategory(
@@ -97,6 +100,7 @@ export class ShopCategoriesService extends ShopServiceCore {
       custom_name: options?.custom_name ?? null,
     });
 
+    await this.clearShopsCaches();
     return response.id != null ? Number(response.id) : null;
   }
 
@@ -120,6 +124,6 @@ export class ShopCategoriesService extends ShopServiceCore {
       store_id: storeId,
       category_id: categoryId,
     });
+    await this.clearShopsCaches();
   }
 }
-

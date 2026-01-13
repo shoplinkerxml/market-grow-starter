@@ -20,24 +20,28 @@ export class ShopCurrenciesService extends ShopServiceCore {
     if (!storeId) throw new Error("Store ID is required");
     await this.ensureSession();
     await this.invokeEdge("add-store-currency", { store_id: storeId, code, rate });
+    await this.clearShopsCaches();
   }
 
   static async updateStoreCurrencyRate(storeId: string, code: string, rate: number): Promise<void> {
     if (!storeId) throw new Error("Store ID is required");
     await this.ensureSession();
     await this.invokeEdge("update-store-currency-rate", { store_id: storeId, code, rate });
+    await this.clearShopsCaches();
   }
 
   static async setBaseStoreCurrency(storeId: string, code: string): Promise<void> {
     if (!storeId) throw new Error("Store ID is required");
     await this.ensureSession();
     await this.invokeEdge("set-base-store-currency", { store_id: storeId, code });
+    await this.clearShopsCaches();
   }
 
   static async deleteStoreCurrency(storeId: string, code: string): Promise<void> {
     if (!storeId) throw new Error("Store ID is required");
     await this.ensureSession();
     await this.invokeEdge("delete-store-currency", { store_id: storeId, code });
+    await this.clearShopsCaches();
   }
 
   static async getAvailableCurrencies(): Promise<Array<{ code: string; rate?: number }>> {
@@ -52,4 +56,3 @@ export class ShopCurrenciesService extends ShopServiceCore {
     }));
   }
 }
-
