@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-import { getTariffsListCached, invalidateTariffsCache } from './tariff-cache';
+import TariffCache, { getTariffsListCached, invalidateTariffsCache } from './tariff-cache';
 import { PersistentCacheService } from "./persistent-cache-service";
 import { EdgeClient } from "./request-handler";
 
@@ -57,6 +57,10 @@ export class TariffService {
     }
   }
 
+  static clearAllCaches(): void {
+    TariffService.invalidateTariffsCaches();
+  }
+
   static async activateMyTariff(tariffId: number): Promise<{ success: boolean; subscription?: unknown }> {
     return await EdgeClient.invokeWithRetry<{ success: boolean; subscription?: unknown }>(
       'user-activate-tariff',
@@ -65,212 +69,36 @@ export class TariffService {
   }
   static async getTariffsAggregated(includeInactive = false, includeDemo = false): Promise<TariffWithDetails[]> {
     const cacheKey = `list:${includeInactive ? "inactive" : "active"}:${includeDemo ? "demo" : "noDemo"}`;
-    return await PersistentCacheService.getTariffs(async () => {
-      const rows = await getTariffsListCached<TariffWithDetails>(async () => {
+    return await getTariffsListCached<TariffWithDetails>(cacheKey, async () => {
+      return await PersistentCacheService.getTariffs(async () => {
         try {
-          const payload = await EdgeClient.invokeWithRetry<{ tariffs: TariffWithDetails[] }>('tariffs-list', { includeInactive, includeDemo });
-          const edgeRows = Array.isArray(payload.tariffs) ? payload.tariffs : [];
-          return edgeRows;
+          const payload = await EdgeClient.invokeWithRetry<{ tariffs: TariffWithDetails[] }>("tariffs-list", {
+            includeInactive,
+            includeDemo,
+          });
+          return Array.isArray(payload.tariffs) ? payload.tariffs : [];
         } catch {
           return [];
         }
-      });
-      return rows;
-    }, cacheKey);
-  }
-  // Get all tariffs with currency data, features, and limits
-  static async getAllTariffs(includeInactive = false, includeDemo = false) {
-    try {
-      console.log('TariffService.getAllTariffs called with includeInactive:', includeInactive);
-      
-      // Use simple select without joins as per memory specification for data loading
-      let query = supabase
-        .from('tariffs')
-        .select('id,name,description,old_price,new_price,currency_id,currency_code,duration_days,is_free,is_lifetime,is_active,created_at,updated_at,sort_order,visible,popular')
-        .order('sort_order', { ascending: true });
-
-      if (!includeInactive) {
-        query = query.eq('is_active', true);
-      }
-
-      const { data, error } = await query;
-      
-      console.log('Query result:', { data, error, count: data?.length });
-
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
-      }
-      
-      if (!data || data.length === 0) {
-        console.warn('No tariffs found in database');
-        return [];
-      }
-      
-      // Оптимизация: получаем все данные 3 запросами вместо 3*N
-      const tariffIds = data.map(t => t.id);
-      const currencyIds = [...new Set(data.map(t => t.currency_id).filter((id): id is number => typeof id === 'number'))];
-      
-      // 1. Получаем все валюты одним запросом
-      const currenciesMap = new Map();
-      if (currencyIds.length > 0) {
-        const { data: currencies } = await supabase
-          .from('currencies')
-          .select('id,code,name,rate,status,is_base')
-          .in('id', currencyIds);
-        
-        if (currencies) {
-          currencies.forEach(c => currenciesMap.set(c.id, c));
-        }
-      }
-      
-      // 2. Получаем все функции одним запросом
-      const featuresMap = new Map();
-      const { data: allFeatures } = await supabase
-        .from('tariff_features')
-        .select('id,tariff_id,feature_name,is_active')
-        .in('tariff_id', tariffIds)
-        .eq('is_active', true)
-        .order('feature_name');
-      
-      if (allFeatures) {
-        allFeatures.forEach(f => {
-          if (!featuresMap.has(f.tariff_id)) {
-            featuresMap.set(f.tariff_id, []);
-          }
-          featuresMap.get(f.tariff_id).push(f);
-        });
-      }
-      
-      // 3. Получаем все лимиты одним запросом
-      const limitsMap = new Map();
-      const { data: allLimits } = await supabase
-        .from('tariff_limits')
-        .select('id,tariff_id,template_id,code,limit_name,description,path,value,is_active')
-        .in('tariff_id', tariffIds)
-        .eq('is_active', true)
-        .order('limit_name');
-      
-      if (allLimits) {
-        allLimits.forEach(l => {
-          if (!limitsMap.has(l.tariff_id)) {
-            limitsMap.set(l.tariff_id, []);
-          }
-          limitsMap.get(l.tariff_id).push(l);
-        });
-      }
-      
-      // Собираем результат из Mapов
-      const filtered = (data || []).filter(t => {
-        if (includeDemo) return true;
-        const n = String((t as any)?.name || '').toLowerCase();
-        return !(n.includes('демо') || n.includes('demo'));
-      });
-      const tariffsWithDetails = filtered.map(tariff => {
-        const currencyId = tariff.currency_id;
-        const currencyData = currencyId ? currenciesMap.get(currencyId) : null;
-        
-        return {
-          id: tariff.id,
-          name: tariff.name,
-          description: tariff.description,
-          old_price: tariff.old_price,
-          new_price: tariff.new_price,
-          currency_id: currencyId,
-          currency_code: tariff.currency_code,
-          duration_days: tariff.duration_days,
-          is_free: tariff.is_free,
-          is_lifetime: tariff.is_lifetime,
-          is_active: tariff.is_active,
-          created_at: tariff.created_at,
-          updated_at: tariff.updated_at,
-          sort_order: tariff.sort_order,
-          visible: tariff.visible,
-          popular: tariff.popular,
-          currency_data: currencyData,
-          features: featuresMap.get(tariff.id) || [],
-          limits: limitsMap.get(tariff.id) || []
-        };
-      });
-      
-      return tariffsWithDetails as any[];
-    } catch (error) {
-      console.error('Error fetching tariffs:', error);
-      throw error;
-    }
+      }, cacheKey);
+    });
   }
 
-  // Get tariff by ID with features and limits - uses separate requests as per specification
-  static async getTariffById(id: number) {
-    try {
-      // 1. Get basic tariff data
-      const { data: tariffData, error: tariffError } = await supabase
-        .from('tariffs')
-        .select('id,name,description,old_price,new_price,currency_id,currency_code,duration_days,is_free,is_lifetime,is_active,created_at,updated_at,sort_order,visible,popular')
-        .eq('id', id)
-        .single();
+  static async getTariffById(
+    id: number,
+    options?: { includeInactive?: boolean; includeDemo?: boolean },
+  ): Promise<TariffWithDetails | null> {
+    const includeInactive = options?.includeInactive ?? false;
+    const includeDemo = options?.includeDemo ?? false;
+    const cacheKey = `list:${includeInactive ? "inactive" : "active"}:${includeDemo ? "demo" : "noDemo"}`;
 
-      if (tariffError) throw tariffError;
-      
-      // 2. Get currency data separately if valid currency_id field exists (actual database schema)
-      let currencyData = null;
-      const currencyId = tariffData.currency_id;
-      if (typeof currencyId === 'number') {
-        const { data: currency, error: currencyError } = await supabase
-          .from('currencies')
-          .select('id,code,name,rate,status,is_base')
-          .eq('id', currencyId)
-          .single();
-          
-        if (!currencyError) {
-          currencyData = currency;
-        }
-      }
-      
-      // 3. Get features separately
-      const { data: featuresData } = await supabase
-        .from('tariff_features')
-        .select('id,tariff_id,feature_name,is_active')
-        .eq('tariff_id', id)
-        .eq('is_active', true)
-        .order('feature_name');
-      
-      // 4. Get limits separately
-      const { data: limitsData } = await supabase
-        .from('tariff_limits')
-        .select('id,tariff_id,template_id,code,limit_name,description,path,value,is_active')
-        .eq('tariff_id', id)
-        .eq('is_active', true)
-        .order('limit_name');
-      
-      // Transform the data to match our interface
-      const tariffWithDetails = {
-        id: tariffData.id,
-        name: tariffData.name,
-        description: tariffData.description,
-        old_price: tariffData.old_price,
-        new_price: tariffData.new_price,
-        currency_id: tariffData.currency_id,
-        currency_code: tariffData.currency_code,
-        duration_days: tariffData.duration_days,
-        is_free: tariffData.is_free,
-        is_lifetime: tariffData.is_lifetime,
-        is_active: tariffData.is_active,
-        visible: tariffData.visible,
-        popular: tariffData.popular,
-        created_at: tariffData.created_at,
-        updated_at: tariffData.updated_at,
-        sort_order: tariffData.sort_order,
-        currency_data: currencyData,
-        features: featuresData || [],
-        limits: limitsData || []
-      };
-      
-      return tariffWithDetails as any;
-    } catch (error) {
-      console.error('Error fetching tariff:', error);
-      throw error;
-    }
+    const cached = TariffCache.get<TariffWithDetails[]>(cacheKey);
+    const fromCache = (cached || []).find((t) => Number((t as any)?.id) === Number(id));
+    if (fromCache) return fromCache;
+
+    const list = await TariffService.getTariffsAggregated(includeInactive, includeDemo);
+    const found = (list || []).find((t) => Number((t as any)?.id) === Number(id)) || null;
+    return found;
   }
 
   // Create a new tariff

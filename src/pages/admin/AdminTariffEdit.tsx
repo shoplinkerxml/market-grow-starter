@@ -181,7 +181,7 @@ const AdminTariffEdit = () => {
       setIsInitialLoading(true);
 
       // Use TariffService.getTariffById() for loading single tariffs with full relational data
-      const tariffWithDetails = await TariffService.getTariffById(tariffId);
+      const tariffWithDetails = await TariffService.getTariffById(tariffId, { includeInactive: true, includeDemo: true });
       if (tariffWithDetails) {
         // Extract currency code safely
         let currencyCode = 'USD'; // Default fallback

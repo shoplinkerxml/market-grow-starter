@@ -71,7 +71,7 @@ export const ListPage = ({ config, title }: ListPageProps) => {
         setLoading(true);
         // Check if this is a tariff page by looking at the path or title
         if (title === 'Тарифні плани' || title === 'Tariff Plans' || title === 'Tariff Management' || (config?.path === 'tariff' || config?.data === undefined)) {
-          const tariffData = await TariffService.getAllTariffs(true, true); // Include inactive and demo for admin
+          const tariffData = await TariffService.getTariffsAggregated(true, true); // Include inactive and demo for admin
           setData(tariffData);
         } else {
           setData(config?.data || defaultData);

@@ -22,12 +22,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, Copy, MoreHorizontal, CreditCard, Star, Crown, Package, AlertTriangle, DollarSign, PoundSterling, JapaneseYen, Rocket, Banknote, TrendingUp, Zap } from 'lucide-react';
-import { TariffService, type Tariff, type TariffInsert, type Currency } from '@/lib/tariff-service';
+import { TariffService, type TariffInsert, type Currency, type TariffWithDetails } from '@/lib/tariff-service';
 import TariffCache from '@/lib/tariff-cache';
 import { useI18n } from '@/i18n';
 import { PageHeader } from '@/components/PageHeader';
 import { useBreadcrumbs, usePageInfo } from '@/hooks/useBreadcrumbs';
 import { FullPageLoader } from '@/components/LoadingSkeletons';
+import { PersistentCacheService } from '@/lib/persistent-cache-service';
 
 const AdminTariffManagement = () => {
   const { t } = useI18n();
@@ -36,12 +37,12 @@ const AdminTariffManagement = () => {
   const breadcrumbs = useBreadcrumbs();
   const pageInfo = usePageInfo();
   
-  const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [tariffs, setTariffs] = useState<TariffWithDetails[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [tariffToDelete, setTariffToDelete] = useState<Tariff | null>(null);
+  const [tariffToDelete, setTariffToDelete] = useState<TariffWithDetails | null>(null);
 
   
 
@@ -52,22 +53,26 @@ const AdminTariffManagement = () => {
     }
   }, [loading, isInitialLoad]);
 
+  const includeInactive = true;
+  const includeDemo = true;
+  const tariffsCacheKey = `list:${includeInactive ? "inactive" : "active"}:${includeDemo ? "demo" : "noDemo"}`;
+
   const refreshTariffsInBackground = useCallback(async () => {
     try {
-      const tariffData = await TariffService.getAllTariffs(true, true);
+      const tariffData = await TariffService.getTariffsAggregated(includeInactive, includeDemo);
       setTariffs(tariffData);
       // Update cache
-      TariffCache.set(tariffData);
+      TariffCache.set(tariffsCacheKey, tariffData);
     } catch (error) {
       console.error('Error refreshing tariffs in background:', error);
     }
-  }, []);
+  }, [includeInactive, includeDemo, tariffsCacheKey]);
 
   const fetchTariffs = useCallback(async (useCache = true) => {
     try {
       // Check if we have valid cached data
       if (useCache) {
-        const cachedTariffs = TariffCache.get<Tariff[]>();
+        const cachedTariffs = TariffCache.get<TariffWithDetails[]>(tariffsCacheKey);
         if (cachedTariffs) {
           setTariffs(cachedTariffs);
           setLoading(false);
@@ -75,20 +80,23 @@ const AdminTariffManagement = () => {
           refreshTariffsInBackground();
           return;
         }
+      } else {
+        TariffCache.invalidateTariffsCache(tariffsCacheKey);
+        PersistentCacheService.invalidateTariffs();
       }
       
       setLoading(true);
-      const tariffData = await TariffService.getAllTariffs(true, true);
+      const tariffData = await TariffService.getTariffsAggregated(includeInactive, includeDemo);
       setTariffs(tariffData);
       // Cache the data
-      TariffCache.set(tariffData);
+      TariffCache.set(tariffsCacheKey, tariffData);
     } catch (error) {
       console.error('Error fetching tariffs:', error);
       toast.error('Failed to load tariffs');
     } finally {
       setLoading(false);
     }
-  }, [refreshTariffsInBackground]);
+  }, [includeInactive, includeDemo, refreshTariffsInBackground, tariffsCacheKey]);
 
   
 
@@ -107,6 +115,7 @@ const AdminTariffManagement = () => {
     
     if (shouldRefresh) {
       TariffCache.clear();
+      PersistentCacheService.invalidateTariffs();
       fetchTariffs(false);
       navigate(location.pathname, { replace: true });
     } else {
@@ -124,7 +133,7 @@ const AdminTariffManagement = () => {
     return () => clearInterval(interval);
   }, [location.search, fetchTariffs, loading, navigate, fetchCurrencies, location.pathname, refreshTariffsInBackground]);
 
-  const handleDelete = async (tariff: Tariff) => {
+  const handleDelete = async (tariff: TariffWithDetails) => {
     setTariffToDelete(tariff);
     setDeleteDialogOpen(true);
   };
@@ -147,7 +156,7 @@ const AdminTariffManagement = () => {
     }
   };
 
-  const handleDuplicate = async (tariff: Tariff) => {
+  const handleDuplicate = async (tariff: TariffWithDetails) => {
     try {
       await TariffService.duplicateTariff(tariff.id);
       toast.success(t('tariff_duplicated_successfully'));
@@ -222,7 +231,7 @@ const AdminTariffManagement = () => {
 
   // Function to get tariff icon based on tariff properties
   // Updated to use price-tier-based approach similar to user tariff page
-  const getTariffIcon = (tariff: Tariff) => {
+  const getTariffIcon = (tariff: TariffWithDetails) => {
     if (tariff.is_free) {
       return <Zap className="h-5 w-5" />;
     }

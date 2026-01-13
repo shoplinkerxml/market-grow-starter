@@ -19,7 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Plus, Edit, Trash2, AlertTriangle, Sparkles, SlidersHorizontal } from 'lucide-react';
-import { TariffService, type Tariff, type TariffFeature, type TariffLimit, type TariffFeatureInsert, type TariffLimitInsert } from '@/lib/tariff-service';
+import { TariffService, type TariffWithDetails, type TariffFeature, type TariffLimit, type TariffFeatureInsert, type TariffLimitInsert } from '@/lib/tariff-service';
 import { useI18n } from '@/i18n';
 import { PageHeader } from '@/components/PageHeader';
 import { useBreadcrumbs, usePageInfo } from '@/hooks/useBreadcrumbs';
@@ -30,7 +30,7 @@ const AdminTariffFeatures = () => {
   const breadcrumbs = useBreadcrumbs();
   const pageInfo = usePageInfo();
   
-  const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [tariffs, setTariffs] = useState<TariffWithDetails[]>([]);
   const [features, setFeatures] = useState<TariffFeature[]>([]);
   const [limits, setLimits] = useState<TariffLimit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +40,7 @@ const AdminTariffFeatures = () => {
   const [deleteLimitDialogOpen, setDeleteLimitDialogOpen] = useState(false);
   const [featureToDelete, setFeatureToDelete] = useState<TariffFeature | null>(null);
   const [limitToDelete, setLimitToDelete] = useState<TariffLimit | null>(null);
-  const [selectedTariff, setSelectedTariff] = useState<Tariff | null>(null);
+  const [selectedTariff, setSelectedTariff] = useState<TariffWithDetails | null>(null);
   const [editingFeature, setEditingFeature] = useState<TariffFeature | null>(null);
   const [editingLimit, setEditingLimit] = useState<TariffLimit | null>(null);
   const [featureFormData, setFeatureFormData] = useState<Partial<TariffFeatureInsert>>({
@@ -62,7 +62,7 @@ const AdminTariffFeatures = () => {
   const fetchTariffs = async () => {
     try {
       setLoading(true);
-      const tariffData = await TariffService.getAllTariffs(true, true);
+      const tariffData = await TariffService.getTariffsAggregated(true, true);
       setTariffs(tariffData);
     } catch (error) {
       console.error('Error fetching tariffs:', error);
@@ -86,7 +86,7 @@ const AdminTariffFeatures = () => {
     }
   };
 
-  const handleSelectTariff = async (tariff: Tariff) => {
+  const handleSelectTariff = async (tariff: TariffWithDetails) => {
     setSelectedTariff(tariff);
     await fetchFeaturesAndLimits(tariff.id);
   };
