@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { ProfileOperationError, ProfileErrorCode, validateProfileData, ProfileCache } from "./error-handler";
 import { BatchProcessor } from "./cache-utils";
 import type { UserProfile } from "./profile-service";
@@ -23,25 +22,32 @@ function logProfileOperation(operation: string, userId: string, result: any): vo
   });
 }
 
+function normalizeRole(role: unknown): UserProfile["role"] {
+  return role === "admin" || role === "manager" || role === "user" ? role : "user";
+}
+
+function normalizeStatus(status: unknown): UserProfile["status"] {
+  return status === "active" || status === "inactive" ? status : "active";
+}
+
+function buildLocalProfile(input: Partial<UserProfile> & { id: string }): UserProfile {
+  const now = new Date().toISOString();
+  return {
+    id: String(input.id),
+    email: String(input.email || ""),
+    name: String(input.name || ""),
+    phone: input.phone ?? null,
+    role: normalizeRole(input.role),
+    status: normalizeStatus(input.status),
+    avatar_url: input.avatar_url ?? null,
+    created_at: String((input as any).created_at || now),
+    updated_at: String((input as any).updated_at || now),
+  };
+}
+
 const profileByEmailBatch = new BatchProcessor<string, UserProfile | null>(async (emails) => {
   const normalized = (emails || []).map((e) => String(e).toLowerCase());
-  const unique = Array.from(new Set(normalized.filter(Boolean)));
-  if (unique.length === 0) return normalized.map(() => null);
-
-  const { data, error } = await supabase.from("profiles").select("*").in("email", unique);
-
-  if (error) throw error;
-
-  const byEmail = new Map<string, UserProfile>();
-  for (const row of (data || []) as any[]) {
-    const email = typeof row?.email === "string" ? row.email.toLowerCase() : "";
-    if (!email) continue;
-    byEmail.set(email, row as UserProfile);
-    ProfileCache.set(`profile_email_${email}`, row);
-    if (row?.id) ProfileCache.set(`profile_${String(row.id)}`, row);
-  }
-
-  return normalized.map((email) => byEmail.get(email) ?? null);
+  return normalized.map(() => null);
 }, 20);
 
 export async function getProfileByEmail(email: string): Promise<UserProfile | null> {
@@ -62,11 +68,6 @@ export async function getProfileByEmail(email: string): Promise<UserProfile | nu
       throw error;
     }
     console.error("Error in getProfileByEmail:", error);
-    const asAny = error as any;
-    const maybeNull = handlePostgRESTError(asAny);
-    if (maybeNull === null) {
-      throw new ProfileOperationError(ProfileErrorCode.PROFILE_NOT_FOUND, error);
-    }
     throw new ProfileOperationError(ProfileErrorCode.NETWORK_ERROR, error);
   }
 }
@@ -78,24 +79,8 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
       logProfileOperation("getProfile (cached)", userId, cached);
       return cached as UserProfile;
     }
-
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-
-    if (error) {
-      console.error("Error fetching user profile:", error);
-      const result = handlePostgRESTError(error);
-      if (result === null) {
-        throw new ProfileOperationError(ProfileErrorCode.PROFILE_NOT_FOUND, error);
-      }
-      throw new ProfileOperationError(ProfileErrorCode.NETWORK_ERROR, error);
-    }
-
-    if (data) {
-      ProfileCache.set(`profile_${userId}`, data);
-    }
-
-    logProfileOperation("getProfile", userId, data);
-    return data as UserProfile | null;
+    logProfileOperation("getProfile", userId, null);
+    return null;
   } catch (error) {
     if (error instanceof ProfileOperationError) {
       throw error;
@@ -116,68 +101,30 @@ export async function requireProfile(userId: string): Promise<UserProfile> {
 export async function checkMultipleUsersExist(emails: string[]): Promise<Map<string, boolean>> {
   try {
     const results = new Map<string, boolean>();
-
-    const batchSize = 10;
-    const batches: string[][] = [];
-
-    for (let i = 0; i < emails.length; i += batchSize) {
-      batches.push(emails.slice(i, i + batchSize));
+    for (const email of emails) {
+      results.set(email, false);
     }
-
-    const settled = await Promise.allSettled(
-      batches.map(async (batch) => {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("email")
-          .in(
-            "email",
-            batch.map((email) => email.toLowerCase()),
-          );
-        return { batch, data, error };
-      }),
-    );
-
-    for (const item of settled) {
-      if (item.status === "rejected") {
-        console.error("Error checking multiple users existence:", item.reason);
-        continue;
-      }
-
-      const { batch, data, error } = item.value;
-      if (error) {
-        console.error("Error checking multiple users existence:", error);
-        batch.forEach((email) => results.set(email, true));
-        continue;
-      }
-
-      const existingEmails = new Set((data || []).map((profile: any) => profile.email));
-      batch.forEach((email) => {
-        results.set(email, existingEmails.has(email.toLowerCase()));
-      });
-    }
-
     return results;
   } catch (error) {
     console.error("Error in checkMultipleUsersExist:", error);
     const results = new Map<string, boolean>();
-    emails.forEach((email) => results.set(email, true));
+    emails.forEach((email) => results.set(email, false));
     return results;
   }
 }
 
 export async function getProfileFields(userId: string, fields: string[]): Promise<Partial<UserProfile> | null> {
   try {
-    const { data, error } = await supabase.from("profiles").select(fields.join(",")).eq("id", userId).maybeSingle();
-
-    if (error) {
-      console.error("Error fetching user profile fields:", error);
-      return handlePostgRESTError(error);
+    const cached = ProfileCache.get(`profile_${userId}`) as UserProfile | null;
+    if (!cached) return null;
+    const out: Partial<UserProfile> = {};
+    for (const f of fields) {
+      (out as any)[f] = (cached as any)[f];
     }
-
-    return data as Partial<UserProfile> | null;
+    return out;
   } catch (error) {
     console.error("Error in getProfileFields:", error);
-    return handlePostgRESTError(error);
+    return null;
   }
 }
 
@@ -186,42 +133,10 @@ export async function upsertProfile(profileData: Partial<UserProfile> & { id: st
     if (!profileData.email || !profileData.name || !profileData.id) {
       throw new Error("Missing required profile fields");
     }
-
-    const upsertData: any = {
-      id: profileData.id,
-      email: profileData.email,
-      name: profileData.name,
-    };
-
-    if (profileData.phone !== undefined) upsertData.phone = profileData.phone;
-    if (profileData.role !== undefined) upsertData.role = profileData.role;
-    if (profileData.status !== undefined) upsertData.status = profileData.status;
-    if (profileData.avatar_url !== undefined) upsertData.avatar_url = profileData.avatar_url;
-    if (profileData.created_at !== undefined) upsertData.created_at = profileData.created_at;
-    if (profileData.updated_at !== undefined) upsertData.updated_at = profileData.updated_at;
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .upsert(upsertData, {
-        onConflict: "id",
-        ignoreDuplicates: false,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error upserting user profile:", error);
-      throw new ProfileOperationError(ProfileErrorCode.PROFILE_CREATION_FAILED, error);
-    }
-
-    if (data) {
-      ProfileCache.set(`profile_${data.id}`, data);
-      if ((data as any).email) {
-        ProfileCache.set(`profile_email_${String((data as any).email).toLowerCase()}`, data);
-      }
-    }
-
-    return data as UserProfile | null;
+    const built = buildLocalProfile(profileData);
+    ProfileCache.set(`profile_${built.id}`, built);
+    ProfileCache.set(`profile_email_${String(built.email).toLowerCase()}`, built);
+    return built;
   } catch (error) {
     console.error("Error in upsertProfile:", error);
     if (error instanceof ProfileOperationError) {
@@ -234,20 +149,20 @@ export async function upsertProfile(profileData: Partial<UserProfile> & { id: st
 export async function updateProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> {
   try {
     validateProfileData({ ...updates, id: userId });
-
-    const { data, error } = await supabase.from("profiles").update(updates).eq("id", userId).select().maybeSingle();
-
-    if (error) {
-      console.error("Error updating user profile:", error);
-      throw new ProfileOperationError(ProfileErrorCode.PROFILE_UPDATE_FAILED, error);
+    const prev = (ProfileCache.get(`profile_${userId}`) as UserProfile | null) ?? null;
+    if (!prev) return null;
+    const merged = buildLocalProfile({
+      ...prev,
+      ...updates,
+      id: userId,
+      updated_at: new Date().toISOString(),
+    });
+    ProfileCache.set(`profile_${userId}`, merged);
+    if ((merged as any).email) {
+      ProfileCache.set(`profile_email_${String((merged as any).email).toLowerCase()}`, merged);
     }
-
-    if (data) {
-      ProfileCache.set(`profile_${userId}`, data);
-      logProfileOperation("updateProfile", userId, data);
-    }
-
-    return data as UserProfile | null;
+    logProfileOperation("updateProfile", userId, merged);
+    return merged;
   } catch (error) {
     if (error instanceof ProfileOperationError) {
       throw error;
@@ -324,54 +239,10 @@ export async function createProfileWithVerification(
     if (!profileData.email || !profileData.name || !profileData.id) {
       throw new Error("Missing required profile fields");
     }
-
-    const upsertData: any = {
-      id: profileData.id,
-      email: profileData.email,
-      name: profileData.name,
-    };
-
-    if (profileData.phone !== undefined) upsertData.phone = profileData.phone;
-    if (profileData.role !== undefined) upsertData.role = profileData.role;
-    if (profileData.status !== undefined) upsertData.status = profileData.status;
-    if (profileData.avatar_url !== undefined) upsertData.avatar_url = profileData.avatar_url;
-    if (profileData.created_at !== undefined) upsertData.created_at = profileData.created_at;
-    if (profileData.updated_at !== undefined) upsertData.updated_at = profileData.updated_at;
-
-    const { data: upsertedProfile, error: upsertError } = await supabase
-      .from("profiles")
-      .upsert(upsertData, {
-        onConflict: "id",
-        ignoreDuplicates: false,
-      })
-      .select()
-      .single();
-
-    if (upsertError) {
-      console.error("Profile upsert failed:", upsertError);
-      throw new ProfileOperationError(ProfileErrorCode.PROFILE_CREATION_FAILED, upsertError);
-    }
-
-    void upsertedProfile;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    const { data: verifiedProfile, error: verifyError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", profileData.id)
-      .single();
-
-    if (verifyError || !verifiedProfile) {
-      console.error("Profile verification failed:", verifyError);
-      throw new ProfileOperationError(ProfileErrorCode.PROFILE_CREATION_FAILED, verifyError);
-    }
-
-    ProfileCache.set(`profile_${profileData.id}`, verifiedProfile);
-    if ((verifiedProfile as any).email) {
-      ProfileCache.set(`profile_email_${String((verifiedProfile as any).email).toLowerCase()}`, verifiedProfile);
-    }
-
-    return verifiedProfile as UserProfile;
+    const built = buildLocalProfile(profileData);
+    ProfileCache.set(`profile_${built.id}`, built);
+    ProfileCache.set(`profile_email_${String(built.email).toLowerCase()}`, built);
+    return built;
   } catch (error) {
     console.error("Error in createProfileWithVerification:", error);
     if (error instanceof ProfileOperationError) {
@@ -392,14 +263,9 @@ export async function createProfile(profileData: Partial<UserProfile> & { id: st
 
 export async function findProfilesByEmailPattern(pattern: string, limit: number = 10): Promise<UserProfile[]> {
   try {
-    const { data, error } = await supabase.from("profiles").select("*").ilike("email", `%${pattern}%`).limit(limit);
-
-    if (error) {
-      console.error("Error finding profiles by email pattern:", error);
-      return [];
-    }
-
-    return (data || []) as UserProfile[];
+    void pattern;
+    void limit;
+    return [];
   } catch (error) {
     console.error("Error in findProfilesByEmailPattern:", error);
     return [];
@@ -412,24 +278,10 @@ export async function profileExistsByEmail(email: string): Promise<boolean> {
     if (cached !== null && typeof cached === "boolean") {
       return cached;
     }
-
-    const { data, error } = await supabase.from("profiles").select("id").eq("email", email.toLowerCase()).maybeSingle();
-
-    if (error) {
-      const result = handlePostgRESTError(error);
-      if (result === null) {
-        ProfileCache.set(`exists_${email.toLowerCase()}`, false);
-        return false;
-      }
-      throw error;
-    }
-
-    const exists = !!data;
-    ProfileCache.set(`exists_${email.toLowerCase()}`, exists);
-    return exists;
+    ProfileCache.set(`exists_${email.toLowerCase()}`, false);
+    return false;
   } catch (error) {
     console.error("Error checking profile existence by email:", error);
-    return true;
+    return false;
   }
 }
-

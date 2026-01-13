@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeWithAuth } from "@/lib/session-validation";
 export interface UserMenuItem {
   id: number;
@@ -190,15 +189,19 @@ export class UserMenuService {
       // Get the next order index if not provided
       let orderIndex = menuData.order_index;
       if (orderIndex === undefined) {
-        const respMax = await supabase
-          .from('user_menu_items')
-          .select('order_index')
-          .eq('parent_id', menuData.parent_id || null)
-          .order('order_index', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const maxOrderItem = (respMax.data ?? null) as { order_index: number | null } | null;
-        const maxIdx = maxOrderItem?.order_index ?? 0;
+        const respList = await invokeEdgeWithAuth<{ items?: UserMenuItem[] }>("user-menu-items", {
+          action: "list",
+          active_only: false,
+        });
+        const items: UserMenuItem[] = Array.isArray(respList.items) ? (respList.items as UserMenuItem[]) : [];
+        const parentId = menuData.parent_id ?? null;
+        let maxIdx = -1;
+        for (const it of items) {
+          const itParent = it.parent_id ?? null;
+          if (itParent !== parentId) continue;
+          const n = Number((it as any)?.order_index);
+          if (Number.isFinite(n)) maxIdx = Math.max(maxIdx, n);
+        }
         orderIndex = maxIdx + 1;
       }
 
@@ -312,13 +315,11 @@ export class UserMenuService {
            menuData.title.toLowerCase().includes('payment') || 
            menuData.title.toLowerCase().includes('платеж'))) {
         // We need to get the path to determine the icon
-        const respPath = await supabase
-          .from('user_menu_items')
-          .select('path')
-          .eq('id', itemId)
-          .maybeSingle();
-        const existingPathRow = (respPath.data ?? null) as { path: string | null } | null;
-        const pathForIcon = menuData.path || (existingPathRow?.path ?? '');
+        const respItem = await invokeEdgeWithAuth<{ item?: UserMenuItem | null }>("user-menu-items", {
+          action: "get",
+          id: itemId,
+        });
+        const pathForIcon = menuData.path || (respItem.item?.path ?? '');
         if (pathForIcon) {
           icon_name = this.getAutoIconForMenuItem({ title: menuData.title, path: pathForIcon });
         }

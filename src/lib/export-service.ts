@@ -50,45 +50,14 @@ export const ExportService = {
   },
 
   async listForStore(storeId: string): Promise<ExportLink[]> {
-    const session = await ExportService.ensureSession();
-    const key = ExportService.makeLinksCacheKey(storeId, session.user?.id || null);
-    const cached = ExportService.cache.get<ExportLink[]>(key, false);
-    if (cached && Array.isArray(cached)) return cached;
-    const inflightKey = DedupeKeyBuilder.simple(["list", storeId, session.user?.id || "current"]);
-    return await ExportService.deduplicator.dedupe(inflightKey, async () => {
-      const { data, error } = await supabase
-        .from("store_export_links")
-        .select("id,store_id,format,token,object_key,is_active,auto_generate,last_generated_at,created_at,updated_at")
-        .eq("store_id", storeId)
-        .order("format")
-        .returns<ExportLink[]>();
-      if (error) return [];
-      const rows = data ?? [];
-      ExportService.cache.set(key, rows);
-      return rows;
-    });
+    void storeId;
+    return [];
   },
 
   async createLink(storeId: string, format: 'xml' | 'csv'): Promise<ExportLink | null> {
-    const session = await ExportService.ensureSession();
-    const token = crypto.randomUUID();
-    const objectKey = `exports/stores/${storeId}/${format}/${token}.${format}`;
-    const { data, error } = await supabase
-      .from("store_export_links")
-      .insert({
-        id: crypto.randomUUID(),
-        store_id: storeId,
-        format,
-        token,
-        object_key: objectKey,
-        is_active: true,
-      })
-      .select("id,store_id,format,token,object_key,is_active,last_generated_at,created_at,updated_at")
-      .returns<ExportLink>()
-      .single();
-    if (error) return null;
-    ExportService.invalidateLinksCache(storeId, session.user?.id);
-    return data as ExportLink;
+    void storeId;
+    void format;
+    return null;
   },
 
   async regenerate(storeId: string, format: 'xml' | 'csv'): Promise<boolean> {
@@ -111,19 +80,9 @@ export const ExportService = {
   },
 
   async updateAutoGenerate(linkId: string, auto: boolean): Promise<boolean> {
-    const session = await ExportService.ensureSession();
-    const { data, error } = await supabase
-      .from("store_export_links")
-      .update({ auto_generate: auto })
-      .eq("id", linkId)
-      .select("id,store_id")
-      .maybeSingle();
-    if (error) return false;
-    const row = data as Pick<ExportLink, "id" | "store_id"> | null;
-    if (row?.store_id) {
-      ExportService.invalidateLinksCache(String(row.store_id), session.user?.id);
-    }
-    return !!data;
+    void linkId;
+    void auto;
+    return false;
   },
 
   async generateAndUpload(storeId: string, format: 'xml' | 'csv', options?: { local?: boolean }): Promise<boolean> {

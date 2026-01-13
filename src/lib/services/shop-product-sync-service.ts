@@ -1,13 +1,22 @@
 import { ShopCountsService } from "@/lib/shop-counts";
 import { ProductLinkService } from "@/lib/product/product-link-service";
 import { queryClient } from "@/lib/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { ShopService, type ShopAggregated } from "@/lib/shop-service";
 import { PersistentCacheService } from "@/lib/persistent-cache-service";
+import { requireValidSession } from "@/lib/session-validation";
 
 type StoreLink = { product_id: string; store_id: string };
 
 export class ShopProductSyncService {
+  private static async getCurrentUserId(): Promise<string | null> {
+    try {
+      const v = await requireValidSession({ requireAccessToken: false });
+      return v?.user?.id ? String(v.user.id) : null;
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Immediately update counters in react-query cache for given stores.
    * This is the primary mechanism to keep UI in sync after mutations.
@@ -61,8 +70,7 @@ export class ShopProductSyncService {
     productIds: string[],
     links?: StoreLink[]
   ): Promise<void> {
-    const session = (await supabase.auth.getSession()).data.session;
-    const userId = session?.user?.id;
+    const userId = await ShopProductSyncService.getCurrentUserId();
     if (!userId) return;
 
     const uids = Array.from(new Set([String(userId), "current"]));
@@ -151,8 +159,7 @@ export class ShopProductSyncService {
     productIds: string[],
     storeIdsToRemove?: string[]
   ): Promise<void> {
-    const session = (await supabase.auth.getSession()).data.session;
-    const userId = session?.user?.id;
+    const userId = await ShopProductSyncService.getCurrentUserId();
     if (!userId) return;
 
     const uids = Array.from(new Set([String(userId), "current"]));

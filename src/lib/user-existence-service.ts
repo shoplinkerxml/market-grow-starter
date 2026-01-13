@@ -7,7 +7,6 @@
  * Supabase Auth even when users already exist.
  */
 
-import { supabase } from "@/integrations/supabase/client";
 import { ProfileService, UserProfile } from "./profile-service";
 import { ProfileCache } from "./error-handler";
 

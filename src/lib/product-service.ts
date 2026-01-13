@@ -1,6 +1,5 @@
 import { ApiError } from "./user-service";
 import { invokeEdgeWithAuth, SessionValidator } from "./session-validation";
-import { SubscriptionValidationService } from "./subscription-validation-service";
 import { ProductCoreService } from "@/lib/product/product-core-service";
 import { ProductLinkService } from "@/lib/product/product-link-service";
 import { ProductImageService } from "@/lib/product/product-image-service";
@@ -418,18 +417,6 @@ export class ProductService {
 
   static clearStoreProductsCaches(storeId: string): void {
     ProductCacheManager.clearStoreProductsCaches(storeId);
-  }
-
-  /** Батчевое обновление/вставка товаров напрямую через upsert */
-  static async bulkUpsertProducts(rows: Array<Types.UpdateProductData & { id: string; store_id?: string }>): Promise<{ upserted: number }>{
-    const out = await ProductCoreService.bulkUpsertProducts(rows);
-    try {
-      ProductService.clearAllProductsCaches();
-    } catch (e) {
-      console.error("ProductService.bulkUpsertProducts clearAllProductsCaches failed", e);
-    }
-    ProductService.invalidateProductLimitCache();
-    return out;
   }
 
   /** Агрегированные справочники для страницы создания товара */
