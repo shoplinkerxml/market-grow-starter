@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { CACHE_TTL, UnifiedCacheManager } from "@/lib/cache-utils";
+import { EdgeClient } from "@/lib/request-handler";
 
 export interface MarketplaceOption {
   value: string;
@@ -73,18 +73,10 @@ export const useMarketplaces = (enabled: boolean = true) => {
           void 0;
         }
 
-        type InvokeArgs = { body?: unknown };
-        type InvokeResult<T> = Promise<{ data: T; error?: { message?: string } }>;
-        const { data, error: fnError } = await (supabase as unknown as {
-          functions: { invoke: <T = unknown>(name: string, args: InvokeArgs) => InvokeResult<T> };
-        }).functions.invoke("store-templates-marketplaces", {
-          body: {},
-        });
-        if (fnError) throw new Error((fnError as { message?: string })?.message || "fetch_failed");
-        const payload =
-          typeof data === "string"
-            ? (JSON.parse(data) as { marketplaces?: string[]; templatesByMarketplace?: TemplatesMap })
-            : (data as { marketplaces?: string[]; templatesByMarketplace?: TemplatesMap });
+        const payload = await EdgeClient.invoke<{ marketplaces?: string[]; templatesByMarketplace?: TemplatesMap }>(
+          "store-templates-marketplaces",
+          {},
+        );
         const items = Array.isArray(payload?.marketplaces) ? (payload.marketplaces as string[]) : [];
         const options: MarketplaceOption[] = items.map((m) => ({ value: String(m), label: String(m) }));
         const tmRaw = payload?.templatesByMarketplace || {};

@@ -1,6 +1,7 @@
 import type { Database } from "@/integrations/supabase/types";
 import { CACHE_TTL, UnifiedCacheManager } from "@/lib/cache-utils";
-import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
+import { SessionValidator } from "@/lib/session-validation";
+import { EdgeClient } from "@/lib/request-handler";
 
 // Minimal DTO shape aligned with UI needs
 export type StoreCategory = {
@@ -74,7 +75,7 @@ export const CategoryService = {
   async getById(id: string | number): Promise<StoreCategoryFull | null> {
     const idNum = castNullableNumber(id);
     if (idNum === undefined) return null;
-    const resp = await invokeEdgeWithAuth<{ item?: StoreCategoryFullRow | null }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ item?: StoreCategoryFullRow | null }>("categories", {
       action: "get_by_id",
       id: idNum,
     });
@@ -86,13 +87,13 @@ export const CategoryService = {
   async getNameByIdSafe(id: number | string): Promise<string | null> {
     const idNum = castNullableNumber(id);
     if (idNum === undefined) return null;
-    const resp = await invokeEdgeWithAuth<{ name?: string | null }>("categories", { action: "get_name_by_id", id: idNum });
+    const resp = await EdgeClient.invokeWithRetry<{ name?: string | null }>("categories", { action: "get_name_by_id", id: idNum });
     return resp.name ?? null;
   },
   // 4. Get all categories of supplier
   async listCategories(supplierId?: string | number): Promise<StoreCategory[]> {
     const sel = categoriesSelect("external_id,name,parent_external_id", supplierId);
-    const resp = await invokeEdgeWithAuth<{ rows?: StoreCategoryBase[] }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ rows?: StoreCategoryBase[] }>("categories", {
       action: "list",
       supplier_id: sel.supplierId,
     });
@@ -108,7 +109,7 @@ export const CategoryService = {
       name: input.name,
       parent_external_id: input.parent_external_id ?? null,
     };
-    const resp = await invokeEdgeWithAuth<{ item: StoreCategoryBase }>("categories", { action: "create", data: payload });
+    const resp = await EdgeClient.invokeWithRetry<{ item: StoreCategoryBase }>("categories", { action: "create", data: payload });
     invalidateCategoriesCache();
     return toBase(resp.item);
   },
@@ -122,7 +123,7 @@ export const CategoryService = {
       name: it.name,
       parent_external_id: it.parent_external_id ?? null,
     }));
-    const resp = await invokeEdgeWithAuth<{ rows?: StoreCategoryBase[] }>("categories", { action: "bulk_create", items: payload });
+    const resp = await EdgeClient.invokeWithRetry<{ rows?: StoreCategoryBase[] }>("categories", { action: "bulk_create", items: payload });
     const rows = resp.rows ?? [];
     invalidateCategoriesCache();
     return rows.map(toBase);
@@ -131,7 +132,7 @@ export const CategoryService = {
   // 4. Read all categories for supplier (full shape including id)
   async getSupplierCategories(supplierId: string | number): Promise<StoreCategoryFull[]> {
     const sel = categoriesSelect("id,external_id,name,parent_external_id,supplier_id", supplierId);
-    const resp = await invokeEdgeWithAuth<{ rows?: StoreCategoryFullRow[] }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ rows?: StoreCategoryFullRow[] }>("categories", {
       action: "get_supplier_categories",
       supplier_id: sel.supplierId,
     });
@@ -201,7 +202,7 @@ export const CategoryService = {
       for (const batch of batches) {
         const results = await Promise.all(
           batch.map(async (supplierId) => {
-            const resp = await invokeEdgeWithAuth<{ rows?: StoreCategoryFullRow[] }>("categories", {
+            const resp = await EdgeClient.invokeWithRetry<{ rows?: StoreCategoryFullRow[] }>("categories", {
               action: "get_supplier_categories",
               supplier_id: supplierId,
             });
@@ -223,7 +224,7 @@ export const CategoryService = {
   // 5. Read subcategories of a specific category
   async getSubcategories(supplierId: string | number, parentExternalId: string): Promise<StoreCategoryFull[]> {
     const normalized = castNullableNumber(supplierId);
-    const resp = await invokeEdgeWithAuth<{ rows?: StoreCategoryFullRow[] }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ rows?: StoreCategoryFullRow[] }>("categories", {
       action: "get_subcategories",
       supplier_id: normalized,
       parent_external_id: parentExternalId,
@@ -235,7 +236,7 @@ export const CategoryService = {
   // 6. Read specific category by external_id
   async getByExternalId(supplierId: string | number, externalId: string): Promise<StoreCategoryFull | null> {
     const normalized = castNullableNumber(supplierId);
-    const resp = await invokeEdgeWithAuth<{ item?: StoreCategoryFullRow | null }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ item?: StoreCategoryFullRow | null }>("categories", {
       action: "get_by_external_id",
       supplier_id: normalized,
       external_id: externalId,
@@ -250,7 +251,7 @@ export const CategoryService = {
     if (normalized === undefined) {
       throw new Error("Invalid supplierId");
     }
-    const resp = await invokeEdgeWithAuth<{ item: StoreCategoryBase }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ item: StoreCategoryBase }>("categories", {
       action: "update_name",
       supplier_id: normalized,
       external_id: externalId,
@@ -266,7 +267,7 @@ export const CategoryService = {
     if (normalized === undefined) {
       throw new Error("Invalid supplierId");
     }
-    await invokeEdgeWithAuth<{ ok: boolean }>("categories", {
+    await EdgeClient.invokeWithRetry<{ ok: boolean }>("categories", {
       action: "delete",
       supplier_id: normalized,
       external_id: externalId,
@@ -281,7 +282,7 @@ export const CategoryService = {
     if (normalized === undefined) {
       throw new Error("Invalid supplierId");
     }
-    await invokeEdgeWithAuth<{ ok: boolean }>("categories", {
+    await EdgeClient.invokeWithRetry<{ ok: boolean }>("categories", {
       action: "delete_cascade",
       supplier_id: normalized,
       external_id: externalId,

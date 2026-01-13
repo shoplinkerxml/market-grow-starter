@@ -1,5 +1,5 @@
 import { ApiError } from "@/lib/user-service";
-import { invokeEdgeWithAuth } from "@/lib/session-validation";
+import { EdgeClient } from "@/lib/request-handler";
 
 export function castNullableNumber(value: unknown): number | null {
   if (value === undefined || value === null || value === "") return null;
@@ -21,7 +21,7 @@ export function edgeError(
 
 export async function invokeEdge<T>(name: string, body: Record<string, unknown>): Promise<T> {
   try {
-    return await invokeEdgeWithAuth<T>(name, body);
+    return await EdgeClient.invokeWithRetry<T>(name, body);
   } catch (error) {
     edgeError(error as any, name);
     throw new ApiError(name, 500);

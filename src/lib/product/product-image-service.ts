@@ -1,7 +1,8 @@
 import { R2Storage } from "@/lib/r2-storage";
 import type { ProductImage } from "@/lib/product-service";
-import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
+import { SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
+import { EdgeClient } from "@/lib/request-handler";
 
 type ImageInput = ProductImage & { object_key?: string };
 
@@ -20,7 +21,7 @@ export class ProductImageService {
 
   private static async invokeEdge<T>(name: string, body: Record<string, unknown>): Promise<T> {
     try {
-      return await invokeEdgeWithAuth<T>(name, body);
+      return await EdgeClient.invokeWithRetry<T>(name, body);
     } catch (error) {
       ProductImageService.edgeError(error as any, name);
       throw new ApiError(name, 500);

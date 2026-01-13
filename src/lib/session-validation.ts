@@ -18,6 +18,26 @@ import { AppError, mapError } from "@/lib/error-handler";
 
 const __DEV__ = import.meta.env?.DEV ?? false;
 
+EdgeClient.configure({
+  invoke: supabase.functions.invoke.bind(supabase.functions) as any,
+  authProvider: {
+    getAccessToken: () => SessionValidator.getToken(),
+    refresh: async () => {
+      await SessionValidator.refreshSession();
+    },
+  },
+  logger: (event) => {
+    const shouldLog = __DEV__ || event.type === "edge_retry" || (event.type === "edge_invoke" && event.ok === false);
+    if (!shouldLog) return;
+    try {
+      const level = event.type === "edge_invoke" && event.ok === false ? "error" : "info";
+      (console as any)[level]?.(JSON.stringify({ ...event, ts: new Date().toISOString() }));
+    } catch {
+      void 0;
+    }
+  },
+});
+
 export interface SessionValidationResult {
   isValid: boolean;
   session: Session | null;
@@ -383,30 +403,10 @@ export async function withValidSession<T>(
 }
 
 export async function invokeEdgeWithAuth<T>(name: string, body: unknown, opts?: RetryOptions): Promise<T> {
-  const edge = new EdgeClient(supabase.functions.invoke.bind(supabase.functions) as any);
-  const invokeOnce = async (accessToken: string): Promise<T> => {
-    try {
-      return await edge.invokeJson<T>(
-        name,
-        { body, headers: { Authorization: `Bearer ${accessToken}` }, signal: opts?.signal },
-        { timeoutMs: 12_000, ...opts },
-      );
-    } catch (e) {
-      const mapped = e instanceof AppError ? e : mapError(e, { code: "edge_invoke_failed", context: { edgeFunction: name } });
-      throw new EdgeInvokeError(mapped.message, mapped.status, mapped, { edgeFunction: name });
-    }
-  };
-
-  const accessToken = await SessionValidator.getToken();
   try {
-    return await invokeOnce(accessToken);
+    return await EdgeClient.invokeWithRetry<T>(name, body, opts);
   } catch (e) {
-    const status = (e as { status?: number } | null)?.status;
-    if (status === 401) {
-      await SessionValidator.refreshSession();
-      const refreshedToken = await SessionValidator.getToken();
-      return await invokeOnce(refreshedToken);
-    }
-    throw e;
+    const mapped = e instanceof AppError ? e : mapError(e, { code: "edge_invoke_failed", context: { edgeFunction: name } });
+    throw new EdgeInvokeError(mapped.message, mapped.status, mapped, { edgeFunction: name });
   }
 }

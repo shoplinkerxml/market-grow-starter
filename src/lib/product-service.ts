@@ -1,5 +1,5 @@
 import { ApiError } from "./user-service";
-import { invokeEdgeWithAuth, SessionValidator } from "./session-validation";
+import { SessionValidator } from "./session-validation";
 import { ProductCoreService } from "@/lib/product/product-core-service";
 import { ProductLinkService } from "@/lib/product/product-link-service";
 import { ProductImageService } from "@/lib/product/product-image-service";

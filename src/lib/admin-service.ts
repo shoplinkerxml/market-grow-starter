@@ -1,8 +1,9 @@
 // src/lib/admin-service.ts
 import { supabase } from "@/integrations/supabase/client";
-import { invokeEdgeWithAuth, SessionValidator } from "./session-validation";
+import { SessionValidator } from "./session-validation";
 import type { TariffInsert, TariffUpdate, TariffFeatureInsert, TariffFeatureUpdate, TariffLimitInsert, TariffLimitUpdate } from "./tariff-service";
 import { DeduplicationMonitor, GlobalRequestDeduplicator, type RequestDeduplicatorMetrics } from "./request-deduplicator";
+import { EdgeClient } from "./request-handler";
 
 type AdminErrorCode = 'unauthorized' | 'validation_failed' | 'db_error' | 'rpc_error' | 'not_found';
 type AdminResult<T> = { success: boolean; data?: T; errorCode?: AdminErrorCode; message?: string };
@@ -39,7 +40,7 @@ async function invokeAdminEdge<T>(fn: string, body: unknown): Promise<AdminResul
   try {
     const token = await ensureAccessToken();
     void token;
-    const payload = await invokeEdgeWithAuth<T>(fn, body);
+    const payload = await EdgeClient.invokeWithRetry<T>(fn, body);
     return { success: true, data: payload };
   } catch (e) {
     const tid = createTraceId();

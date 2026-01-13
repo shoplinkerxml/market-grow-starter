@@ -1,4 +1,4 @@
-import { invokeEdgeWithAuth } from "@/lib/session-validation";
+import { EdgeClient } from "@/lib/request-handler";
 export interface UserMenuItem {
   id: number;
   user_id: string;
@@ -94,7 +94,7 @@ export class UserMenuService {
    * Get all menu items for a user
    */
   static async getUserMenuItems(userId: string, activeOnly: boolean = true): Promise<UserMenuItem[]> {
-    const resp = await invokeEdgeWithAuth<{ items?: UserMenuItem[] }>("user-menu-items", {
+    const resp = await EdgeClient.invokeWithRetry<{ items?: UserMenuItem[] }>("user-menu-items", {
       action: "list",
       active_only: !!activeOnly,
     });
@@ -178,7 +178,7 @@ export class UserMenuService {
    */
   static async createMenuItem(userId: string, menuData: CreateUserMenuItem): Promise<UserMenuItem> {
     try {
-      const respUnique = await invokeEdgeWithAuth<{ item?: UserMenuItem | null }>("user-menu-items", {
+      const respUnique = await EdgeClient.invokeWithRetry<{ item?: UserMenuItem | null }>("user-menu-items", {
         action: "get_by_path",
         path: menuData.path,
       });
@@ -189,7 +189,7 @@ export class UserMenuService {
       // Get the next order index if not provided
       let orderIndex = menuData.order_index;
       if (orderIndex === undefined) {
-        const respList = await invokeEdgeWithAuth<{ items?: UserMenuItem[] }>("user-menu-items", {
+        const respList = await EdgeClient.invokeWithRetry<{ items?: UserMenuItem[] }>("user-menu-items", {
           action: "list",
           active_only: false,
         });
@@ -272,7 +272,7 @@ export class UserMenuService {
         }
       }
 
-      const resp = await invokeEdgeWithAuth<{ item: UserMenuItem }>("user-menu-items", {
+      const resp = await EdgeClient.invokeWithRetry<{ item: UserMenuItem }>("user-menu-items", {
         action: "create",
         data: {
           ...menuData,
@@ -295,7 +295,7 @@ export class UserMenuService {
   static async updateMenuItem(itemId: number, userId: string, menuData: UpdateUserMenuItem): Promise<UserMenuItem> {
     try {
       if (menuData.path) {
-        const check = await invokeEdgeWithAuth<{ item?: UserMenuItem | null }>("user-menu-items", {
+        const check = await EdgeClient.invokeWithRetry<{ item?: UserMenuItem | null }>("user-menu-items", {
           action: "get_by_path",
           path: menuData.path,
         });
@@ -315,7 +315,7 @@ export class UserMenuService {
            menuData.title.toLowerCase().includes('payment') || 
            menuData.title.toLowerCase().includes('платеж'))) {
         // We need to get the path to determine the icon
-        const respItem = await invokeEdgeWithAuth<{ item?: UserMenuItem | null }>("user-menu-items", {
+        const respItem = await EdgeClient.invokeWithRetry<{ item?: UserMenuItem | null }>("user-menu-items", {
           action: "get",
           id: itemId,
         });
@@ -330,7 +330,7 @@ export class UserMenuService {
         ...(icon_name !== undefined && { icon_name }) // Only include icon_name if it's defined
       };
 
-      const resp = await invokeEdgeWithAuth<{ item: UserMenuItem }>("user-menu-items", {
+      const resp = await EdgeClient.invokeWithRetry<{ item: UserMenuItem }>("user-menu-items", {
         action: "update",
         id: itemId,
         data: updateData,
@@ -347,7 +347,7 @@ export class UserMenuService {
    */
   static async deleteMenuItem(itemId: number, userId: string): Promise<void> {
     try {
-      await invokeEdgeWithAuth<{ ok: boolean }>("user-menu-items", { action: "delete", id: itemId });
+      await EdgeClient.invokeWithRetry<{ ok: boolean }>("user-menu-items", { action: "delete", id: itemId });
     } catch (error) {
       console.error('Error in deleteMenuItem:', error);
       throw error;
@@ -371,7 +371,7 @@ export class UserMenuService {
    */
   static async reorderMenuItems(userId: string, reorderedItems: MenuReorderItem[]): Promise<void> {
     try {
-      await invokeEdgeWithAuth<{ ok: boolean }>("user-menu-items", {
+      await EdgeClient.invokeWithRetry<{ ok: boolean }>("user-menu-items", {
         action: "reorder",
         items: reorderedItems,
       });
@@ -387,7 +387,7 @@ export class UserMenuService {
    */
   static async getMenuItem(itemId: number, userId: string): Promise<UserMenuItem | null> {
     try {
-      const resp = await invokeEdgeWithAuth<{ item?: UserMenuItem | null }>("user-menu-items", {
+      const resp = await EdgeClient.invokeWithRetry<{ item?: UserMenuItem | null }>("user-menu-items", {
         action: "get",
         id: itemId,
       });
@@ -425,7 +425,7 @@ export class UserMenuService {
    */
   static async getMenuItemByPath(path: string, userId: string): Promise<UserMenuItem | null> {
     try {
-      const resp = await invokeEdgeWithAuth<{ item?: UserMenuItem | null }>("user-menu-items", {
+      const resp = await EdgeClient.invokeWithRetry<{ item?: UserMenuItem | null }>("user-menu-items", {
         action: "get_by_path",
         path,
       });
@@ -460,7 +460,7 @@ export class UserMenuService {
    */
   static async getChildMenuItems(userId: string, parentId?: number): Promise<UserMenuItem[]> {
     try {
-      const resp = await invokeEdgeWithAuth<{ items?: UserMenuItem[] }>("user-menu-items", {
+      const resp = await EdgeClient.invokeWithRetry<{ items?: UserMenuItem[] }>("user-menu-items", {
         action: "get_children",
         parent_id: parentId ?? null,
       });

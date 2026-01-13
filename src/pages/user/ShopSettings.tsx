@@ -24,7 +24,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProgressiveLoader, FullPageLoader } from "@/components/LoadingSkeletons";
 import { toast } from "sonner";
 import { ShopCountsService } from "@/lib/shop-counts";
-import { supabase } from "@/integrations/supabase/client";
+import { EdgeClient } from "@/lib/request-handler";
 type StoreCategoryRow = {
   store_category_id: number;
   store_id: string;
@@ -242,13 +242,8 @@ export default function ShopSettings() {
                   const key = marketplace.toLowerCase().trim();
                   let template = templatesMap?.[key];
                   if (!template) {
-                    const { data, error: fnError } = await (supabase as unknown as { functions: { invoke: <T = unknown>(name: string, args: { body?: unknown }) => Promise<{ data: T; error?: { message?: string } }> } }).functions.invoke('store-templates-marketplaces', {
-                      body: { marketplace }
-                    });
-                    if (!fnError) {
-                      const payload = typeof data === 'string' ? JSON.parse(data) as { template?: any } : (data as { template?: any });
-                      template = payload?.template;
-                    }
+                    const payload = await EdgeClient.invoke<{ template?: any }>('store-templates-marketplaces', { marketplace });
+                    template = payload?.template;
                   }
                   if (template) {
                     await ShopService.updateShop(id!, {

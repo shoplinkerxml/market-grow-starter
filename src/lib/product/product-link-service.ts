@@ -1,9 +1,10 @@
 import type { StoreProductLink, StoreProductLinkPatchInput } from "@/lib/product-service";
-import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
+import { SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
 import { GlobalRequestDeduplicator } from "@/lib/request-deduplicator";
 import { PersistentCacheService } from "@/lib/persistent-cache-service";
 import { ShopProductSyncService } from "@/lib/services/shop-product-sync-service";
+import { EdgeClient } from "@/lib/request-handler";
 
 export class ProductLinkService {
   private static edgeError(
@@ -20,7 +21,7 @@ export class ProductLinkService {
 
   private static async invokeEdge<T>(name: string, body: Record<string, unknown>): Promise<T> {
     try {
-      return await invokeEdgeWithAuth<T>(name, body);
+      return await EdgeClient.invokeWithRetry<T>(name, body);
     } catch (error) {
       ProductLinkService.edgeError(error as any, name);
       throw new ApiError(name, 500);
@@ -50,7 +51,7 @@ export class ProductLinkService {
   ): Promise<StoreProductLink | null> {
     await ProductLinkService.ensureValidSession();
     try {
-      const resp = await invokeEdgeWithAuth<{ link?: StoreProductLink | null }>("update-store-product-link", {
+      const resp = await EdgeClient.invokeWithRetry<{ link?: StoreProductLink | null }>("update-store-product-link", {
         product_id: productId,
         store_id: storeId,
         patch,
@@ -67,7 +68,7 @@ export class ProductLinkService {
   static async removeStoreProductLink(productId: string, storeId: string): Promise<void> {
     await ProductLinkService.ensureValidSession();
     try {
-      await invokeEdgeWithAuth<unknown>("bulk-remove-store-product-links", {
+      await EdgeClient.invokeWithRetry<unknown>("bulk-remove-store-product-links", {
         product_ids: [productId],
         store_ids: [storeId],
       });
@@ -94,7 +95,7 @@ export class ProductLinkService {
       deletedProductIds?: string[];
     };
     try {
-      out = await invokeEdgeWithAuth("bulk-remove-store-product-links", { product_ids: productIds, store_ids: storeIds });
+      out = await EdgeClient.invokeWithRetry("bulk-remove-store-product-links", { product_ids: productIds, store_ids: storeIds });
     } catch (error) {
       const msg = (error as { message?: string } | null)?.message || "bulk_delete_failed";
       throw new Error(msg);
@@ -139,7 +140,7 @@ export class ProductLinkService {
     await ProductLinkService.ensureValidSession();
     let out: { inserted?: number; addedByStore?: Record<string, number>; categoryNamesByStore?: Record<string, string[]> };
     try {
-      out = await invokeEdgeWithAuth("bulk-add-store-product-links", { links: payload });
+      out = await EdgeClient.invokeWithRetry("bulk-add-store-product-links", { links: payload });
     } catch (error) {
       const msg = (error as { message?: string } | null)?.message || "bulk_insert_failed";
       throw new Error(msg);

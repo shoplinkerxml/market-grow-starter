@@ -16,6 +16,7 @@ import { useI18n } from "@/i18n";
 import { ShopService, type Shop, type UpdateShopData } from '@/lib/shop-service';
 import { useMarketplaces } from '@/hooks/useMarketplaces';
 import { supabase } from '@/integrations/supabase/client';
+import { EdgeClient } from '@/lib/request-handler';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 import { Badge } from '@/components/ui/badge';
@@ -166,13 +167,10 @@ export const EditShopDialog = ({ shop, open, onOpenChange, onSuccess }: EditShop
     setSelectedMarketplace(marketplace);
     
     try {
-      type InvokeArgs = { body?: unknown }
-      type InvokeResult<T> = Promise<{ data: T; error?: { message?: string } }>
-      const { data, error } = await (supabase as unknown as { functions: { invoke: <T = unknown>(name: string, args: InvokeArgs) => InvokeResult<T> } }).functions.invoke('get-template-by-marketplace', {
-        body: { marketplace },
-      });
-      if (error) { console.error('Error fetching template:', error); return; }
-      const payload = typeof data === 'string' ? JSON.parse(data) as { template?: { id: string; xml_structure: unknown; mapping_rules: unknown } } : (data as { template?: { id: string; xml_structure: unknown; mapping_rules: unknown } });
+      const payload = await EdgeClient.invoke<{ template?: { id: string; xml_structure: unknown; mapping_rules: unknown } }>(
+        'get-template-by-marketplace',
+        { marketplace },
+      );
       const template = payload?.template;
       if (template) {
         await ShopService.updateShop(shop.id, {

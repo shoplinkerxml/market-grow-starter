@@ -1,6 +1,7 @@
-import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
+import { SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
 import { GlobalRequestDeduplicator } from "@/lib/request-deduplicator";
+import { EdgeClient } from "@/lib/request-handler";
 
 export class ProductCategoryService {
   private static edgeError(
@@ -17,7 +18,7 @@ export class ProductCategoryService {
 
   private static async invokeEdge<T>(name: string, body: Record<string, unknown>): Promise<T> {
     try {
-      return await invokeEdgeWithAuth<T>(name, body);
+      return await EdgeClient.invokeWithRetry<T>(name, body);
     } catch (error) {
       ProductCategoryService.edgeError(error as any, name);
       throw new ApiError(name, 500);

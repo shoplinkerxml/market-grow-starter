@@ -8,7 +8,7 @@ import { Save, X, Store, Tag } from 'lucide-react';
 import { useI18n } from "@/i18n";
 import { ShopService, type Shop, type CreateShopData, type UpdateShopData } from '@/lib/shop-service';
 import { useMarketplaces } from '@/hooks/useMarketplaces';
-import { supabase } from '@/integrations/supabase/client';
+import { EdgeClient } from '@/lib/request-handler';
 import { toast } from 'sonner';
 import { PageLoadingModal } from '@/components/LoadingSkeletons';
 
@@ -44,11 +44,7 @@ export const ShopForm = ({ shop, onSuccess, onCancel }: ShopFormProps) => {
       const key = marketplace.toLowerCase().trim();
       let template = templatesMap?.[key];
       if (!template) {
-        const { data, error: fnError } = await (supabase as unknown as { functions: { invoke: <T = unknown>(name: string, args: { body?: unknown }) => Promise<{ data: T; error?: { message?: string } }> } }).functions.invoke('store-templates-marketplaces', {
-          body: { marketplace }
-        });
-        if (fnError) throw new Error((fnError as { message?: string })?.message || 'template_fetch_failed');
-        const payload = typeof data === 'string' ? JSON.parse(data) as { template?: any } : (data as { template?: any });
+        const payload = await EdgeClient.invoke<{ template?: any }>('store-templates-marketplaces', { marketplace });
         template = payload?.template;
       }
       setFormData(prev => ({

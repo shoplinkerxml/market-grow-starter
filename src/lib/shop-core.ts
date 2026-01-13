@@ -1,7 +1,8 @@
 import type { Json } from "@/integrations/supabase/types";
-import { invokeEdgeWithAuth, requireValidSession } from "./session-validation";
+import { requireValidSession } from "./session-validation";
 import { UnifiedCacheManager } from "./cache-utils";
 import type { RequireAtLeastOne, RetryOptions } from "./request-handler";
+import { EdgeClient } from "./request-handler";
 import { GlobalRequestDeduplicator } from "./request-deduplicator";
 
 export interface Shop {
@@ -170,7 +171,7 @@ export class ShopServiceCore {
     opts?: RetryOptions,
   ): Promise<T> {
     try {
-      return await invokeEdgeWithAuth<T>(functionName, body, opts);
+      return await EdgeClient.invokeWithRetry<T>(functionName, body, opts);
     } catch (error) {
       this.handleEdgeError(error, functionName);
     }

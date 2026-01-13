@@ -1,7 +1,8 @@
-import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
+import { SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
 import type { CreateProductData, Product, ProductImage, UpdateProductData } from "@/lib/product-service";
 import { ProductImageService } from "@/lib/product/product-image-service";
+import { EdgeClient } from "@/lib/request-handler";
 
 export class ProductCoreService {
   private static castNullableNumber(value: unknown): number | null {
@@ -24,7 +25,7 @@ export class ProductCoreService {
 
   private static async invokeEdge<T>(name: string, body: Record<string, unknown>): Promise<T> {
     try {
-      return await invokeEdgeWithAuth<T>(name, body);
+      return await EdgeClient.invokeWithRetry<T>(name, body);
     } catch (error) {
       ProductCoreService.edgeError(error as any, name);
       throw new ApiError(name, 500);

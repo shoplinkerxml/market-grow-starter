@@ -1,6 +1,6 @@
 
 import { UnifiedCacheManager } from "./cache-utils";
-import { invokeEdgeWithAuth } from "./session-validation";
+import { EdgeClient } from "./request-handler";
 import { GlobalRequestDeduplicator } from "./request-deduplicator";
 
 export interface DashboardStats {
@@ -37,7 +37,7 @@ export class DashboardService {
       return await GlobalRequestDeduplicator.dedupeExpensive(
         { service: "DashboardService", method: "getDashboardStats" },
         async ({ signal }) => {
-          const stats = await invokeEdgeWithAuth<DashboardStats>("get-dashboard-stats", {}, { signal });
+          const stats = await EdgeClient.invokeWithRetry<DashboardStats>("get-dashboard-stats", {}, { signal });
           this.cache.set(cacheKey, stats);
           return stats;
         },

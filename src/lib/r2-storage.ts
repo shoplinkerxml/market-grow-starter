@@ -1,9 +1,6 @@
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
 import { EdgeClient } from "@/lib/request-handler";
 
-const supabaseInvoke = supabase.functions.invoke.bind(supabase.functions) as any;
-const edge = new EdgeClient(supabaseInvoke);
-
 export type UploadResponse = {
   success: boolean;
   publicUrl: string;
@@ -177,11 +174,14 @@ export const R2Storage = {
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(file);
     });
-    const data = await edge.invokeJson<UploadResponse>(
+    const resp = await EdgeClient.invokeWithRetry<UploadResponse>(
       "r2-upload",
-      { body: { fileName: file.name, fileType: file.type, fileSize: file.size, fileData: base64File, productId }, headers },
+      { fileName: file.name, fileType: file.type, fileSize: file.size, fileData: base64File, productId },
+      {
+        headers,
+        auth: token ? { type: "bearer", token } : { type: "none" },
+      },
     );
-    const resp = data as UploadResponse;
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
     if (!productId && userId && resp?.objectKey && (resp.objectKey.includes(`uploads/tmp/${userId}/`) || resp.objectKey.includes(`/uploads/tmp/${userId}/`))) {
@@ -235,12 +235,14 @@ export const R2Storage = {
       reader.readAsDataURL(normalizedFile);
     });
 
-    const data = await edge.invokeJson<UploadProductImageResponse>(
+    const json = await EdgeClient.invokeWithRetry<UploadProductImageResponse>(
       "upload-product-image",
-      { body: { productId, fileData: base64File, fileName: normalizedFile.name, fileType: normalizedFile.type }, headers },
+      { productId, fileData: base64File, fileName: normalizedFile.name, fileType: normalizedFile.type },
+      {
+        headers,
+        auth: token ? { type: "bearer", token } : { type: "none" },
+      },
     );
-    
-    const json = data as UploadProductImageResponse;
     const singleUrl = json.url || json.original_url || '';
     return {
       imageId: String(json.image_id || ''),
@@ -258,12 +260,11 @@ export const R2Storage = {
     const token = await getAccessToken();
     const headers = token ? buildAuthHeaders(token) : undefined;
 
-    const data = await edge.invokeJson<UploadProductImageResponse>(
+    const json = await EdgeClient.invokeWithRetry<UploadProductImageResponse>(
       "upload-product-image",
-      { body: { productId, url }, headers },
+      { productId, url },
+      { headers, auth: token ? { type: "bearer", token } : { type: "none" } },
     );
-    
-    const json = data as UploadProductImageResponse;
     const singleUrl = json.url || json.original_url || '';
     return {
       imageId: String(json.image_id || ''),
@@ -308,9 +309,10 @@ export const R2Storage = {
     const token = await getAccessToken();
     const headers = token ? buildAuthHeaders(token) : undefined;
 
-    const data = await edge.invokeJson<{ viewUrl: string }>(
+    const data = await EdgeClient.invokeWithRetry<{ viewUrl: string }>(
       "r2-view",
-      { body: { objectKey, expiresIn: expiresInSeconds }, headers },
+      { objectKey, expiresIn: expiresInSeconds },
+      { headers, auth: token ? { type: "bearer", token } : { type: "none" } },
     );
 
     return (data?.viewUrl as string) || '';
@@ -347,9 +349,10 @@ export const R2Storage = {
     const syncToken = getAccessTokenSync();
     const authorizationInBody = token ? `Bearer ${token}` : (syncToken ? `Bearer ${syncToken}` : undefined);
 
-    const data = await edge.invokeJson<{ success: boolean }>(
+    const data = await EdgeClient.invokeWithRetry<{ success: boolean }>(
       "r2-delete",
-      { body: { objectKey, authorization: authorizationInBody }, headers },
+      { objectKey, authorization: authorizationInBody },
+      { headers, auth: { type: "none" } },
     );
 
     return data as { success: boolean };
@@ -415,6 +418,6 @@ export const R2Storage = {
    * @deprecated Используйте uploadFile вместо этого метода
    */
   async getUploadUrl(fileName: string, contentType: string, productId?: string): Promise<unknown> {
-    return await edge.invokeJson<unknown>("r2-presign", { body: { fileName, contentType, productId } });
+    return await EdgeClient.invokeWithRetry<unknown>("r2-presign", { fileName, contentType, productId }, { auth: { type: "auto" } });
   },
 };

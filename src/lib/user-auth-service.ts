@@ -12,12 +12,13 @@ import {
   SessionContext
 } from "./user-auth-schemas";
 import { AuthorizationErrorHandler } from "./error-handler";
-import { invokeEdgeWithAuth, SessionValidator, isAuthenticationError } from "./session-validation";
+import { SessionValidator, isAuthenticationError } from "./session-validation";
 import { UnifiedCacheManager } from "./cache-utils";
 import { registerUser, type RegistrationOptions } from "./user-auth-register";
 import { signInWithFacebook, signInWithGoogle, handleOAuthCallback } from "./user-auth-oauth";
 import { loginUser, logout, resetPassword, updatePassword } from "./user-auth-login";
 import { PersistentCacheService } from "./persistent-cache-service";
+import { EdgeClient } from "./request-handler";
 
 type UserStoreLite = { id: string; store_name: string };
 
@@ -113,7 +114,7 @@ export class UserAuthService {
         const timeoutMs = 12_000;
         let timeoutId: ReturnType<typeof setTimeout> | null = null;
         const resp = await Promise.race([
-          invokeEdgeWithAuth<{
+          EdgeClient.invokeWithRetry<{
             user?: UserProfile | null;
             subscription?: unknown | null;
             tariffLimits?: Array<{ limit_name: string; value: number }>;

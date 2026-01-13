@@ -1,7 +1,8 @@
-import { requireValidSession, invokeEdgeWithAuth } from "./session-validation";
+import { requireValidSession } from "./session-validation";
 import { CACHE_TTL, UnifiedCacheManager } from "./cache-utils";
 import { GlobalRequestDeduplicator } from "./request-deduplicator";
 import { PersistentCacheService } from "./persistent-cache-service";
+import { EdgeClient } from "./request-handler";
 
 export interface Supplier {
   id: number;
@@ -61,7 +62,7 @@ export class SupplierService {
 
   private static async fetchSuppliersFromApi(opts?: { signal?: AbortSignal }): Promise<Supplier[]> {
     try {
-      const payload = await invokeEdgeWithAuth<{ suppliers?: Supplier[] }>(
+      const payload = await EdgeClient.invokeWithRetry<{ suppliers?: Supplier[] }>(
         "suppliers-list",
         {},
         { signal: opts?.signal, timeoutMs: 25_000 },
@@ -87,7 +88,7 @@ export class SupplierService {
 
   /** Получение только максимального лимита поставщиков (без подсчета текущих) */
   static async getSupplierLimitOnly(): Promise<number> {
-    const payload = await invokeEdgeWithAuth<{ value?: number }>("suppliers-limit", {});
+    const payload = await EdgeClient.invokeWithRetry<{ value?: number }>("suppliers-limit", {});
     return Number(payload?.value || 0);
   }
 
@@ -176,7 +177,7 @@ export class SupplierService {
 
     const xmlUrl = supplierData.xml_feed_url ? supplierData.xml_feed_url.trim() : '';
 
-    const payload = await invokeEdgeWithAuth<{ supplier?: Supplier }>('suppliers-create', {
+    const payload = await EdgeClient.invokeWithRetry<{ supplier?: Supplier }>('suppliers-create', {
       supplier_name: supplierData.supplier_name.trim(),
       website_url: supplierData.website_url?.trim() || null,
       xml_feed_url: xmlUrl ? xmlUrl : null,
@@ -229,7 +230,7 @@ export class SupplierService {
 
     cleanData.updated_at = new Date().toISOString();
 
-    const payload = await invokeEdgeWithAuth<{ supplier?: Supplier }>('suppliers-update', { id, ...cleanData });
+    const payload = await EdgeClient.invokeWithRetry<{ supplier?: Supplier }>('suppliers-update', { id, ...cleanData });
     const row = payload?.supplier as Supplier | undefined;
     if (!row) throw new Error('Update failed');
     if (userId) {
@@ -253,7 +254,7 @@ export class SupplierService {
 
     const sessionValidation = await requireValidSession({ requireAccessToken: false });
     const userId = sessionValidation.user?.id ? String(sessionValidation.user.id) : "";
-    await invokeEdgeWithAuth<{ ok?: boolean }>('suppliers-delete', { id });
+    await EdgeClient.invokeWithRetry<{ ok?: boolean }>('suppliers-delete', { id });
     if (userId) {
       const cached = SupplierService.getCachedSuppliers(userId);
       const prev = cached?.rows || [];

@@ -1,7 +1,6 @@
-import { supabase } from "@/integrations/supabase/client";
 import { ProductService, type Product } from "@/lib/product-service";
 import { R2Storage } from "@/lib/r2-storage";
-import { invokeSupabaseFunctionWithRetry } from "@/lib/request-handler";
+import { EdgeClient } from "@/lib/request-handler";
 import { requireValidSession, type SessionValidationResult } from "./session-validation";
 import { CACHE_TTL, UnifiedCacheManager } from "./cache-utils";
 import { GlobalRequestDeduplicator } from "./request-deduplicator";
@@ -59,12 +58,7 @@ export const ExportService = {
   async regenerate(storeId: string, format: 'xml' | 'csv'): Promise<boolean> {
     const session = await ExportService.ensureSession();
     try {
-      const { data, error } = await invokeSupabaseFunctionWithRetry<{ success?: boolean }>(
-        supabase.functions.invoke.bind(supabase.functions) as any,
-        "export-generate",
-        { body: { store_id: storeId, format } },
-      );
-      if (error) return false;
+      const data = await EdgeClient.invoke<{ success?: boolean }>("export-generate", { store_id: storeId, format }, { maxRetries: 0 });
       ExportService.invalidateLinksCache(storeId, session.user?.id);
       return !!(data?.success);
     } catch {
@@ -84,12 +78,7 @@ export const ExportService = {
       return await ExportService.generateLocalAndUpload(storeId, format);
     }
     try {
-      const { data, error } = await invokeSupabaseFunctionWithRetry<{ success?: boolean }>(
-        supabase.functions.invoke.bind(supabase.functions) as any,
-        "export-generate",
-        { body: { store_id: storeId, format } },
-      );
-      if (error) return false;
+      const data = await EdgeClient.invoke<{ success?: boolean }>("export-generate", { store_id: storeId, format }, { maxRetries: 0 });
       ExportService.invalidateLinksCache(storeId, session.user?.id);
       return !!(data?.success);
     } catch {

@@ -1,4 +1,5 @@
-import { mapError, type AppErrorContext } from "./error-handler";
+import { AuthError, ValidationError, mapError, type AppErrorContext } from "./error-handler";
+import { supabase } from "@/integrations/supabase/client";
 
 export type RetryBackoff = "linear" | "exponential";
 
@@ -38,6 +39,60 @@ export type SupabaseFunctionInvoke = <T = unknown>(
   name: string,
   args?: SupabaseFunctionInvokeArgs,
 ) => Promise<{ data: T; error: any }>;
+
+export type EdgeAuth =
+  | { type: "auto" }
+  | { type: "none" }
+  | { type: "bearer"; token: string }
+  | { type: "authorization"; value: string };
+
+export type EdgeAuthProvider = {
+  getAccessToken: () => Promise<string | null>;
+  refresh?: () => Promise<void>;
+};
+
+export type EdgeLogEvent =
+  | {
+      type: "edge_invoke";
+      edgeFunction: string;
+      durationMs: number;
+      ok: boolean;
+      status?: number;
+    }
+  | {
+      type: "edge_retry";
+      edgeFunction: string;
+      attempt: number;
+      delayMs?: number;
+      status?: number;
+    };
+
+export type EdgeLogger = (event: EdgeLogEvent) => void;
+
+export type EdgeMiddlewareContext = {
+  fnName: string;
+  init: SupabaseFunctionInvokeArgs;
+  opts: RetryOptions;
+  auth: EdgeAuth;
+};
+
+export type EdgeMiddleware = (
+  ctx: EdgeMiddlewareContext,
+) => EdgeMiddlewareContext | Promise<EdgeMiddlewareContext>;
+
+export type EdgeInvokeOptions = RetryOptions & {
+  headers?: Record<string, string>;
+  auth?: EdgeAuth;
+  middleware?: EdgeMiddleware[];
+  log?: boolean;
+};
+
+type EdgeClientConfig = {
+  invoke?: SupabaseFunctionInvoke;
+  defaultTimeoutMs?: number;
+  authProvider?: EdgeAuthProvider;
+  logger?: EdgeLogger;
+};
 
 function isAbortLikeError(err: unknown): boolean {
   const e = err as { name?: string; message?: string } | null;
@@ -164,10 +219,92 @@ export async function invokeSupabaseFunctionWithRetry<T>(
 }
 
 export class EdgeClient {
-  private readonly invoke: SupabaseFunctionInvoke;
+  private static config: Required<Pick<EdgeClientConfig, "defaultTimeoutMs">> &
+    Omit<EdgeClientConfig, "defaultTimeoutMs"> = {
+    defaultTimeoutMs: 20_000,
+  };
+
+  private static globalMiddleware: EdgeMiddleware[] = [];
+
+  static configure(opts: EdgeClientConfig): void {
+    if (opts.invoke) {
+      this.config.invoke = opts.invoke;
+    }
+    if (typeof opts.defaultTimeoutMs === "number") {
+      this.config.defaultTimeoutMs = Math.max(0, opts.defaultTimeoutMs);
+    }
+    if (opts.authProvider) {
+      this.config.authProvider = opts.authProvider;
+    }
+    if (opts.logger) {
+      this.config.logger = opts.logger;
+    }
+  }
+
+  static use(middleware: EdgeMiddleware): void {
+    this.globalMiddleware.push(middleware);
+  }
+
+  private static getInvoke(): SupabaseFunctionInvoke {
+    return (
+      this.config.invoke ??
+      (supabase.functions.invoke.bind(supabase.functions) as unknown as SupabaseFunctionInvoke)
+    );
+  }
+
+  private static async getAutoAccessToken(): Promise<string | null> {
+    if (this.config.authProvider) {
+      return await this.config.authProvider.getAccessToken();
+    }
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token ?? null;
+    return token && token.trim() ? token : null;
+  }
+
+  private static async refreshAutoAuth(): Promise<void> {
+    if (this.config.authProvider?.refresh) {
+      await this.config.authProvider.refresh();
+      return;
+    }
+    try {
+      await supabase.auth.refreshSession();
+    } catch {
+      void 0;
+    }
+  }
+
+  static async invoke<T>(fnName: string, body?: unknown, opts?: EdgeInvokeOptions): Promise<T> {
+    return await this.invokeInternal<T>(this.getInvoke(), fnName, body, { ...opts, maxRetries: 0 });
+  }
+
+  static async invokeWithRetry<T>(fnName: string, body?: unknown, opts?: EdgeInvokeOptions): Promise<T> {
+    const effective: EdgeInvokeOptions = {
+      maxRetries: 2,
+      retryDelayMs: 500,
+      backoff: "linear",
+      ...opts,
+    };
+    return await this.invokeInternal<T>(this.getInvoke(), fnName, body, effective);
+  }
+
+  private readonly invokeFn: SupabaseFunctionInvoke;
 
   constructor(invoke: SupabaseFunctionInvoke) {
-    this.invoke = invoke;
+    this.invokeFn = invoke;
+  }
+
+  async invoke<T>(fnName: string, body?: unknown, opts?: EdgeInvokeOptions): Promise<T> {
+    return await EdgeClient.invokeInternal<T>(this.invokeFn, fnName, body, { ...opts, maxRetries: 0 });
+  }
+
+  async invokeWithRetry<T>(fnName: string, body?: unknown, opts?: EdgeInvokeOptions): Promise<T> {
+    const effective: EdgeInvokeOptions = {
+      maxRetries: 2,
+      retryDelayMs: 500,
+      backoff: "linear",
+      ...opts,
+    };
+    return await EdgeClient.invokeInternal<T>(this.invokeFn, fnName, body, effective);
   }
 
   async invokeJson<T>(
@@ -175,29 +312,188 @@ export class EdgeClient {
     init: { body?: unknown; headers?: Record<string, string>; signal?: AbortSignal },
     opts?: RetryOptions,
   ): Promise<T> {
-    const effectiveOpts: RetryOptions = {
-      maxRetries: 2,
-      retryDelayMs: 500,
-      backoff: "linear",
+    return await EdgeClient.invokeJsonInternal<T>(this.invokeFn, fnName, init.body, {
       ...opts,
+      headers: init.headers,
+      signal: init.signal ?? opts?.signal,
+      auth: { type: "none" },
+    });
+  }
+
+  private static async invokeInternal<T>(
+    invoke: SupabaseFunctionInvoke,
+    fnName: string,
+    body?: unknown,
+    opts?: EdgeInvokeOptions,
+  ): Promise<T> {
+    return await this.invokeJsonInternal<T>(invoke, fnName, body, opts);
+  }
+
+  private static async invokeJsonInternal<T>(
+    invoke: SupabaseFunctionInvoke,
+    fnName: string,
+    body?: unknown,
+    opts?: EdgeInvokeOptions,
+  ): Promise<T> {
+    const trimmedName = String(fnName || "").trim();
+    if (!trimmedName) {
+      throw new ValidationError("edge_invalid_function", "Edge function name is required", {
+        context: { edgeFunction: fnName } satisfies AppErrorContext,
+      });
+    }
+
+    const {
+      headers,
+      auth,
+      middleware,
+      log,
+      maxRetries,
+      timeoutMs,
+      retryDelayMs,
+      backoff,
+      signal,
+      shouldRetryError,
+      onRetry,
+    } = opts ?? {};
+
+    const effectiveAuth: EdgeAuth = auth ?? { type: "auto" };
+    const baseHeaders: Record<string, string> = { ...(headers ?? {}) };
+    const applyAuthHeader = async (): Promise<void> => {
+      if (baseHeaders.Authorization) return;
+      if (effectiveAuth.type === "none") return;
+      if (effectiveAuth.type === "bearer") {
+        baseHeaders.Authorization = `Bearer ${effectiveAuth.token}`;
+        return;
+      }
+      if (effectiveAuth.type === "authorization") {
+        baseHeaders.Authorization = effectiveAuth.value;
+        return;
+      }
+      const token = await this.getAutoAccessToken();
+      if (!token) {
+        throw new AuthError("missing_access_token", "Missing access token", {
+          status: 401,
+          context: { edgeFunction: trimmedName } satisfies AppErrorContext,
+        });
+      }
+      baseHeaders.Authorization = `Bearer ${token}`;
+    };
+
+    const effectiveRetryOpts: RetryOptions = {
+      maxRetries: Math.max(0, maxRetries ?? 0),
+      timeoutMs: Math.max(0, timeoutMs ?? this.config.defaultTimeoutMs),
+      retryDelayMs,
+      backoff,
+      signal,
       shouldRetryError: (error, attempt) => {
-        if (opts?.shouldRetryError) return opts.shouldRetryError(error, attempt);
-        const mapped = mapError(error, { code: "edge_invoke_failed", context: { edgeFunction: fnName } satisfies AppErrorContext });
+        if (shouldRetryError) return shouldRetryError(error, attempt);
+        const mapped = mapError(error, {
+          code: "edge_invoke_failed",
+          context: { edgeFunction: trimmedName } satisfies AppErrorContext,
+        });
         return mapped.status === 0 || mapped.status >= 500;
+      },
+      onRetry: (attempt, errorOrValue) => {
+        try {
+          if (this.config.logger !== undefined && (log ?? true)) {
+            const status =
+              (errorOrValue as { error?: EdgeFunctionError | null } | null)?.error?.context?.status ??
+              (errorOrValue as { status?: number } | null)?.status;
+            this.config.logger({ type: "edge_retry", edgeFunction: trimmedName, attempt, status });
+          }
+        } catch {
+          void 0;
+        }
+        onRetry?.(attempt, errorOrValue);
       },
     };
 
-    const { data, error } = await invokeSupabaseFunctionWithRetry<T | string>(this.invoke, fnName, init, effectiveOpts);
-    if (error) {
-      throw mapError(error, { code: "edge_invoke_failed", context: { edgeFunction: fnName } satisfies AppErrorContext });
-    }
-    if (typeof data === "string") {
-      try {
-        return JSON.parse(data) as T;
-      } catch (e) {
-        throw mapError(e, { code: "edge_invalid_json", status: 500, context: { edgeFunction: fnName } satisfies AppErrorContext });
+    const start = Date.now();
+    const runOnce = async (): Promise<T> => {
+      await applyAuthHeader();
+
+      let ctx: EdgeMiddlewareContext = {
+        fnName: trimmedName,
+        init: { body, headers: baseHeaders, signal },
+        opts: effectiveRetryOpts,
+        auth: effectiveAuth,
+      };
+
+      for (const mw of this.globalMiddleware) {
+        ctx = await mw(ctx);
       }
+      for (const mw of middleware ?? []) {
+        ctx = await mw(ctx);
+      }
+
+      const { data, error } = await invokeSupabaseFunctionWithRetry<T | string>(
+        invoke,
+        ctx.fnName,
+        { body: ctx.init.body, headers: ctx.init.headers, signal: ctx.init.signal },
+        ctx.opts,
+      );
+
+      if (error) {
+        throw mapError(error, { code: "edge_invoke_failed", context: { edgeFunction: ctx.fnName } satisfies AppErrorContext });
+      }
+
+      if (typeof data === "string") {
+        try {
+          return JSON.parse(data) as T;
+        } catch (e) {
+          throw mapError(e, { code: "edge_invalid_json", status: 500, context: { edgeFunction: ctx.fnName } satisfies AppErrorContext });
+        }
+      }
+
+      return data as T;
+    };
+
+    try {
+      try {
+        const out = await runOnce();
+        const durationMs = Date.now() - start;
+        try {
+          if (this.config.logger !== undefined && (log ?? true)) {
+            this.config.logger({ type: "edge_invoke", edgeFunction: trimmedName, durationMs, ok: true });
+          }
+        } catch {
+          void 0;
+        }
+        return out;
+      } catch (e) {
+        const mapped = mapError(e, { code: "edge_invoke_failed", context: { edgeFunction: trimmedName } satisfies AppErrorContext });
+        if (mapped.status === 401 && effectiveAuth.type === "auto") {
+          await this.refreshAutoAuth();
+          const out = await runOnce();
+          const durationMs = Date.now() - start;
+          try {
+            if (this.config.logger !== undefined && (log ?? true)) {
+              this.config.logger({ type: "edge_invoke", edgeFunction: trimmedName, durationMs, ok: true });
+            }
+          } catch {
+            void 0;
+          }
+          return out;
+        }
+        throw mapped;
+      }
+    } catch (e) {
+      const mapped = mapError(e, { code: "edge_invoke_failed", context: { edgeFunction: trimmedName } satisfies AppErrorContext });
+      const durationMs = Date.now() - start;
+      try {
+        if (this.config.logger !== undefined && (log ?? true)) {
+          this.config.logger({
+            type: "edge_invoke",
+            edgeFunction: trimmedName,
+            durationMs,
+            ok: false,
+            status: mapped.status,
+          });
+        }
+      } catch {
+        void 0;
+      }
+      throw mapped;
     }
-    return data as T;
   }
 }

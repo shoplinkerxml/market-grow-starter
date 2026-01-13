@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { EdgeClient } from "@/lib/request-handler";
 import { withValidSession } from "@/lib/session-validation";
 
@@ -13,18 +12,14 @@ export class ProductBulkImportService {
     if (rows.length === 0) throw new Error("rows_required");
 
     return await withValidSession(async ({ accessToken }) => {
-      const edge = new EdgeClient(supabase.functions.invoke.bind(supabase.functions) as any);
-      return await edge.invokeJson<BulkImportResult>(
+      return await EdgeClient.invoke<BulkImportResult>(
         "bulk-import-products",
         {
-          body: {
-            job_id: jobId,
-            store_id: args.storeId != null ? String(args.storeId) : null,
-            rows,
-          },
-          headers: { Authorization: `Bearer ${accessToken}` },
+          job_id: jobId,
+          store_id: args.storeId != null ? String(args.storeId) : null,
+          rows,
         },
-        { timeoutMs: 240_000, maxRetries: 0 },
+        { timeoutMs: 240_000, maxRetries: 0, auth: { type: "bearer", token: accessToken } },
       );
     });
   }

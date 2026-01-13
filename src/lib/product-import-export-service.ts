@@ -1,5 +1,5 @@
 import { R2Storage } from "@/lib/r2-storage";
-import { invokeEdgeWithAuth } from "@/lib/session-validation";
+import { EdgeClient } from "@/lib/request-handler";
 import type {
   CreateProductData,
   Product,
@@ -43,7 +43,7 @@ export class ProductImportExportService {
       }>
     >;
   }> {
-    const resp = await invokeEdgeWithAuth<{
+    const resp = await EdgeClient.invokeWithRetry<{
       suppliers?: any[];
       currencies?: any[];
       supplierCategoriesMap?: Record<string, any[]>;
@@ -60,7 +60,7 @@ export class ProductImportExportService {
     limit: number,
     offset: number,
   ): Promise<{ products: ProductAggregated[]; page: ProductListPage }> {
-    const resp = await invokeEdgeWithAuth<ProductListResponseObj>(
+    const resp = await EdgeClient.invokeWithRetry<ProductListResponseObj>(
       storeId ? "store-products-list" : "user-products-list",
       {
         ...(storeId ? { store_id: String(storeId) } : {}),
@@ -80,7 +80,7 @@ export class ProductImportExportService {
   }
 
   private static async getDefaultStoreId(): Promise<string> {
-    const resp = await invokeEdgeWithAuth<{ shops?: Array<{ id?: string | number }> }>(
+    const resp = await EdgeClient.invokeWithRetry<{ shops?: Array<{ id?: string | number }> }>(
       "user-shops-list",
       {},
     );
@@ -133,7 +133,7 @@ export class ProductImportExportService {
       links: productData.links || undefined,
     };
 
-    const respCreate = await invokeEdgeWithAuth<{ product_id?: string }>("create-product", payload);
+    const respCreate = await EdgeClient.invokeWithRetry<{ product_id?: string }>("create-product", payload);
     const productId = String(respCreate?.product_id || "").trim();
     if (!productId) throw new Error("create_failed");
     return productId;
@@ -183,7 +183,7 @@ export class ProductImportExportService {
       }));
     }
 
-    await invokeEdgeWithAuth<{ product_id?: string }>("update-product", payload);
+    await EdgeClient.invokeWithRetry<{ product_id?: string }>("update-product", payload);
   }
 
   static async getProductsEditDataBatch(
@@ -211,7 +211,7 @@ export class ProductImportExportService {
         const part = parts[currentIndex];
         if (!part) return;
 
-        const resp = await invokeEdgeWithAuth<{
+        const resp = await EdgeClient.invokeWithRetry<{
           items?: Array<{ product: Product; images?: unknown[]; params?: unknown[] }>;
         }>("product-export-data", { product_ids: part, store_id: storeId ?? null });
 
