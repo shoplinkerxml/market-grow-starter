@@ -74,20 +74,6 @@ export const ShopsList = ({
     onShopsLoadedRef.current?.(shopsLength, null); 
   }, [shopsLength]);
   
-  // Нормализация счетчиков: если товаров 0 — категории 0
-  useEffect(() => {
-    try {
-      queryClient.setQueryData<ShopWithMarketplace[]>(["user", uid, "shops"], (prev) => {
-        const arr = Array.isArray(prev) ? prev : shops;
-        return (arr || []).map((s) => {
-          const products = Math.max(0, Number(s.productsCount ?? 0));
-          const categories = products === 0 ? 0 : Math.max(0, Number(s.categoriesCount ?? 0));
-          return { ...s, productsCount: products, categoriesCount: categories };
-        });
-      });
-    } catch { void 0; }
-  }, [shops, queryClient, uid]);
-
   // ============================================================================
   // Realtime синхронізація (оптимістичні оновлення)
   // ============================================================================
@@ -123,21 +109,15 @@ export const ShopsList = ({
           is_active: row.is_active !== false,
           created_at: String(row.created_at ?? existing?.created_at ?? ''),
           updated_at: String(row.updated_at ?? existing?.updated_at ?? ''),
-          productsCount: Math.max(0, Number(existing?.productsCount ?? 0)),
-          categoriesCount: Math.max(0, Number(existing?.categoriesCount ?? 0)),
-        };
-
-        const normalized = {
-          ...merged,
-          categoriesCount: (merged.productsCount ?? 0) === 0 ? 0 : (merged.categoriesCount ?? 0),
         };
 
         if (idx >= 0) {
-          list[idx] = normalized;
+          list[idx] = merged;
           return list;
         }
-        return [normalized, ...list];
+        return [merged, ...list];
       });
+      ShopCountsService.invalidate(queryClient, uid, sid, "realtime_user_stores_upsert");
     };
 
     const removeShopFromCache = (row: any) => {
@@ -147,6 +127,7 @@ export const ShopsList = ({
         if (!Array.isArray(prev)) return prev;
         return prev.filter((s) => String(s.id) !== sid);
       });
+      ShopCountsService.invalidate(queryClient, uid, sid, "realtime_user_stores_delete");
     };
 
     const channel = (supabase as SupabaseClient)

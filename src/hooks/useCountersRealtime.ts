@@ -166,42 +166,25 @@ export function useCountersRealtime(userId: string | null | undefined) {
       // 2) Supplier product counters -> update dashboard suppliers list (no refetch)
       const supplierParsed = parseSupplierProductsCounter(row, uid);
       if (supplierParsed) {
-        // ensure in-memory service cache won't keep stale values
         try {
           DashboardService.clearCache();
         } catch {
           void 0;
         }
 
-        queryClient.setQueryData<any>(["user", uid, "dashboard-stats"], (prev) => {
-          const base = prev && typeof prev === "object" ? prev : { suppliers: [], stores: [], totalProducts: 0, totalCategories: 0 };
-          const suppliers = Array.isArray((base as any).suppliers) ? (base as any).suppliers : [];
-          const nextSuppliers = suppliers.map((s: any) =>
-            Number(s?.id) === supplierParsed.supplierId ? { ...s, productCount: supplierParsed.count } : s,
-          );
-          return { ...base, suppliers: nextSuppliers };
-        });
+        queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard-stats"], exact: true });
         return;
       }
 
       // 3) Per-user totals -> update dashboard cache immediately (no refetch)
       if (isUserTotalCounter(row, uid)) {
-        const count = Math.max(0, Number(row.count) || 0);
-
-        // ensure in-memory service cache won't keep stale values
         try {
           DashboardService.clearCache();
         } catch {
           void 0;
         }
 
-        queryClient.setQueryData<any>(["user", uid, "dashboard-stats"], (prev) => {
-          const base = prev && typeof prev === "object" ? prev : { suppliers: [], stores: [], totalProducts: 0, totalCategories: 0 };
-          const ct = String(row.counter_type || "");
-          if (ct === "products") return { ...base, totalProducts: count };
-          if (ct === "categories") return { ...base, totalCategories: count };
-          return base;
-        });
+        queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard-stats"], exact: true });
       }
     };
 

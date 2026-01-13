@@ -157,10 +157,8 @@ export const ProductCreate = () => {
         await ProductService.getProductsPage(null, 50, 0, { force: true });
       } catch { void 0; }
 
-      queryClient.setQueryData(["user", uid, "products", "count"], (prev: number | undefined) => {
-        const v = typeof prev === "number" ? prev : current;
-        return Math.max(0, v + 1);
-      });
+      await queryClient.invalidateQueries({ queryKey: ["user", uid, "products", "count"], exact: true });
+      await queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard-stats"], exact: true });
       await queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard"], exact: false });
       toast.success(t('product_created'));
       navigate('/user/products');
