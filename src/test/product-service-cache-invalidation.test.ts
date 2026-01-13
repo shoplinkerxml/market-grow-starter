@@ -20,8 +20,24 @@ vi.mock("@/lib/product/product-utils", () => ({
   invokeEdge: vi.fn(),
 }));
 
+vi.mock("@/lib/session-validation", () => ({
+  SessionValidator: {
+    ensureValidSession: vi.fn(async () => ({
+      isValid: true,
+      error: null,
+      user: { id: "u1" },
+    })),
+    validateSession: vi.fn(async () => ({
+      isValid: true,
+      error: null,
+      user: { id: "u1" },
+    })),
+  },
+}));
+
 import { ProductService } from "@/lib/product-service";
 import { ProductCoreService } from "@/lib/product/product-core-service";
+import { ProductCacheManager } from "@/lib/product/product-cache-manager";
 import { UserAuthService } from "@/lib/user-auth-service";
 import { ShopService } from "@/lib/shop-service";
 import { PersistentCacheService } from "@/lib/persistent-cache-service";
@@ -32,6 +48,7 @@ describe("ProductService cache invalidation", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    ProductCacheManager.clearAllProductsCaches();
   });
 
   const expectRelatedInvalidations = () => {
@@ -75,5 +92,61 @@ describe("ProductService cache invalidation", () => {
     (invokeEdge as any).mockResolvedValue({ product_id: "p1", link: null });
     await ProductService.saveStoreProductEdit("p1", "s1", { name: "n" });
     expectRelatedInvalidations();
+  });
+
+  it("returns standardized response for getProducts(options)", async () => {
+    (invokeEdge as any).mockResolvedValue({
+      products: [
+        {
+          id: "p1",
+          store_id: "s1",
+          external_id: "e1",
+          name: "n1",
+          stock_quantity: 0,
+          available: true,
+          state: "new",
+          created_at: new Date(0).toISOString(),
+          updated_at: new Date(0).toISOString(),
+        },
+      ],
+      page: { total: 1, hasMore: false, nextOffset: null },
+    });
+
+    const res = await ProductService.getProducts({ storeId: null, limit: 50, offset: 0 });
+    expect(res).toMatchObject({ total: 1, hasMore: false });
+    expect(Array.isArray(res.items)).toBe(true);
+    expect(res.items[0]).toMatchObject({ id: "p1" });
+  });
+
+  it("caches only first page for getProducts(options)", async () => {
+    let calls = 0;
+    (invokeEdge as any).mockImplementation(async (_name: string, body: any) => {
+      calls += 1;
+      const offset = typeof body?.offset === "number" ? body.offset : 0;
+      return {
+        products: [
+          {
+            id: `p_${offset}`,
+            store_id: "s1",
+            external_id: `e_${offset}`,
+            name: `n_${offset}`,
+            stock_quantity: 0,
+            available: true,
+            state: "new",
+            created_at: new Date(0).toISOString(),
+            updated_at: new Date(0).toISOString(),
+          },
+        ],
+        page: { total: 100, hasMore: true, nextOffset: offset + 10 },
+      };
+    });
+
+    await ProductService.getProducts({ storeId: null, limit: 10, offset: 0 });
+    await ProductService.getProducts({ storeId: null, limit: 10, offset: 0 });
+    expect(calls).toBe(1);
+
+    await ProductService.getProducts({ storeId: null, limit: 10, offset: 10 });
+    await ProductService.getProducts({ storeId: null, limit: 10, offset: 10 });
+    expect(calls).toBe(3);
   });
 });

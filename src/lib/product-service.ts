@@ -349,9 +349,36 @@ export class ProductService {
     ProductService.clearAllProductsCaches();
   }
 
-  /** Полный список продуктов текущего пользователя (по функциям с пагинацией + кэш) */
-  static async getProducts(): Promise<Types.Product[]> {
-    return await ProductListService.getProducts();
+  static async getProducts(): Promise<Types.Product[]>;
+  static async getProducts(options: {
+    storeId?: string | null;
+    limit: number;
+    offset: number;
+    forceRefresh?: boolean;
+  }): Promise<{ items: Types.Product[]; total: number; hasMore: boolean }>;
+  static async getProducts(options?: {
+    storeId?: string | null;
+    limit: number;
+    offset: number;
+    forceRefresh?: boolean;
+  }): Promise<Types.Product[] | { items: Types.Product[]; total: number; hasMore: boolean }> {
+    if (!options) {
+      return await ProductListService.getProducts();
+    }
+
+    const storeId = options.storeId ?? null;
+    const limit = Number.isFinite(options.limit) ? options.limit : 50;
+    const offset = Number.isFinite(options.offset) ? options.offset : 0;
+
+    const { products, page } = await ProductListService.getProductsPage(storeId, limit, offset, {
+      bypassCache: options.forceRefresh === true,
+    });
+
+    return {
+      items: products as unknown as Types.Product[],
+      total: page.total,
+      hasMore: page.hasMore,
+    };
   }
 
   /** Параметры товара: через product-edit-data */

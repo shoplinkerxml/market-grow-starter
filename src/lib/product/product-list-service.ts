@@ -10,30 +10,20 @@ import {
 
 export class ProductListService {
   static async getUserMasterProducts(): Promise<ProductAggregated[]> {
-    try {
-      const resp = await invokeEdge<ProductListResponseObj>("user-products-list", {});
-      const rows = Array.isArray(resp?.products) ? resp.products! : [];
-      return rows;
-    } catch {
-      const fb = await ProductListService.fetchProductsPageFallback(null, 50, 0);
-      return fb.products;
-    }
+    const resp = await invokeEdge<ProductListResponseObj>("user-products-list", {});
+    const rows = Array.isArray(resp?.products) ? resp.products : [];
+    return rows;
   }
 
   static async getStoreProducts(storeId: string): Promise<ProductAggregated[]> {
     if (!storeId || storeId.trim() === "") {
       throw new Error("Store ID is required");
     }
-    try {
-      const resp = await invokeEdge<ProductListResponseObj>("store-products-list", {
-        store_id: String(storeId),
-      });
-      const rows = Array.isArray(resp?.products) ? resp.products! : [];
-      return rows;
-    } catch {
-      const fb = await ProductListService.fetchProductsPageFallback(String(storeId), 50, 0);
-      return fb.products;
-    }
+    const resp = await invokeEdge<ProductListResponseObj>("store-products-list", {
+      store_id: String(storeId),
+    });
+    const rows = Array.isArray(resp?.products) ? resp.products : [];
+    return rows;
   }
 
   static async getUserMasterProductsPage(
@@ -43,25 +33,20 @@ export class ProductListService {
     products: ProductAggregated[];
     page: ProductListPage;
   }> {
-    try {
-      const fresh = await invokeEdge<ProductListResponseObj>("user-products-list", {
-        limit,
-        offset: 0,
-        bypassCache: options?.bypassCache === true,
-      });
-      const products = Array.isArray(fresh?.products) ? fresh.products! : [];
-      const page: ProductListPage = {
-        limit,
-        offset: 0,
-        hasMore: !!fresh?.page?.hasMore,
-        nextOffset: fresh?.page?.nextOffset ?? null,
-        total: fresh?.page?.total ?? products.length,
-      };
-      return { products, page };
-    } catch (error) {
-      const fb = await ProductListService.fetchProductsPageFallback(null, limit, 0);
-      return fb;
-    }
+    const fresh = await invokeEdge<ProductListResponseObj>("user-products-list", {
+      limit,
+      offset: 0,
+      bypassCache: options?.bypassCache === true,
+    });
+    const products = Array.isArray(fresh?.products) ? fresh.products : [];
+    const page: ProductListPage = {
+      limit,
+      offset: 0,
+      hasMore: !!fresh?.page?.hasMore,
+      nextOffset: fresh?.page?.nextOffset ?? null,
+      total: fresh?.page?.total ?? products.length,
+    };
+    return { products, page };
   }
 
   static async getStoreProductsPage(
@@ -76,50 +61,19 @@ export class ProductListService {
       throw new Error("Store ID is required");
     }
 
-    try {
-      const fresh = await invokeEdge<ProductListResponseObj>("store-products-list", {
-        store_id: String(storeId),
-        limit,
-        offset: 0,
-        bypassCache: options?.bypassCache === true,
-      });
-      const products = Array.isArray(fresh?.products) ? fresh.products! : [];
-      const page: ProductListPage = {
-        limit,
-        offset: 0,
-        hasMore: !!fresh?.page?.hasMore,
-        nextOffset: fresh?.page?.nextOffset ?? null,
-        total: fresh?.page?.total ?? products.length,
-      };
-      return { products, page };
-    } catch (error) {
-      const fb = await ProductListService.fetchProductsPageFallback(String(storeId), limit, 0);
-      return fb;
-    }
-  }
-
-  private static async fetchProductsPageFallback(
-    storeId: string | null,
-    limit: number,
-    offset: number,
-  ): Promise<{ products: ProductAggregated[]; page: ProductListPage }> {
-    // Retry with bypassCache=true, but allow errors to propagate
-    const resp = await invokeEdge<ProductListResponseObj>(
-      storeId ? "store-products-list" : "user-products-list",
-      {
-        ...(storeId ? { store_id: String(storeId) } : {}),
-        limit,
-        offset,
-        bypassCache: true,
-      },
-    );
-    const products = Array.isArray(resp?.products) ? resp.products : [];
+    const fresh = await invokeEdge<ProductListResponseObj>("store-products-list", {
+      store_id: String(storeId),
+      limit,
+      offset: 0,
+      bypassCache: options?.bypassCache === true,
+    });
+    const products = Array.isArray(fresh?.products) ? fresh.products : [];
     const page: ProductListPage = {
       limit,
-      offset,
-      hasMore: !!resp?.page?.hasMore,
-      nextOffset: resp?.page?.nextOffset ?? null,
-      total: resp?.page?.total ?? products.length,
+      offset: 0,
+      hasMore: !!fresh?.page?.hasMore,
+      nextOffset: fresh?.page?.nextOffset ?? null,
+      total: fresh?.page?.total ?? products.length,
     };
     return { products, page };
   }

@@ -55,6 +55,10 @@ export class ProductCacheManager {
     fetchFresh: () => Promise<ProductsPageResponse>,
     options?: { bypassCache?: boolean },
   ): Promise<ProductsPageResponse> {
+    if (offset !== 0) {
+      return await fetchFresh();
+    }
+
     const uid = await ProductCacheManager.getUserKeyPart();
     const sid = ProductCacheManager.normalizeStoreId(storeId);
     const key = ProductCacheManager.makePageKey({ userId: uid, storeId: sid, limit, offset });
