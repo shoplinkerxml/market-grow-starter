@@ -46,68 +46,9 @@ export interface TokenDebugInfo {
 export class SessionValidator {
   private static readonly REFRESH_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
   private static readonly SESSION_CHECK_INTERVAL = 30 * 1000; // 30 seconds
-  private static readonly VALID_CACHE_TTL_MS = 60 * 1000;
-  private static readonly INVALID_CACHE_TTL_MS = 2 * 1000;
-  private static cache: { result: SessionValidationResult; timestamp: number; ttlMs: number } | null = null;
-  private static inFlight: Promise<SessionValidationResult> | null = null;
-  private static refreshInFlight: Promise<SessionValidationResult> | null = null;
-  private static epoch = 0;
-
-  private static purgeAuthStorage(): void {
-    try {
-      if (typeof window === "undefined") return;
-      const storages: Storage[] = [];
-      try {
-        storages.push(window.localStorage);
-      } catch {
-        void 0;
-      }
-      try {
-        storages.push(window.sessionStorage);
-      } catch {
-        void 0;
-      }
-      for (const s of storages) {
-        try {
-          s.removeItem("supabase.auth.token");
-        } catch {
-          void 0;
-        }
-        try {
-          const urlObj = new URL(SUPABASE_URL);
-          const projectRef = urlObj.host.split(".")[0];
-          s.removeItem(`sb-${projectRef}-auth-token`);
-        } catch {
-          void 0;
-        }
-        try {
-          const keys: string[] = [];
-          for (let i = 0; i < s.length; i++) {
-            const k = s.key(i);
-            if (!k) continue;
-            if (k.startsWith("sb-") && k.endsWith("-auth-token")) keys.push(k);
-          }
-          for (const k of keys) {
-            try {
-              s.removeItem(k);
-            } catch {
-              void 0;
-            }
-          }
-        } catch {
-          void 0;
-        }
-      }
-    } catch {
-      void 0;
-    }
-  }
 
   static clearCache(): void {
-    this.epoch += 1;
-    this.cache = null;
-    this.inFlight = null;
-    this.refreshInFlight = null;
+    return;
   }
   
   /**
@@ -116,138 +57,12 @@ export class SessionValidator {
    */
   static async validateSession(): Promise<SessionValidationResult> {
     try {
-      const now = Date.now();
-      if (this.cache && now - this.cache.timestamp < this.cache.ttlMs) {
-        return this.cache.result;
-      }
-      if (this.inFlight) {
-        return await this.inFlight;
-      }
-      const epoch = this.epoch;
-      const flight = (async () => {
-        const readStoredSessionResult = (): SessionValidationResult | null => {
-          let stored: any = null;
-          try {
-            const raw = typeof window !== "undefined" ? window.localStorage?.getItem("supabase.auth.token") : null;
-            if (raw) stored = JSON.parse(raw);
-          } catch {
-            stored = null;
-          }
-
-          const storedSession = stored && typeof stored === "object" ? stored : null;
-          if (!storedSession?.access_token || !storedSession?.user) return null;
-
-          const now = Date.now();
-          const expiresAt = storedSession.expires_at ? Number(storedSession.expires_at) * 1000 : null;
-          const timeUntilExpiry = expiresAt ? expiresAt - now : null;
-          const needsRefresh = timeUntilExpiry ? timeUntilExpiry < this.REFRESH_THRESHOLD_MS : false;
-          const isExpired = timeUntilExpiry ? timeUntilExpiry <= 0 : false;
-
-          return {
-            isValid: !isExpired && !!storedSession.access_token && !!storedSession.user,
-            session: storedSession as any,
-            user: storedSession.user as any,
-            accessToken: String(storedSession.access_token),
-            refreshToken: storedSession.refresh_token ? String(storedSession.refresh_token) : null,
-            expiresAt,
-            timeUntilExpiry,
-            needsRefresh,
-            error: isExpired ? "Session expired" : undefined,
-          };
-        };
-
-        const storedImmediate = readStoredSessionResult();
-        if (storedImmediate?.isValid) {
-          if (epoch === this.epoch) {
-            this.cache = {
-              result: storedImmediate,
-              timestamp: Date.now(),
-              ttlMs: storedImmediate.isValid ? this.VALID_CACHE_TTL_MS : this.INVALID_CACHE_TTL_MS,
-            };
-          }
-          return storedImmediate;
-        }
-
-        const timeoutMs = 5000;
-        const out = await Promise.race([
-          supabase.auth.getSession(),
-          new Promise<{ timeout: true }>((resolve) => setTimeout(() => resolve({ timeout: true }), timeoutMs)),
-        ]);
-        if ((out as any)?.timeout) {
-          const storedResult = readStoredSessionResult();
-          if (storedResult) {
-            if (epoch === this.epoch) {
-              this.cache = {
-                result: storedResult,
-                timestamp: Date.now(),
-                ttlMs: storedResult.isValid ? this.VALID_CACHE_TTL_MS : this.INVALID_CACHE_TTL_MS,
-              };
-            }
-            return storedResult;
-          }
-
-          const result: SessionValidationResult = {
-            isValid: false,
-            session: null,
-            user: null,
-            accessToken: null,
-            refreshToken: null,
-            expiresAt: null,
-            timeUntilExpiry: null,
-            needsRefresh: false,
-            error: "Get session timeout",
-          };
-          if (epoch === this.epoch) {
-            this.cache = { result, timestamp: Date.now(), ttlMs: this.INVALID_CACHE_TTL_MS };
-          }
-          return result;
-        }
-        const { data: { session }, error } = out as any;
+      const { data, error } = await supabase.auth.getSession();
+      const session = data?.session ?? null;
         
         if (error) {
-          const msg = String((error as any)?.message || "");
-          const lower = msg.toLowerCase();
-          const status = Number((error as any)?.status ?? (error as any)?.statusCode ?? (error as any)?.context?.status ?? 0);
-          const invalidRefresh =
-            lower.includes("invalid refresh token") ||
-            lower.includes("refresh token not found") ||
-            lower.includes("refresh_token_not_found") ||
-            (status === 400 && lower.includes("refresh")) ||
-            (status === 401 && lower.includes("refresh"));
-          if (invalidRefresh) {
-            try {
-              await (supabase.auth as any).signOut?.({ scope: "local" });
-            } catch {
-              void 0;
-            } finally {
-              this.purgeAuthStorage();
-              this.clearCache();
-            }
-            return {
-              isValid: false,
-              session: null,
-              user: null,
-              accessToken: null,
-              refreshToken: null,
-              expiresAt: null,
-              timeUntilExpiry: null,
-              needsRefresh: false,
-              error: msg || "Invalid refresh token",
-            };
-          }
           if (__DEV__) console.error("[SessionValidator] Session fetch error:", error);
-          const storedResult = readStoredSessionResult();
-          if (storedResult?.isValid) {
-            if (epoch === this.epoch) {
-              this.cache = {
-                result: storedResult,
-                timestamp: Date.now(),
-                ttlMs: storedResult.isValid ? this.VALID_CACHE_TTL_MS : this.INVALID_CACHE_TTL_MS,
-              };
-            }
-            return storedResult;
-          }
-          const result: SessionValidationResult = {
+          return {
             isValid: false,
             session: null,
             user: null,
@@ -256,27 +71,12 @@ export class SessionValidator {
             expiresAt: null,
             timeUntilExpiry: null,
             needsRefresh: false,
-            error: error.message
+            error: error.message,
           };
-          if (epoch === this.epoch) {
-            this.cache = { result, timestamp: Date.now(), ttlMs: this.INVALID_CACHE_TTL_MS };
-          }
-          return result;
         }
         
         if (!session) {
-          const storedResult = readStoredSessionResult();
-          if (storedResult?.isValid) {
-            if (epoch === this.epoch) {
-              this.cache = {
-                result: storedResult,
-                timestamp: Date.now(),
-                ttlMs: storedResult.isValid ? this.VALID_CACHE_TTL_MS : this.INVALID_CACHE_TTL_MS,
-              };
-            }
-            return storedResult;
-          }
-          const result: SessionValidationResult = {
+          return {
             isValid: false,
             session: null,
             user: null,
@@ -285,12 +85,8 @@ export class SessionValidator {
             expiresAt: null,
             timeUntilExpiry: null,
             needsRefresh: false,
-            error: 'No active session'
+            error: "No active session",
           };
-          if (epoch === this.epoch) {
-            this.cache = { result, timestamp: Date.now(), ttlMs: this.INVALID_CACHE_TTL_MS };
-          }
-          return result;
         }
         
         const now = Date.now();
@@ -310,23 +106,7 @@ export class SessionValidator {
           needsRefresh,
           error: isExpired ? 'Session expired' : undefined
         };
-        if (epoch === this.epoch) {
-          this.cache = {
-            result,
-            timestamp: Date.now(),
-            ttlMs: result.isValid ? this.VALID_CACHE_TTL_MS : this.INVALID_CACHE_TTL_MS,
-          };
-        }
         return result;
-      })();
-      this.inFlight = flight;
-      try {
-        return await flight;
-      } finally {
-        if (epoch === this.epoch && this.inFlight === flight) {
-          this.inFlight = null;
-        }
-      }
     } catch (error) {
       console.error('[SessionValidator] Validation error:', error);
       return {
@@ -348,167 +128,19 @@ export class SessionValidator {
    * Critical for RLS operations that require valid access token
    */
   static async ensureValidSession(): Promise<SessionValidationResult> {
-    const validation = await this.validateSession();
-    
-    const refreshToken = validation.session?.refresh_token;
-    if (validation.isValid && validation.needsRefresh && refreshToken) {
-      if (!this.refreshInFlight) {
-        const epoch = this.epoch;
-        const flight = (async () => {
-          try {
-            const timeoutMs = 7000;
-            const out = await Promise.race([
-              supabase.auth.refreshSession({ refresh_token: refreshToken }),
-              new Promise<{ timeout: true }>((resolve) => setTimeout(() => resolve({ timeout: true }), timeoutMs)),
-            ]);
-            if ((out as any)?.timeout) {
-              return validation;
-            }
-            const { data: { session }, error } = out as any;
-            if (error) {
-              const msg = String((error as any)?.message || "");
-              const lower = msg.toLowerCase();
-              const status = Number((error as any)?.status ?? (error as any)?.statusCode ?? (error as any)?.context?.status ?? 0);
-              const invalidRefresh =
-                lower.includes("invalid refresh token") ||
-                lower.includes("refresh token not found") ||
-                lower.includes("refresh_token_not_found") ||
-                (status === 400 && lower.includes("refresh")) ||
-                (status === 401 && lower.includes("refresh"));
-              if (invalidRefresh) {
-                try {
-                  await (supabase.auth as any).signOut?.({ scope: "local" });
-                } catch {
-                  void 0;
-                } finally {
-                  this.purgeAuthStorage();
-                  this.clearCache();
-                }
-                return {
-                  isValid: false,
-                  session: null,
-                  user: null,
-                  accessToken: null,
-                  refreshToken: null,
-                  expiresAt: null,
-                  timeUntilExpiry: null,
-                  needsRefresh: false,
-                  error: msg || "Invalid refresh token",
-                };
-              }
-              return validation;
-            }
-            if (session && epoch === this.epoch) {
-              this.cache = null;
-            }
-            return this.validateSession();
-          } catch {
-            return validation;
-          }
-        })();
-        this.refreshInFlight = flight;
-        flight.finally(() => {
-          if (epoch === this.epoch && this.refreshInFlight === flight) {
-            this.refreshInFlight = null;
-          }
-        });
-      }
-      return validation;
-    }
+    return await this.validateSession();
+  }
 
-    if (!validation.isValid && refreshToken) {
-      if (this.refreshInFlight) return await this.refreshInFlight;
-      const epoch = this.epoch;
-      const flight = (async () => {
-        try {
-          const timeoutMs = 7000;
-          const out = await Promise.race([
-            supabase.auth.refreshSession({ refresh_token: refreshToken }),
-            new Promise<{ timeout: true }>((resolve) => setTimeout(() => resolve({ timeout: true }), timeoutMs)),
-          ]);
-          if ((out as any)?.timeout) {
-            try {
-              await (supabase.auth as any).signOut?.({ scope: "local" });
-            } catch {
-              void 0;
-            } finally {
-              this.purgeAuthStorage();
-              this.clearCache();
-            }
-            return {
-              ...validation,
-              session: null,
-              user: null,
-              accessToken: null,
-              refreshToken: null,
-              expiresAt: null,
-              timeUntilExpiry: null,
-              needsRefresh: false,
-              error: "Refresh timeout",
-            };
-          }
+  static async getToken(): Promise<string> {
+    const v = await this.validateSession();
+    if (!v.isValid || !v.accessToken) throw new Error(v.error || "No access token");
+    return v.accessToken;
+  }
 
-          const { data: { session }, error } = out as any;
-          if (error) {
-            const msg = String((error as any)?.message || "");
-            const lower = msg.toLowerCase();
-            const status = Number((error as any)?.status ?? (error as any)?.statusCode ?? (error as any)?.context?.status ?? 0);
-            const invalidRefresh =
-              lower.includes("invalid refresh token") ||
-              lower.includes("refresh token not found") ||
-              lower.includes("refresh_token_not_found") ||
-              (status === 400 && lower.includes("refresh")) ||
-              (status === 401 && lower.includes("refresh"));
-
-            if (invalidRefresh) {
-              try {
-                await (supabase.auth as any).signOut?.({ scope: "local" });
-              } catch {
-                void 0;
-              } finally {
-                this.purgeAuthStorage();
-                this.clearCache();
-              }
-              return {
-                isValid: false,
-                session: null,
-                user: null,
-                accessToken: null,
-                refreshToken: null,
-                expiresAt: null,
-                timeUntilExpiry: null,
-                needsRefresh: false,
-                error: msg || "Invalid refresh token",
-              };
-            }
-            return {
-              ...validation,
-              error: `Refresh failed: ${(error as any)?.message || "unknown"}`
-            };
-          }
-
-          if (session && epoch === this.epoch) {
-            this.cache = null;
-          }
-          return this.validateSession();
-        } catch (error) {
-          return {
-            ...validation,
-            error: error instanceof Error ? error.message : "Refresh failed"
-          };
-        }
-      })();
-      this.refreshInFlight = flight;
-      try {
-        return await flight;
-      } finally {
-        if (epoch === this.epoch && this.refreshInFlight === flight) {
-          this.refreshInFlight = null;
-        }
-      }
-    }
-    
-    return validation;
+  static async refreshSession(): Promise<SessionValidationResult> {
+    const { error } = await supabase.auth.refreshSession();
+    if (error) throw Object.assign(new Error(error.message || "Refresh failed"), { status: 401 });
+    return await this.validateSession();
   }
   
   /**
@@ -646,13 +278,6 @@ export class SessionValidator {
       try {
         const validation = await this.validateSession();
         
-        if (validation.needsRefresh && validation.session?.refresh_token) {
-          console.log('[SessionValidator] Proactively refreshing session...');
-          await supabase.auth.refreshSession({
-            refresh_token: validation.session.refresh_token
-          });
-        }
-        
         if (!validation.isValid) {
           console.warn('[SessionValidator] Session monitoring detected invalid session:', {
             error: validation.error,
@@ -753,7 +378,7 @@ export async function withValidSession<T>(
 }
 
 export async function invokeEdgeWithAuth<T>(name: string, body: unknown, opts?: RetryOptions): Promise<T> {
-  return await withValidSession(async ({ accessToken }) => {
+  const invokeOnce = async (accessToken: string): Promise<T> => {
     const { data, error } = await invokeSupabaseFunctionWithRetry<T | string>(
       supabase.functions.invoke.bind(supabase.functions) as any,
       name,
@@ -772,5 +397,18 @@ export async function invokeEdgeWithAuth<T>(name: string, body: unknown, opts?: 
       throw new EdgeInvokeError(msg, typeof status === "number" ? status : undefined);
     }
     return typeof data === "string" ? (JSON.parse(data) as T) : (data as T);
-  });
+  };
+
+  const accessToken = await SessionValidator.getToken();
+  try {
+    return await invokeOnce(accessToken);
+  } catch (e) {
+    const status = (e as { status?: number } | null)?.status;
+    if (status === 401) {
+      await SessionValidator.refreshSession();
+      const refreshedToken = await SessionValidator.getToken();
+      return await invokeOnce(refreshedToken);
+    }
+    throw e;
+  }
 }
