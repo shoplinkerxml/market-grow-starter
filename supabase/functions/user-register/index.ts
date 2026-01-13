@@ -149,6 +149,20 @@ Deno.serve(async (req) => {
       )
     }
 
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id,email,name,role,status,avatar_url,created_at,updated_at')
+      .eq('id', authData.user.id)
+      .maybeSingle()
+
+    if (profileError || !profile) {
+      await supabase.auth.admin.deleteUser(authData.user.id).catch(() => void 0)
+      return jsonResponse(
+        { error: 'profile_creation_failed', message: 'Profile was not created' },
+        { status: 500 }
+      )
+    }
+
     // ========================================
     // 4. Успешная регистрация
     // ========================================
@@ -157,10 +171,7 @@ Deno.serve(async (req) => {
     return jsonResponse(
       {
         success: true,
-        user: {
-          id: authData.user.id,
-          email: authData.user.email,
-        },
+        user: profile,
         message: 'Registration successful. Demo subscription activated.',
       },
       { status: 201 }
