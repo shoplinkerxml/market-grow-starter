@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { ProfileOperationError, ProfileErrorCode, ProfileCache } from "./error-handler";
 import { SessionValidator, isAuthenticationError } from "./session-validation";
 import type { UserProfile } from "./profile-service";
@@ -135,54 +134,13 @@ export async function createProfileWithAuth(
     }
 
     await SessionValidator.logSessionDebugInfo("profile-creation");
-
-    const upsertData: any = {
-      id: profileData.id,
-      email: profileData.email,
-      name: profileData.name,
-    };
-
-    if (profileData.phone !== undefined) upsertData.phone = profileData.phone;
-    if (profileData.role !== undefined) upsertData.role = profileData.role;
-    if (profileData.status !== undefined) upsertData.status = profileData.status;
-    if (profileData.avatar_url !== undefined) upsertData.avatar_url = profileData.avatar_url;
-    if (profileData.created_at !== undefined) upsertData.created_at = profileData.created_at;
-    if (profileData.updated_at !== undefined) upsertData.updated_at = profileData.updated_at;
-
-    const { data, error } = await supabase
-      .from("profiles")
-      .upsert(upsertData, {
-        onConflict: "id",
-        ignoreDuplicates: false,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("[ProfileService] Profile creation failed:", error);
-
-      if (isAuthorizationError(error)) {
-        const rlsValidation = await SessionValidator.validateRLSContext();
-        console.error("[ProfileService] RLS context validation:", rlsValidation);
-
-        throw new ProfileOperationError(
-          ProfileErrorCode.PERMISSION_DENIED,
-          new Error(`Authentication error during profile creation: ${error.message}`),
-        );
-      }
-
-      throw new ProfileOperationError(ProfileErrorCode.PROFILE_CREATION_FAILED, error);
+    const profile = await createProfileWithVerification(profileData);
+    ProfileCache.set(`profile_${(profile as any).id}`, profile);
+    if ((profile as any).email) {
+      ProfileCache.set(`profile_email_${String((profile as any).email).toLowerCase()}`, profile);
     }
-
-    if (data) {
-      ProfileCache.set(`profile_${(data as any).id}`, data);
-      if ((data as any).email) {
-        ProfileCache.set(`profile_email_${String((data as any).email).toLowerCase()}`, data);
-      }
-    }
-
-    logProfileOperation("createProfileWithAuth", profileData.id, data);
-    return data as UserProfile;
+    logProfileOperation("createProfileWithAuth", profileData.id, profile);
+    return profile as UserProfile;
   } catch (error) {
     if (error instanceof ProfileOperationError) {
       throw error;
@@ -191,4 +149,3 @@ export async function createProfileWithAuth(
     throw new ProfileOperationError(ProfileErrorCode.PROFILE_CREATION_FAILED, error);
   }
 }
-

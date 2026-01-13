@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-import type { TablesInsert } from "@/integrations/supabase/types";
 import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
 import type { CreateProductData, Product, ProductImage, UpdateProductData } from "@/lib/product-service";
@@ -90,47 +88,9 @@ export class ProductCoreService {
       throw new Error("Invalid session: " + (sessionValidation.error || "Session expired"));
     }
 
-    try {
-      const { data, error } = await supabase
-        .from("store_products")
-        .select(
-          "id,store_id,supplier_id,external_id,name,name_ua,docket,docket_ua,description,description_ua,vendor,article,category_id,category_external_id,currency_code,price,price_old,price_promo,stock_quantity,available,state,created_at,updated_at",
-        )
-        .eq("id", String(id))
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) return null;
-      return {
-        id: String(data.id),
-        store_id: String(data.store_id || ""),
-        supplier_id: data.supplier_id ?? null,
-        external_id: String(data.external_id || ""),
-        name: String(data.name || ""),
-        name_ua: data.name_ua == null ? null : String(data.name_ua),
-        docket: data.docket == null ? null : String(data.docket),
-        docket_ua: data.docket_ua == null ? null : String(data.docket_ua),
-        description: data.description == null ? null : String(data.description),
-        description_ua: data.description_ua == null ? null : String(data.description_ua),
-        vendor: data.vendor == null ? null : String(data.vendor),
-        article: data.article == null ? null : String(data.article),
-        category_id: data.category_id ?? null,
-        category_external_id: data.category_external_id == null ? null : String(data.category_external_id),
-        currency_id: null,
-        currency_code: data.currency_code == null ? null : String(data.currency_code),
-        price: data.price ?? null,
-        price_old: data.price_old ?? null,
-        price_promo: data.price_promo ?? null,
-        stock_quantity: Number(data.stock_quantity || 0),
-        available: !!data.available,
-        state: data.state == null ? "" : String(data.state),
-        created_at: data.created_at == null ? "" : String(data.created_at),
-        updated_at: data.updated_at == null ? "" : String(data.updated_at),
-      };
-    } catch {
-      const { ProductService } = await import("@/lib/product-service");
-      const edit = await ProductService.getProductEditData(id);
-      return edit.product || null;
-    }
+    const { ProductService } = await import("@/lib/product-service");
+    const edit = await ProductService.getProductEditData(id);
+    return edit.product || null;
   }
 
   static async getProduct(id: string): Promise<Product> {
@@ -296,36 +256,4 @@ export class ProductCoreService {
     return product;
   }
 
-  static async bulkUpsertProducts(
-    rows: Array<UpdateProductData & { id: string; store_id?: string }>,
-  ): Promise<{ upserted: number }> {
-    await ProductCoreService.ensureCanMutateProducts();
-    if (!Array.isArray(rows) || rows.length === 0) return { upserted: 0 };
-    const payload = rows.map((r) => ({
-      id: String(r.id),
-      store_id: r.store_id ?? null,
-      external_id: r.external_id ?? undefined,
-      name: r.name ?? undefined,
-      name_ua: r.name_ua ?? undefined,
-      vendor: r.vendor ?? undefined,
-      article: r.article ?? undefined,
-      available: r.available ?? undefined,
-      stock_quantity: r.stock_quantity ?? undefined,
-      price: r.price ?? undefined,
-      price_old: r.price_old ?? undefined,
-      price_promo: r.price_promo ?? undefined,
-      description: r.description ?? undefined,
-      description_ua: r.description_ua ?? undefined,
-      docket: r.docket ?? undefined,
-      docket_ua: r.docket_ua ?? undefined,
-      state: r.state ?? undefined,
-      category_id: ProductCoreService.castNullableNumber(r.category_id) ?? undefined,
-      category_external_id: r.category_external_id ?? undefined,
-      currency_code: r.currency_code ?? undefined,
-      supplier_id: ProductCoreService.castNullableNumber(r.supplier_id) ?? undefined,
-    })) as unknown as TablesInsert<"store_products">[];
-    const { error } = await supabase.from("store_products").upsert(payload);
-    if (error) throw new Error((error as { message?: string } | null)?.message || "bulk_upsert_failed");
-    return { upserted: payload.length };
-  }
 }

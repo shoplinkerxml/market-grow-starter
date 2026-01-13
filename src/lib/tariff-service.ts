@@ -70,12 +70,9 @@ export class TariffService {
         try {
           const payload = await invokeEdgeWithAuth<{ tariffs: TariffWithDetails[] }>('tariffs-list', { includeInactive, includeDemo });
           const edgeRows = Array.isArray(payload.tariffs) ? payload.tariffs : [];
-          if (edgeRows.length) return edgeRows;
-          const fb = await TariffService.getAllTariffs(includeInactive, includeDemo);
-          return Array.isArray(fb) ? (fb as unknown as TariffWithDetails[]) : [];
+          return edgeRows;
         } catch {
-          const fb = await TariffService.getAllTariffs(includeInactive, includeDemo);
-          return Array.isArray(fb) ? (fb as unknown as TariffWithDetails[]) : [];
+          return [];
         }
       });
       return rows;

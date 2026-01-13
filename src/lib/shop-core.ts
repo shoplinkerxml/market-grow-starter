@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { invokeEdgeWithAuth, requireValidSession } from "./session-validation";
 import { UnifiedCacheManager } from "./cache-utils";
@@ -207,8 +206,8 @@ export class ShopServiceCore {
 
   protected static async getSessionUserId(): Promise<string | null> {
     try {
-      const { data } = await supabase.auth.getSession();
-      const userId = data?.session?.user?.id ? String(data.session.user.id) : null;
+      const v = await requireValidSession();
+      const userId = v?.user?.id ? String(v.user.id) : null;
       if (userId) this.lastUserId = userId;
       return userId;
     } catch {
@@ -556,27 +555,14 @@ export class ShopServiceCore {
 
       if (/401|Unauthorized|403|Forbidden/i.test(msg)) throw e;
 
-      // Fallback: Try direct deletion if Edge Function fails (e.g. config error)
-      try {
-        console.warn("Edge delete failed, trying direct DB delete...", e);
-        // Clean up links first
-        await supabase.from("store_product_links").delete().eq("store_id", id);
-        // Then delete shop
-        const { error } = await supabase.from("user_stores").delete().eq("id", id);
-        if (error) throw error;
+      if (/409|Conflict/i.test(msg)) {
+        await this.cleanupShopDependencies(id);
+        await this.invokeEdge<{ ok: boolean }>("delete-shop", { id });
         await this.clearShopsCaches();
         return;
-      } catch (directError) {
-        console.error("Direct delete also failed:", directError);
-        // If direct delete fails, throw original or new error
-        if (/409|Conflict/i.test(msg)) {
-          await this.cleanupShopDependencies(id);
-          await this.invokeEdge<{ ok: boolean }>("delete-shop", { id });
-          await this.clearShopsCaches();
-        } else {
-          throw e;
-        }
       }
+
+      throw e;
     }
   }
 

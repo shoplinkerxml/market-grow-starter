@@ -1,4 +1,3 @@
-import { supabase } from '@/integrations/supabase/client';
 import { RequestDeduplicatorFactory } from './request-deduplicator';
 // Dev-only logging toggle and transient abort detector
 const __DEV__ = import.meta.env?.DEV ?? false;
@@ -97,71 +96,10 @@ export class SubscriptionValidationService {
     wasDeactivated: boolean;
   }> {
     try {
-      // Get current active subscription
-      const { data: activeSubscription, error } = await (supabase as any)
-        .from('user_subscriptions')
-        .select('*, tariffs(*)')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (error) {
-        if (isTransientAbortError(error)) {
-          if (__DEV__) console.debug('[Subscription] Fetch aborted while loading active subscription');
-          return {
-            isValid: false,
-            subscription: null,
-            wasDeactivated: false
-          };
-        }
-        if (__DEV__) console.error('Error fetching active subscription:', error);
-        throw error;
-      }
-
-      // No active subscription found
-      if (!activeSubscription) {
-        return {
-          isValid: false,
-          subscription: null,
-          wasDeactivated: false
-        };
-      }
-
-      // Check if subscription is expired
-      const expired = this.isExpired(activeSubscription.end_date);
-
-      if (expired) {
-        // Deactivate expired subscription
-        const { error: updateError } = await (supabase as any)
-          .from('user_subscriptions')
-          .update({ is_active: false })
-          .eq('id', activeSubscription.id);
-
-        if (updateError) {
-          if (isTransientAbortError(updateError)) {
-            if (__DEV__) console.debug('[Subscription] Fetch aborted while deactivating expired subscription');
-            return {
-              isValid: false,
-              subscription: activeSubscription,
-              wasDeactivated: false
-            };
-          }
-          if (__DEV__) console.error('Error deactivating expired subscription:', updateError);
-          throw updateError;
-        }
-        if (__DEV__) console.log('Subscription deactivated due to expiration:', activeSubscription.id);
-
-        return {
-          isValid: false,
-          subscription: activeSubscription,
-          wasDeactivated: true
-        };
-      }
-
-      // Subscription is active and valid
+      void userId;
       return {
-        isValid: true,
-        subscription: activeSubscription,
+        isValid: false,
+        subscription: null,
         wasDeactivated: false
       };
 

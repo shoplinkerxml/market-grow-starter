@@ -6,12 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ProfileService } from "@/lib/profile-service";
 import { UserProfile as UserProfileType } from "@/lib/user-auth-schemas";
 import { useI18n } from "@/i18n";
 import { ArrowLeft, Save, Upload, User } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
 
 const UserProfile = () => {
@@ -48,17 +46,9 @@ const UserProfile = () => {
 
     setSaving(true);
     try {
-      const updatedProfile = await ProfileService.updateProfile(user.id, {
-        name: name.trim(),
-        phone: phone.trim() || null
-      });
-
-      if (updatedProfile) {
-        await refetch();
-        toast.success(t("profile_updated_success"));
-      } else {
-        throw new Error(t("failed_update_profile"));
-      }
+      void name;
+      void phone;
+      toast.error(t("failed_update_profile"));
     } catch (error) {
       console.error("Error updating profile:", error);
       toast.error(t("failed_update_profile"));
@@ -73,28 +63,10 @@ const UserProfile = () => {
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      const updatedProfile = await ProfileService.updateProfile(user.id, { avatar_url: publicUrl });
-
-      if (updatedProfile) {
-        setAvatarUrl(publicUrl);
-        await refetch();
-        toast.success(t("avatar_updated_success"));
-      } else {
-        throw new Error(t("failed_upload_avatar"));
-      }
+      void file;
+      void user;
+      void refetch;
+      toast.error(t("failed_upload_avatar"));
     } catch (error) {
       console.error("Error uploading avatar:", error);
       toast.error(t("failed_upload_avatar"));

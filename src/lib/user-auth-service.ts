@@ -198,32 +198,6 @@ export class UserAuthService {
   }
 
   /**
-   * Create user profile in database
-   */
-  private static async createUserProfile(userId: string, userData: { email: string; name: string }): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('profiles')
-      .upsert({
-        id: userId,
-        email: userData.email,
-        name: userData.name
-      }, {
-        onConflict: 'id'
-      });
-
-    if (error) {
-      console.error('Error creating user profile:', error);
-      throw error;
-    }
-  } catch (error) {
-    console.error('Error in createUserProfile:', error);
-    throw error;
-  }
-}
-
-
-  /**
    * Get user profile from database (deprecated - use ProfileService.getProfile instead)
    * @deprecated Use ProfileService.getProfile for better error handling
    */
