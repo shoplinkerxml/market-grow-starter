@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { SessionValidator } from "@/lib/session-validation";
 import type { AuthResponse, LoginData, ResetPasswordData, UserProfile } from "./user-auth-schemas";
 import { UserAuthError } from "./user-auth-schemas";
 
@@ -27,19 +28,38 @@ export async function loginUser(
 
     if (authData.user && authData.session) {
       deps.clearAuthMeCache();
-      const authMe = await deps.fetchAuthMe();
-      if (!authMe.user) {
-        return { user: null, session: authData.session, error: UserAuthError.LOGIN_FAILED };
+
+      try {
+        SessionValidator.clearCache();
+      } catch {
+        void 0;
       }
-      if (authMe.user.role && authMe.user.role !== "user") {
-        return { user: null, session: authData.session, error: "redirect_to_admin" };
+
+      const expectedUserId = String(authData.user.id);
+      await SessionValidator.waitForValidSession(expectedUserId, 5_000);
+
+      let authMe = await deps.fetchAuthMe();
+      for (let i = 0; i < 6 && !authMe.user; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        deps.clearAuthMeCache();
+        authMe = await deps.fetchAuthMe();
+      }
+
+      if (authMe.user) {
+        if (authMe.user.role && authMe.user.role !== "user") {
+          return { user: null, session: authData.session, error: "redirect_to_admin" };
+        }
       }
       try {
         void import("@/lib/prefetch-service").then(({ PrefetchService }) => PrefetchService.prefetchEssentialData());
       } catch {
         void 0;
       }
-      return { user: authMe.user, session: authData.session, error: null };
+      if (authMe.user) {
+        return { user: authMe.user, session: authData.session, error: null };
+      }
+
+      return { user: null, session: authData.session, error: UserAuthError.LOGIN_FAILED };
     }
 
     return {
