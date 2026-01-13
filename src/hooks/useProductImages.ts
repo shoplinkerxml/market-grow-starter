@@ -121,7 +121,10 @@ export function useProductImages(productId?: string, preloadedImages?: ProductIm
     } else if (activeIndex === index) {
       setActiveIndex(Math.min(index, newImages.length - 1));
     }
-  }, [activeIndex]);
+    if (productId) {
+      await ProductService.updateProduct(String(productId), { images: newImages as any });
+    }
+  }, [activeIndex, productId]);
 
   const setMainImage = useCallback(async (index: number) => {
     const newImages = imagesRef.current.map((img, i) => ({ ...img, is_main: i === index }));

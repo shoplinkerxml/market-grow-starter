@@ -170,7 +170,7 @@ export const ProductEdit = () => {
       is_main: !!img.is_main,
       object_key: img.object_key,
     }));
-    if (mappedImages.length > 0) payload.images = mappedImages;
+    payload.images = mappedImages;
 
     try {
       const cidNum = formData.category_id ? Number(formData.category_id) : null;

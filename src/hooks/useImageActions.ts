@@ -93,10 +93,74 @@ export function useImageActions(
     try {
       const objectKey = target?.object_key || (target?.url ? ImageHelpers.extractObjectKeyFromUrl(target.url) : null);
       if (objectKey) {
-        await R2Storage.deleteFile(objectKey);
-        await R2Storage.removePendingUpload(objectKey);
+        const deleteOnce = async () => {
+          const res = await R2Storage.deleteFile(objectKey);
+          if (!res?.success) {
+            const err = new Error("r2_delete_failed");
+            (err as any).code = "r2_delete_failed";
+            throw err;
+          }
+        };
+
+        const getErrorStatus = (e: any): number | undefined =>
+          (e?.context?.status ?? e?.status ?? e?.statusCode) as number | undefined;
+
+        const isNotFoundError = (e: any): boolean => {
+          const status = getErrorStatus(e);
+          const code = (e as any)?.code as string | undefined;
+          const msg = String((e as any)?.message || "");
+          return (
+            status === 404 ||
+            code === "not_found" ||
+            code === "object_not_found" ||
+            code === "no_such_key" ||
+            /not[\s_-]*found/i.test(msg) ||
+            /no[\s_-]*such/i.test(msg)
+          );
+        };
+
+        const isRetryableError = (e: any): boolean => {
+          const status = getErrorStatus(e);
+          if (status == null) return true;
+          if (status === 429) return true;
+          if (status >= 500 && status <= 599) return true;
+          return false;
+        };
+
+        const deleteWithRetry = async () => {
+          const delays = [250, 750];
+          for (let attempt = 0; attempt < delays.length + 1; attempt++) {
+            try {
+              await deleteOnce();
+              return;
+            } catch (e: any) {
+              if (isNotFoundError(e)) return;
+              if (attempt >= delays.length || !isRetryableError(e)) throw e;
+              await new Promise((r) => setTimeout(r, delays[attempt]));
+            }
+          }
+        };
+
+        await deleteWithRetry();
+        try {
+          await R2Storage.removePendingUpload(objectKey);
+        } catch {
+          void 0;
+        }
       }
-      await removeImage(index);
+      let removed = false;
+      try {
+        await removeImage(index);
+        removed = true;
+      } finally {
+        if (!removed) {
+          try {
+            await reload();
+          } catch {
+            void 0;
+          }
+        }
+      }
       toast.success('Изображение удалено');
     } catch (error) {
       console.error(error);
@@ -105,7 +169,7 @@ export function useImageActions(
     }
 
     return { ok: true };
-  }, [images, removeImage]);
+  }, [images, reload, removeImage]);
 
   const setMain = useCallback(async (index: number): Promise<{ ok: boolean }> => {
     await setMainImage(index);
