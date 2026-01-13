@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { invokeSupabaseFunctionWithRetry } from "@/lib/request-handler";
+import { EdgeClient } from "@/lib/request-handler";
 import { withValidSession } from "@/lib/session-validation";
 
 export type BulkImportResult = { job_id: string; created: number; updated: number; skipped: number };
@@ -13,8 +13,8 @@ export class ProductBulkImportService {
     if (rows.length === 0) throw new Error("rows_required");
 
     return await withValidSession(async ({ accessToken }) => {
-      const { data, error } = await invokeSupabaseFunctionWithRetry<BulkImportResult | string>(
-        supabase.functions.invoke.bind(supabase.functions) as any,
+      const edge = new EdgeClient(supabase.functions.invoke.bind(supabase.functions) as any);
+      return await edge.invokeJson<BulkImportResult>(
         "bulk-import-products",
         {
           body: {
@@ -26,10 +26,6 @@ export class ProductBulkImportService {
         },
         { timeoutMs: 240_000, maxRetries: 0 },
       );
-
-      if (error) throw error;
-      return typeof data === "string" ? (JSON.parse(data) as BulkImportResult) : (data as BulkImportResult);
     });
   }
 }
-

@@ -64,7 +64,7 @@ export class SupplierService {
       const payload = await invokeEdgeWithAuth<{ suppliers?: Supplier[] }>(
         "suppliers-list",
         {},
-        { signal: opts?.signal, timeoutMs: 25_000, maxRetries: 0 },
+        { signal: opts?.signal, timeoutMs: 25_000 },
       );
       return Array.isArray(payload?.suppliers) ? payload.suppliers! : [];
     } catch (error) {

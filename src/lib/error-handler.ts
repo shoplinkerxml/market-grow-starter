@@ -7,6 +7,138 @@
 
 import { CACHE_TTL, UnifiedCacheManager } from "./cache-utils";
 
+export type AppErrorContext = Record<string, unknown>;
+
+export class AppError extends Error {
+  code: string;
+  status: number;
+  retryable: boolean;
+  context?: AppErrorContext;
+  cause?: unknown;
+
+  constructor(
+    code: string,
+    message: string,
+    opts?: { status?: number; retryable?: boolean; context?: AppErrorContext; cause?: unknown; name?: string },
+  ) {
+    super(message);
+    this.name = opts?.name ?? "AppError";
+    this.code = code;
+    this.status = typeof opts?.status === "number" ? opts.status : 500;
+    this.retryable = typeof opts?.retryable === "boolean" ? opts.retryable : this.status >= 500;
+    this.context = opts?.context;
+    this.cause = opts?.cause;
+    if (opts?.cause !== undefined) {
+      (this as any).cause = opts.cause;
+    }
+  }
+}
+
+export class AuthError extends AppError {
+  constructor(code: string, message: string, opts?: { status?: number; retryable?: boolean; context?: AppErrorContext; cause?: unknown }) {
+    super(code, message, {
+      status: opts?.status ?? 401,
+      retryable: opts?.retryable ?? true,
+      context: opts?.context,
+      cause: opts?.cause,
+      name: "AuthError",
+    });
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(
+    code: string,
+    message: string,
+    opts?: { status?: number; retryable?: boolean; context?: AppErrorContext; cause?: unknown },
+  ) {
+    super(code, message, {
+      status: opts?.status ?? 422,
+      retryable: opts?.retryable ?? false,
+      context: opts?.context,
+      cause: opts?.cause,
+      name: "ValidationError",
+    });
+  }
+}
+
+export class NetworkError extends AppError {
+  constructor(code: string, message: string, opts?: { status?: number; retryable?: boolean; context?: AppErrorContext; cause?: unknown }) {
+    super(code, message, {
+      status: opts?.status ?? 503,
+      retryable: opts?.retryable ?? true,
+      context: opts?.context,
+      cause: opts?.cause,
+      name: "NetworkError",
+    });
+  }
+}
+
+function extractStatus(error: unknown): number | undefined {
+  const e = error as { status?: number; statusCode?: number; context?: { status?: number } } | null;
+  const status = e?.context?.status ?? e?.status ?? e?.statusCode;
+  return typeof status === "number" ? status : undefined;
+}
+
+function extractMessage(error: unknown): string | undefined {
+  if (typeof error === "string") return error;
+  const e = error as { message?: unknown; error?: unknown; name?: unknown } | null;
+  const message = typeof e?.message === "string" ? e.message : undefined;
+  if (message && message.trim()) return message;
+  const errField = typeof e?.error === "string" ? e.error : undefined;
+  if (errField && errField.trim()) return errField;
+  const name = typeof e?.name === "string" ? e.name : undefined;
+  if (name && name.trim()) return name;
+  return undefined;
+}
+
+function isNetworkLike(error: unknown): boolean {
+  const status = extractStatus(error);
+  if (status === 0) return true;
+  const msg = (extractMessage(error) || "").toLowerCase();
+  return msg.includes("failed to fetch") || msg.includes("network") || msg.includes("timeout") || msg.includes("connection");
+}
+
+export function mapError(
+  error: unknown,
+  fallback?: { code?: string; status?: number; retryable?: boolean; context?: AppErrorContext },
+): AppError {
+  if (error instanceof AppError) return error;
+
+  const status = extractStatus(error) ?? fallback?.status;
+  const message = extractMessage(error) ?? "Unexpected error";
+
+  const asAny = error as { code?: unknown; name?: unknown; details?: unknown } | null;
+  const code =
+    (typeof asAny?.code === "string" && asAny.code.trim() ? asAny.code : undefined) ??
+    (typeof asAny?.name === "string" && asAny.name.trim() ? asAny.name : undefined) ??
+    fallback?.code ??
+    "unknown_error";
+
+  const context: AppErrorContext | undefined =
+    fallback?.context || (asAny && typeof asAny === "object" && "details" in asAny ? { details: asAny.details } : undefined);
+
+  if (isNetworkLike(error)) {
+    return new NetworkError(code, message, { status: status ?? 503, retryable: fallback?.retryable, context, cause: error });
+  }
+
+  if (status === 401 || status === 403) {
+    return new AuthError(code, message, { status, retryable: fallback?.retryable, context, cause: error });
+  }
+
+  if (status === 400 || status === 422) {
+    return new ValidationError(code, message, { status, retryable: fallback?.retryable, context, cause: error });
+  }
+
+  const effectiveStatus = status ?? 500;
+  return new AppError(code, message, {
+    status: effectiveStatus,
+    retryable: typeof fallback?.retryable === "boolean" ? fallback.retryable : effectiveStatus >= 500,
+    context,
+    cause: error,
+  });
+}
+
 
 /**
  * Profile operation error types
@@ -56,14 +188,27 @@ export const SUCCESS_MESSAGES = {
 /**
  * Enhanced error class for profile operations
  */
-export class ProfileOperationError extends Error {
+export class ProfileOperationError extends AppError {
+  declare code: ProfileErrorCode;
+  originalError?: Error | unknown;
+
   constructor(
-    public code: ProfileErrorCode,
-    public originalError?: Error | unknown,
+    code: ProfileErrorCode,
+    originalError?: Error | unknown,
     message?: string
   ) {
-    super(message || errorMessages[code]);
-    this.name = 'ProfileOperationError';
+    const msg = message || errorMessages[code];
+    const status =
+      code === ProfileErrorCode.PROFILE_NOT_FOUND
+        ? 404
+        : code === ProfileErrorCode.VALIDATION_ERROR
+          ? 422
+          : code === ProfileErrorCode.PERMISSION_DENIED
+            ? 403
+            : 500;
+    const retryable = code === ProfileErrorCode.NETWORK_ERROR;
+    super(code, msg, { status, retryable, context: { domain: "profile" }, cause: originalError, name: "ProfileOperationError" });
+    this.originalError = originalError;
   }
 }
 
@@ -76,17 +221,15 @@ export type ServiceErrorCode =
   | 'network_error'
   | 'unknown_error';
 
-export class ServiceError extends Error {
-  code: ServiceErrorCode;
-  status?: number;
+export class ServiceError extends AppError {
+  declare code: ServiceErrorCode;
   traceId?: string;
   originalError?: unknown;
 
   constructor(code: ServiceErrorCode, message: string, opts?: { status?: number; traceId?: string; originalError?: unknown }) {
-    super(message);
-    this.name = 'ServiceError';
-    this.code = code;
-    this.status = opts?.status;
+    const status = typeof opts?.status === "number" ? opts.status : 500;
+    const retryable = code === "network_error" || status >= 500;
+    super(code, message, { status, retryable, context: opts?.traceId ? { traceId: opts.traceId } : undefined, cause: opts?.originalError, name: "ServiceError" });
     this.traceId = opts?.traceId;
     this.originalError = opts?.originalError;
   }

@@ -13,7 +13,8 @@
 
 import { supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
-import { invokeSupabaseFunctionWithRetry, type RetryOptions } from "@/lib/request-handler";
+import { EdgeClient, type RetryOptions } from "@/lib/request-handler";
+import { AppError, mapError } from "@/lib/error-handler";
 
 const __DEV__ = import.meta.env?.DEV ?? false;
 
@@ -350,12 +351,16 @@ export async function createAuthenticatedClient(accessToken?: string) {
   });
 }
 
-export class EdgeInvokeError extends Error {
-  status?: number;
-  constructor(message: string, status?: number) {
-    super(message);
-    this.name = "EdgeInvokeError";
-    this.status = status;
+export class EdgeInvokeError extends AppError {
+  constructor(message: string, status?: number, cause?: unknown, context?: Record<string, unknown>) {
+    const effectiveStatus = typeof status === "number" ? status : 500;
+    super("edge_invoke_failed", message, {
+      status: effectiveStatus,
+      retryable: effectiveStatus >= 500 || effectiveStatus === 0,
+      context,
+      cause,
+      name: "EdgeInvokeError",
+    });
   }
 }
 
@@ -378,25 +383,18 @@ export async function withValidSession<T>(
 }
 
 export async function invokeEdgeWithAuth<T>(name: string, body: unknown, opts?: RetryOptions): Promise<T> {
+  const edge = new EdgeClient(supabase.functions.invoke.bind(supabase.functions) as any);
   const invokeOnce = async (accessToken: string): Promise<T> => {
-    const { data, error } = await invokeSupabaseFunctionWithRetry<T | string>(
-      supabase.functions.invoke.bind(supabase.functions) as any,
-      name,
-      { body, headers: { Authorization: `Bearer ${accessToken}` }, signal: opts?.signal },
-      { timeoutMs: 12_000, maxRetries: 0, ...opts },
-    );
-    if (error) {
-      const status =
-        (error as { context?: { status?: number }; status?: number; statusCode?: number } | null)?.context?.status ??
-        (error as { status?: number } | null)?.status ??
-        (error as { statusCode?: number } | null)?.statusCode;
-      const msg =
-        (error as unknown as { message?: string } | null)?.message ||
-        (error as unknown as { name?: string } | null)?.name ||
-        "edge_invoke_failed";
-      throw new EdgeInvokeError(msg, typeof status === "number" ? status : undefined);
+    try {
+      return await edge.invokeJson<T>(
+        name,
+        { body, headers: { Authorization: `Bearer ${accessToken}` }, signal: opts?.signal },
+        { timeoutMs: 12_000, ...opts },
+      );
+    } catch (e) {
+      const mapped = e instanceof AppError ? e : mapError(e, { code: "edge_invoke_failed", context: { edgeFunction: name } });
+      throw new EdgeInvokeError(mapped.message, mapped.status, mapped, { edgeFunction: name });
     }
-    return typeof data === "string" ? (JSON.parse(data) as T) : (data as T);
   };
 
   const accessToken = await SessionValidator.getToken();

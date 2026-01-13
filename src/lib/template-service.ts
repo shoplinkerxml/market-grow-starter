@@ -1,15 +1,16 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { SessionValidator } from './session-validation';
+import { AppError } from "./error-handler";
 
 export type TemplateServiceErrorCode = 'unauthorized' | 'validation_failed' | 'delete_failed';
 
-export class TemplateServiceError extends Error {
-  code: TemplateServiceErrorCode;
+export class TemplateServiceError extends AppError {
+  declare code: TemplateServiceErrorCode;
   details?: unknown;
   constructor(code: TemplateServiceErrorCode, message: string, details?: unknown) {
-    super(message);
-    this.code = code;
+    const status = code === "unauthorized" ? 401 : code === "validation_failed" ? 422 : 500;
+    super(code, message, { status, retryable: status >= 500, context: details ? { details } : undefined, cause: details, name: "TemplateServiceError" });
     this.details = details;
   }
 }

@@ -1,7 +1,7 @@
 // File: src/services/UserService.ts (клиентская часть)
 import { SUPABASE_URL } from "@/integrations/supabase/client";
 import { SessionValidator } from "./session-validation";
-import { ServiceError, toServiceError } from "./error-handler";
+import { AppError, ServiceError, mapError, toServiceError } from "./error-handler";
 
 /**
  * Helper function to get the appropriate authentication headers
@@ -298,10 +298,9 @@ export class UserService {
 }
 
 /** Класс для ошибок API */
-export class ApiError extends Error {
-  constructor(message: string, public status: number = 500, public code?: string) {
-    super(message);
-    this.name = "ApiError";
+export class ApiError extends AppError {
+  constructor(message: string, status: number = 500, code?: string) {
+    super(code || "api_error", message, { status, retryable: status >= 500, name: "ApiError" });
   }
 }
 
@@ -320,14 +319,6 @@ export function handleApiError(error: unknown): ApiError {
     return new ApiError(asService.message, asService.status ?? 500, asService.code);
   }
 
-  if (error && typeof error === "object") {
-    if ("message" in error && typeof error.message === "string") {
-      return new ApiError(error.message, 500);
-    }
-    if ("error" in error && typeof error.error === "string") {
-      return new ApiError(error.error, 500);
-    }
-  }
-
-  return new ApiError("An unexpected error occurred", 500);
+  const mapped = error instanceof AppError ? error : mapError(error, { code: "api_error" });
+  return new ApiError(mapped.message, mapped.status, mapped.code);
 }

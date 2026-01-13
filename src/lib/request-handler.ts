@@ -1,3 +1,5 @@
+import { mapError, type AppErrorContext } from "./error-handler";
+
 export type RetryBackoff = "linear" | "exponential";
 
 export type DeepPartial<T> = T extends (...args: any[]) => any
@@ -142,7 +144,7 @@ export async function invokeSupabaseFunctionWithRetry<T>(
     signal: mergedSignal,
   };
   return await withRetryResult(
-    async ({ signal }) => {
+    async ({ signal, attempt }) => {
       const { data, error } = await invoke<T>(fnName, {
         body: init.body,
         headers: init.headers,
@@ -150,11 +152,52 @@ export async function invokeSupabaseFunctionWithRetry<T>(
       });
       if (error) {
         const status = (error as EdgeFunctionError | null)?.context?.status ?? 0;
-        const isTransient = !isAbortLikeError(error) && (status === 0 || status === 408 || status === 429 || status >= 500);
-        return { value: { data: data as T, error: error as EdgeFunctionError }, retry: isTransient };
+        const defaultTransient = !isAbortLikeError(error) && (status === 0 || status >= 500);
+        const retryDecision = opts?.shouldRetryError ? opts.shouldRetryError(error, attempt) : defaultTransient;
+        const retry = !isAbortLikeError(error) && !!retryDecision;
+        return { value: { data: data as T, error: error as EdgeFunctionError }, retry };
       }
       return { value: { data: data as T, error: null }, retry: false };
     },
     effectiveOpts,
   );
+}
+
+export class EdgeClient {
+  private readonly invoke: SupabaseFunctionInvoke;
+
+  constructor(invoke: SupabaseFunctionInvoke) {
+    this.invoke = invoke;
+  }
+
+  async invokeJson<T>(
+    fnName: string,
+    init: { body?: unknown; headers?: Record<string, string>; signal?: AbortSignal },
+    opts?: RetryOptions,
+  ): Promise<T> {
+    const effectiveOpts: RetryOptions = {
+      maxRetries: 2,
+      retryDelayMs: 500,
+      backoff: "linear",
+      ...opts,
+      shouldRetryError: (error, attempt) => {
+        if (opts?.shouldRetryError) return opts.shouldRetryError(error, attempt);
+        const mapped = mapError(error, { code: "edge_invoke_failed", context: { edgeFunction: fnName } satisfies AppErrorContext });
+        return mapped.status === 0 || mapped.status >= 500;
+      },
+    };
+
+    const { data, error } = await invokeSupabaseFunctionWithRetry<T | string>(this.invoke, fnName, init, effectiveOpts);
+    if (error) {
+      throw mapError(error, { code: "edge_invoke_failed", context: { edgeFunction: fnName } satisfies AppErrorContext });
+    }
+    if (typeof data === "string") {
+      try {
+        return JSON.parse(data) as T;
+      } catch (e) {
+        throw mapError(e, { code: "edge_invalid_json", status: 500, context: { edgeFunction: fnName } satisfies AppErrorContext });
+      }
+    }
+    return data as T;
+  }
 }

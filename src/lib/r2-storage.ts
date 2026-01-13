@@ -1,7 +1,8 @@
 import { supabase, SUPABASE_URL } from "@/integrations/supabase/client";
-import { invokeSupabaseFunctionWithRetry } from "@/lib/request-handler";
+import { EdgeClient } from "@/lib/request-handler";
 
 const supabaseInvoke = supabase.functions.invoke.bind(supabase.functions) as any;
+const edge = new EdgeClient(supabaseInvoke);
 
 export type UploadResponse = {
   success: boolean;
@@ -176,12 +177,10 @@ export const R2Storage = {
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(file);
     });
-    const { data, error } = await invokeSupabaseFunctionWithRetry<UploadResponse>(
-      supabaseInvoke,
+    const data = await edge.invokeJson<UploadResponse>(
       "r2-upload",
       { body: { fileName: file.name, fileType: file.type, fileSize: file.size, fileData: base64File, productId }, headers },
     );
-    if (error) throw parseEdgeError(error, "Failed to upload file to R2");
     const resp = data as UploadResponse;
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
@@ -236,13 +235,10 @@ export const R2Storage = {
       reader.readAsDataURL(normalizedFile);
     });
 
-    const { data, error } = await invokeSupabaseFunctionWithRetry<UploadProductImageResponse>(
-      supabaseInvoke,
+    const data = await edge.invokeJson<UploadProductImageResponse>(
       "upload-product-image",
       { body: { productId, fileData: base64File, fileName: normalizedFile.name, fileType: normalizedFile.type }, headers },
     );
-
-    if (error) throw parseEdgeError(error, 'upload_failed');
     
     const json = data as UploadProductImageResponse;
     const singleUrl = json.url || json.original_url || '';
@@ -262,13 +258,10 @@ export const R2Storage = {
     const token = await getAccessToken();
     const headers = token ? buildAuthHeaders(token) : undefined;
 
-    const { data, error } = await invokeSupabaseFunctionWithRetry<UploadProductImageResponse>(
-      supabaseInvoke,
+    const data = await edge.invokeJson<UploadProductImageResponse>(
       "upload-product-image",
       { body: { productId, url }, headers },
     );
-
-    if (error) throw parseEdgeError(error, 'upload_failed');
     
     const json = data as UploadProductImageResponse;
     const singleUrl = json.url || json.original_url || '';
@@ -315,13 +308,10 @@ export const R2Storage = {
     const token = await getAccessToken();
     const headers = token ? buildAuthHeaders(token) : undefined;
 
-    const { data, error } = await invokeSupabaseFunctionWithRetry<{ viewUrl: string }>(
-      supabaseInvoke,
+    const data = await edge.invokeJson<{ viewUrl: string }>(
       "r2-view",
       { body: { objectKey, expiresIn: expiresInSeconds }, headers },
     );
-
-    if (error) throw parseEdgeError(error, 'Failed to get view URL from R2');
 
     return (data?.viewUrl as string) || '';
   },
@@ -357,13 +347,10 @@ export const R2Storage = {
     const syncToken = getAccessTokenSync();
     const authorizationInBody = token ? `Bearer ${token}` : (syncToken ? `Bearer ${syncToken}` : undefined);
 
-    const { data, error } = await invokeSupabaseFunctionWithRetry<{ success: boolean }>(
-      supabaseInvoke,
+    const data = await edge.invokeJson<{ success: boolean }>(
       "r2-delete",
       { body: { objectKey, authorization: authorizationInBody }, headers },
     );
-
-    if (error) throw parseEdgeError(error, 'Failed to delete file from R2');
 
     return data as { success: boolean };
   },
@@ -428,12 +415,6 @@ export const R2Storage = {
    * @deprecated Используйте uploadFile вместо этого метода
    */
   async getUploadUrl(fileName: string, contentType: string, productId?: string): Promise<unknown> {
-    const { data, error } = await invokeSupabaseFunctionWithRetry<unknown>(
-      supabaseInvoke,
-      "r2-presign",
-      { body: { fileName, contentType, productId } },
-    );
-    if (error) throw new Error(error.message ?? "Failed to presign R2 upload");
-    return data;
+    return await edge.invokeJson<unknown>("r2-presign", { body: { fileName, contentType, productId } });
   },
 };
