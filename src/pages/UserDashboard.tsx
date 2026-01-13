@@ -14,10 +14,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShopService } from "@/lib/shop-service";
 import { ProductService } from "@/lib/product-service";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SupplierService } from "@/lib/supplier-service";
 import { ProductLimitService } from "@/lib/product/product-limit-service";
 import { DashboardService } from "@/lib/dashboard-service";
+import { RefreshDataButton } from "@/components/RefreshDataButton";
 
 type SubscriptionEntity = {
   tariff_id?: number;
@@ -78,13 +79,20 @@ const UserDashboard = () => {
     id?: number;
   }[]>([]);
   
-  const { data: dashboardStats, isLoading: isStatsLoading } = useQuery({
+  const queryClient = useQueryClient();
+  
+  const { data: dashboardStats, isLoading: isStatsLoading, refetch: refetchStats } = useQuery({
     queryKey: ["user", user.id, "dashboard-stats"],
     queryFn: async () => {
       return await DashboardService.getDashboardStats();
     },
     enabled: !!user.id
   });
+
+  const handleRefresh = async () => {
+    DashboardService.clearCache();
+    await refetchStats();
+  };
   
   useEffect(() => {
     const result = subscription;
@@ -118,9 +126,12 @@ const UserDashboard = () => {
 
       <Card className="w-full">
         <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            {t('menu_dashboard') || 'Dashboard'}
+          <CardTitle className="flex items-center justify-between text-xl">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              {t('menu_dashboard') || 'Dashboard'}
+            </div>
+            <RefreshDataButton onRefresh={handleRefresh} />
           </CardTitle>
         </CardHeader>
         <CardContent>
