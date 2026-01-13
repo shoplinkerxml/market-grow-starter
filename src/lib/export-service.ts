@@ -4,7 +4,7 @@ import { R2Storage } from "@/lib/r2-storage";
 import { invokeSupabaseFunctionWithRetry } from "@/lib/request-handler";
 import { requireValidSession, type SessionValidationResult } from "./session-validation";
 import { CACHE_TTL, UnifiedCacheManager } from "./cache-utils";
-import { DedupeKeyBuilder, RequestDeduplicatorFactory } from "./request-deduplicator";
+import { GlobalRequestDeduplicator } from "./request-deduplicator";
 
 export type ExportLink = {
   id: string;
@@ -24,12 +24,6 @@ export const ExportService = {
     mode: "auto",
     defaultTtlMs: CACHE_TTL.productLinks,
   }),
-  deduplicator: RequestDeduplicatorFactory.create<unknown>("export-service", {
-    ttl: 30_000,
-    maxSize: 200,
-    enableMetrics: true,
-    errorStrategy: "remove",
-  }),
 
   async ensureSession(): Promise<SessionValidationResult> {
     const v = await requireValidSession({ requireAccessToken: false });
@@ -44,9 +38,11 @@ export const ExportService = {
 
   invalidateLinksCache(storeId: string, userId?: string | null): void {
     ExportService.cache.remove(ExportService.makeLinksCacheKey(storeId, userId));
-    // Also remove from deduplicator to force fresh fetch
-    const inflightKey = DedupeKeyBuilder.simple(["list", storeId, userId || "current"]);
-    ExportService.deduplicator.remove(inflightKey);
+    try {
+      GlobalRequestDeduplicator.cancelPrefix("ExportService:");
+    } catch {
+      void 0;
+    }
   },
 
   async listForStore(storeId: string): Promise<ExportLink[]> {
@@ -62,21 +58,18 @@ export const ExportService = {
 
   async regenerate(storeId: string, format: 'xml' | 'csv'): Promise<boolean> {
     const session = await ExportService.ensureSession();
-    const inflightKey = DedupeKeyBuilder.simple(["generate", storeId, format]);
-    return await ExportService.deduplicator.dedupe(inflightKey, async () => {
-      try {
-        const { data, error } = await invokeSupabaseFunctionWithRetry<{ success?: boolean }>(
-          supabase.functions.invoke.bind(supabase.functions) as any,
-          "export-generate",
-          { body: { store_id: storeId, format } },
-        );
-        if (error) return false;
-        ExportService.invalidateLinksCache(storeId, session.user?.id);
-        return !!(data?.success);
-      } catch {
-        return false;
-      }
-    });
+    try {
+      const { data, error } = await invokeSupabaseFunctionWithRetry<{ success?: boolean }>(
+        supabase.functions.invoke.bind(supabase.functions) as any,
+        "export-generate",
+        { body: { store_id: storeId, format } },
+      );
+      if (error) return false;
+      ExportService.invalidateLinksCache(storeId, session.user?.id);
+      return !!(data?.success);
+    } catch {
+      return false;
+    }
   },
 
   async updateAutoGenerate(linkId: string, auto: boolean): Promise<boolean> {
@@ -90,21 +83,18 @@ export const ExportService = {
     if (options?.local) {
       return await ExportService.generateLocalAndUpload(storeId, format);
     }
-    const inflightKey = DedupeKeyBuilder.simple(["generate", storeId, format]);
-    return await ExportService.deduplicator.dedupe(inflightKey, async () => {
-      try {
-        const { data, error } = await invokeSupabaseFunctionWithRetry<{ success?: boolean }>(
-          supabase.functions.invoke.bind(supabase.functions) as any,
-          "export-generate",
-          { body: { store_id: storeId, format } },
-        );
-        if (error) return false;
-        ExportService.invalidateLinksCache(storeId, session.user?.id);
-        return !!(data?.success);
-      } catch {
-        return false;
-      }
-    });
+    try {
+      const { data, error } = await invokeSupabaseFunctionWithRetry<{ success?: boolean }>(
+        supabase.functions.invoke.bind(supabase.functions) as any,
+        "export-generate",
+        { body: { store_id: storeId, format } },
+      );
+      if (error) return false;
+      ExportService.invalidateLinksCache(storeId, session.user?.id);
+      return !!(data?.success);
+    } catch {
+      return false;
+    }
   },
 
   buildPublicUrl(origin: string, format: 'xml' | 'csv', token: string): string {
@@ -163,17 +153,14 @@ export const ExportService = {
 
   async generateLocalAndUpload(storeId: string, format: 'xml' | 'csv'): Promise<boolean> {
     const session = await ExportService.ensureSession();
-    const inflightKey = DedupeKeyBuilder.simple(["localGenerate", storeId, format, session.user?.id || "current"]);
-    return await ExportService.deduplicator.dedupe(inflightKey, async () => {
-      const productsAgg = await ProductService.getProductsAggregated(storeId);
-      const products = productsAgg as Product[];
-      const content = format === 'xml' ? ExportService.buildXml(products) : ExportService.buildCsv(products);
-      const blob = new Blob([content], { type: format === 'xml' ? 'application/xml' : 'text/csv' });
-      const file = new File([blob], `export-${storeId}-${Date.now()}.${format}`, { type: blob.type });
-      const res = await R2Storage.uploadFile(file);
-      const ok = !!res?.success;
-      if (ok) ExportService.invalidateLinksCache(storeId, session.user?.id);
-      return ok;
-    });
+    const productsAgg = await ProductService.getProductsAggregated(storeId);
+    const products = productsAgg as Product[];
+    const content = format === 'xml' ? ExportService.buildXml(products) : ExportService.buildCsv(products);
+    const blob = new Blob([content], { type: format === 'xml' ? 'application/xml' : 'text/csv' });
+    const file = new File([blob], `export-${storeId}-${Date.now()}.${format}`, { type: blob.type });
+    const res = await R2Storage.uploadFile(file);
+    const ok = !!res?.success;
+    if (ok) ExportService.invalidateLinksCache(storeId, session.user?.id);
+    return ok;
   },
 };

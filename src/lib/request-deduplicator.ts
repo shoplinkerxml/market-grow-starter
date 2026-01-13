@@ -12,6 +12,7 @@ export type RequestDeduplicatorOptions = {
   maxRetries?: number;
   retryDelayMs?: number;
   backoff?: RequestDeduplicatorBackoff;
+  retainCompleted?: boolean;
 };
 
 export type RequestDeduplicatorMetrics = {
@@ -77,6 +78,7 @@ export class RequestDeduplicator<T = unknown> {
   private readonly maxRetries: number;
   private readonly retryDelayMs: number;
   private readonly backoff: RequestDeduplicatorBackoff;
+  private readonly retainCompleted: boolean;
   private nextPruneAt = 0;
 
   private metrics: Omit<RequestDeduplicatorMetrics, "name" | "size" | "active" | "avgDurationMs"> & {
@@ -106,6 +108,7 @@ export class RequestDeduplicator<T = unknown> {
     this.maxRetries = this.errorStrategy === "retry" ? Math.max(0, maxRetriesRaw ?? maxRetriesDefault) : 0;
     this.retryDelayMs = Math.max(0, options?.retryDelayMs ?? 250);
     this.backoff = options?.backoff ?? "linear";
+    this.retainCompleted = options?.retainCompleted === true;
   }
 
   getSize(): number {
@@ -168,6 +171,10 @@ export class RequestDeduplicator<T = unknown> {
       cancelled += 1;
     }
     return cancelled;
+  }
+
+  cancelAll(): number {
+    return this.cancelPrefix("");
   }
 
   getMetrics(): RequestDeduplicatorMetrics {
@@ -238,15 +245,30 @@ export class RequestDeduplicator<T = unknown> {
     this.pruneExpired(now);
 
     const existing = this.cache.get(key);
-    if (existing && existing.expiresAt > now) {
-      if (existing.status === "rejected" && this.errorStrategy !== "keep") {
-        this.cache.delete(key);
-      } else {
+    if (existing) {
+      if (existing.status === "pending" && existing.expiresAt > now) {
         this.bump("hits", 1);
         return existing.promise as Promise<U>;
       }
+      if (this.retainCompleted && existing.expiresAt > now) {
+        if (existing.status === "fulfilled") {
+          this.bump("hits", 1);
+          return existing.promise as Promise<U>;
+        }
+        if (existing.status === "rejected" && this.errorStrategy === "keep") {
+          this.bump("hits", 1);
+          return existing.promise as Promise<U>;
+        }
+      }
+      if (existing.status === "pending") {
+        try {
+          existing.controller.abort();
+        } catch {
+          void 0;
+        }
+      }
+      this.cache.delete(key);
     }
-    if (existing) this.cache.delete(key);
 
     this.bump("misses", 1);
 
@@ -279,7 +301,11 @@ export class RequestDeduplicator<T = unknown> {
         if (this.enableMetrics) this.metrics.totalDurationMs += duration;
         const cur = this.cache.get(key);
         if (cur?.promise !== promise) return;
-        cur.status = "fulfilled";
+        if (this.retainCompleted) {
+          cur.status = "fulfilled";
+        } else {
+          this.cache.delete(key);
+        }
       })
       .catch(() => {
         const finishedAt = Date.now();
@@ -288,14 +314,95 @@ export class RequestDeduplicator<T = unknown> {
         if (this.enableMetrics) this.metrics.totalDurationMs += duration;
         const cur = this.cache.get(key);
         if (cur?.promise !== promise) return;
-        if (this.errorStrategy === "keep") {
+        if (this.retainCompleted && this.errorStrategy === "keep") {
           cur.status = "rejected";
-        } else {
-          this.cache.delete(key);
+          return;
         }
+        this.cache.delete(key);
       });
 
     return promise;
+  }
+}
+
+function fnv1a32Hex(input: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = (hash * 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+function stableParams(params: Record<string, unknown>): string {
+  const entries = Object.entries(params);
+  entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return entries
+    .map(([k, v]) => {
+      const raw = v === undefined ? "" : typeof v === "string" ? v : JSON.stringify(v);
+      return `${encodeURIComponent(k)}=${encodeURIComponent(raw ?? "")}`;
+    })
+    .join("&");
+}
+
+export class GlobalRequestDeduplicator {
+  private static readonly instance = new RequestDeduplicator("global-request-deduplicator", {
+    ttl: 120_000,
+    maxSize: 500,
+    pruneWhenSizeOver: 250,
+    enableMetrics: true,
+    errorStrategy: "remove",
+    maxRetries: 0,
+    retainCompleted: false,
+  });
+
+  static buildKey(input: {
+    service: string;
+    method: string;
+    params?: Record<string, unknown> | string | null;
+  }): string {
+    const service = String(input.service || "").trim() || "service";
+    const method = String(input.method || "").trim() || "method";
+    let paramsStr = "";
+    if (typeof input.params === "string") {
+      paramsStr = input.params;
+    } else if (input.params && typeof input.params === "object") {
+      paramsStr = stableParams(input.params);
+    }
+    const raw = paramsStr ? `${service}:${method}:${paramsStr}` : `${service}:${method}`;
+    if (raw.length <= 240) return raw;
+    const hash = fnv1a32Hex(raw);
+    const suffix = paramsStr ? `hash=${hash}&len=${raw.length}` : `hash=${hash}&len=${raw.length}`;
+    return `${service}:${method}:${suffix}`;
+  }
+
+  static dedupeExpensive<U>(
+    input: { service: string; method: string; params?: Record<string, unknown> | string | null },
+    request: (ctx: { signal: AbortSignal }) => Promise<U>,
+  ): Promise<U> {
+    const key = this.buildKey(input);
+    return this.instance.dedupe<U>(key, request);
+  }
+
+  static dedupeKey<U>(service: string, rawKey: string, request: (ctx: { signal: AbortSignal }) => Promise<U>): Promise<U> {
+    const key = this.buildKey({ service, method: rawKey });
+    return this.instance.dedupe<U>(key, request);
+  }
+
+  static cancelAll(): number {
+    return this.instance.cancelAll();
+  }
+
+  static cancelPrefix(prefix: string): number {
+    return this.instance.cancelPrefix(prefix);
+  }
+
+  static remove(key: string): void {
+    this.instance.remove(key);
+  }
+
+  static getMetrics(): RequestDeduplicatorMetrics {
+    return this.instance.getMetrics();
   }
 }
 
@@ -371,7 +478,15 @@ export class DeduplicationMonitor {
   private static monitoringInterval: ReturnType<typeof setInterval> | null = null;
 
   static getAllMetrics(): RequestDeduplicatorMetrics[] {
-    return RequestDeduplicatorFactory.getMetrics().slice().sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    const extra = (() => {
+      try {
+        return [GlobalRequestDeduplicator.getMetrics()];
+      } catch {
+        return [];
+      }
+    })();
+    const rest = RequestDeduplicatorFactory.getMetrics();
+    return [...extra, ...rest].slice().sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   }
 
   static startMonitoring(intervalMs: number = 60_000): () => void {

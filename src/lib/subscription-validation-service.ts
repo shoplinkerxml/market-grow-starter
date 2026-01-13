@@ -1,4 +1,4 @@
-import { RequestDeduplicatorFactory } from './request-deduplicator';
+import { GlobalRequestDeduplicator } from './request-deduplicator';
 // Dev-only logging toggle and transient abort detector
 const __DEV__ = import.meta.env?.DEV ?? false;
 function isTransientAbortError(err: unknown): boolean {
@@ -29,17 +29,6 @@ export class SubscriptionValidationService {
     };
   }> = new Map();
   private static readonly CACHE_MAX_SIZE = 200;
-
-  private static deduplicator = RequestDeduplicatorFactory.create<{
-    hasValidSubscription: boolean;
-    subscription: any | null;
-    isDemo: boolean;
-  }>("subscription-validation-service", {
-    ttl: 15_000,
-    maxSize: 200,
-    enableMetrics: true,
-    errorStrategy: "remove",
-  });
 
   // Cache TTL (ms) for subscription status
   private static readonly TTL_MS = 15000;
@@ -168,7 +157,10 @@ export class SubscriptionValidationService {
         return await run();
       }
 
-      return await this.deduplicator.dedupe(userId, run);
+      return await GlobalRequestDeduplicator.dedupeExpensive(
+        { service: "SubscriptionValidationService", method: "ensureValidSubscription", params: { userId } },
+        async (_ctx) => await run(),
+      );
 
     } catch (error) {
       if (isTransientAbortError(error)) {

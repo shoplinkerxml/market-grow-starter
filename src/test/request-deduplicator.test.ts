@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { RequestDeduplicator } from "@/lib/request-deduplicator";
+import { GlobalRequestDeduplicator, RequestDeduplicator } from "@/lib/request-deduplicator";
 
 describe("RequestDeduplicator", () => {
   it("dedupes concurrent calls by key", async () => {
@@ -83,12 +83,22 @@ describe("RequestDeduplicator", () => {
       errorStrategy: "keep",
     });
 
-    await dedup.dedupe("a:1", async () => 1);
-    await dedup.dedupe("a:2", async () => 2);
-    await dedup.dedupe("b:1", async () => 3);
+    const makePending = (value: number) =>
+      dedup.dedupe(`a:${value}`, ({ signal }) => new Promise<number>((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(new Error("aborted")));
+      }));
+
+    const p1 = makePending(1);
+    const p2 = makePending(2);
+    const p3 = dedup.dedupe("b:1", ({ signal }) => new Promise<number>((_resolve, reject) => {
+      signal.addEventListener("abort", () => reject(new Error("aborted")));
+    }));
 
     expect(dedup.invalidatePrefix("a:")).toBe(2);
     expect(dedup.getSize()).toBe(1);
+    expect(dedup.cancel("b:1")).toBe(true);
+
+    await expect(Promise.allSettled([p1, p2, p3])).resolves.toHaveLength(3);
   });
 
   it("retries a failed request when configured", async () => {
@@ -122,3 +132,25 @@ describe("RequestDeduplicator", () => {
   });
 });
 
+describe("GlobalRequestDeduplicator", () => {
+  it("builds stable keys with sorted params", () => {
+    const key = GlobalRequestDeduplicator.buildKey({
+      service: "S",
+      method: "M",
+      params: { b: 2, a: 1 },
+    });
+    expect(key).toBe("S:M:a=1&b=2");
+  });
+
+  it("hashes long params to keep key length bounded", () => {
+    const key = GlobalRequestDeduplicator.buildKey({
+      service: "S",
+      method: "M",
+      params: "x".repeat(600),
+    });
+    expect(key.startsWith("S:M:")).toBe(true);
+    expect(key.includes("hash=")).toBe(true);
+    expect(key.includes("len=")).toBe(true);
+    expect(key.includes("x".repeat(20))).toBe(false);
+  });
+});

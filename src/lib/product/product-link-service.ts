@@ -1,19 +1,11 @@
 import type { StoreProductLink, StoreProductLinkPatchInput } from "@/lib/product-service";
 import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
-import { RequestDeduplicatorFactory } from "@/lib/request-deduplicator";
+import { GlobalRequestDeduplicator } from "@/lib/request-deduplicator";
 import { PersistentCacheService } from "@/lib/persistent-cache-service";
 import { ShopProductSyncService } from "@/lib/services/shop-product-sync-service";
 
 export class ProductLinkService {
-  private static readonly INFLIGHT_LINKS_MAX_SIZE = 200;
-  private static linksByProductDeduplicator = RequestDeduplicatorFactory.create<string[]>("product-link-service:linksByProduct", {
-    ttl: 30_000,
-    maxSize: ProductLinkService.INFLIGHT_LINKS_MAX_SIZE,
-    enableMetrics: true,
-    errorStrategy: "remove",
-  });
-
   private static edgeError(
     error: { context?: { status?: number }; status?: number; statusCode?: number; message?: string } | null,
     fallbackKey: string,
@@ -176,18 +168,26 @@ export class ProductLinkService {
   }
 
   static async getStoreLinksForProduct(productId: string): Promise<string[]> {
-    return await ProductLinkService.linksByProductDeduplicator.dedupe(productId, async () => {
-      await ProductLinkService.ensureValidSession();
-      const payload = await ProductLinkService.invokeEdge<{ store_ids?: string[] }>("get-store-links-for-product", {
-        product_id: productId,
-      });
-      return Array.isArray(payload.store_ids) ? payload.store_ids.map(String) : [];
-    });
+    return await GlobalRequestDeduplicator.dedupeExpensive(
+      { service: "ProductLinkService", method: "getStoreLinksForProduct", params: { productId: String(productId) } },
+      async (_ctx) => {
+        await ProductLinkService.ensureValidSession();
+        const payload = await ProductLinkService.invokeEdge<{ store_ids?: string[] }>("get-store-links-for-product", {
+          product_id: productId,
+        });
+        return Array.isArray(payload.store_ids) ? payload.store_ids.map(String) : [];
+      },
+    );
   }
 
   static invalidateStoreLinksCache(productId: string) {
     try {
-      ProductLinkService.linksByProductDeduplicator.remove(productId);
+      const key = GlobalRequestDeduplicator.buildKey({
+        service: "ProductLinkService",
+        method: "getStoreLinksForProduct",
+        params: { productId: String(productId) },
+      });
+      GlobalRequestDeduplicator.remove(key);
     } catch (error) {
       console.error("ProductLinkService.invalidateStoreLinksCache failed", error);
     }

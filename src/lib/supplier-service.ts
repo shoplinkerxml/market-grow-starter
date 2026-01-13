@@ -1,6 +1,6 @@
 import { requireValidSession, invokeEdgeWithAuth } from "./session-validation";
 import { CACHE_TTL, UnifiedCacheManager } from "./cache-utils";
-import { RequestDeduplicatorFactory } from "./request-deduplicator";
+import { GlobalRequestDeduplicator } from "./request-deduplicator";
 import { PersistentCacheService } from "./persistent-cache-service";
 
 export interface Supplier {
@@ -37,12 +37,6 @@ export interface SupplierLimitInfo {
 }
 
 export class SupplierService {
-  private static deduplicator = RequestDeduplicatorFactory.create<Supplier[]>("supplier-service:suppliers", {
-    ttl: 180_000, // 3 min TTL for better deduplication
-    maxSize: 50,
-    enableMetrics: true,
-    errorStrategy: "remove",
-  });
   private static readonly SOFT_REFRESH_THRESHOLD_MS = 300_000; // 5 min soft refresh
 
   private static cache = UnifiedCacheManager.create("rq:suppliers", {
@@ -82,7 +76,7 @@ export class SupplierService {
   }
 
   static clearSuppliersCache(): void {
-    SupplierService.deduplicator.clear();
+    GlobalRequestDeduplicator.cancelPrefix("SupplierService:");
     SupplierService.cache.clearAll();
     try {
       PersistentCacheService.invalidateSuppliers();
@@ -145,13 +139,16 @@ export class SupplierService {
       }
     }
     const inflightKey = userId || "current";
-    return await SupplierService.deduplicator.dedupe(inflightKey, async () => {
-      const rows = await SupplierService.fetchSuppliersFromApi({ signal: opts?.signal });
+    return await GlobalRequestDeduplicator.dedupeExpensive(
+      { service: "SupplierService", method: "getSuppliers", params: { userId: inflightKey } },
+      async ({ signal }) => {
+        const rows = await SupplierService.fetchSuppliersFromApi({ signal: opts?.signal ?? signal });
       if (userId) {
         SupplierService.setSuppliersCache(userId, rows);
       }
       return rows;
-    });
+      },
+    );
   }
 
   /** Отримання одного постачальника за ID */

@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeWithAuth, SessionValidator } from "./session-validation";
 import type { TariffInsert, TariffUpdate, TariffFeatureInsert, TariffFeatureUpdate, TariffLimitInsert, TariffLimitUpdate } from "./tariff-service";
-import { RequestDeduplicatorFactory } from "./request-deduplicator";
+import { DeduplicationMonitor, GlobalRequestDeduplicator, type RequestDeduplicatorMetrics } from "./request-deduplicator";
 
 type AdminErrorCode = 'unauthorized' | 'validation_failed' | 'db_error' | 'rpc_error' | 'not_found';
 type AdminResult<T> = { success: boolean; data?: T; errorCode?: AdminErrorCode; message?: string };
@@ -65,17 +65,6 @@ async function runDb<T>(op: () => Promise<T>): Promise<AdminResult<T>> {
 
 export class AdminService {
   // ==================== TARIFF OPERATIONS ====================
-  private static deduplicator = RequestDeduplicatorFactory.create<AdminResult<unknown>>("admin-service", {
-    ttl: 30_000,
-    maxSize: 200,
-    enableMetrics: true,
-    errorStrategy: "remove",
-    maxRetries: 0,
-  });
-  private static dedupe<T>(key: string, fn: () => Promise<AdminResult<T>>): Promise<AdminResult<T>> {
-    return this.deduplicator.dedupe<AdminResult<T>>(key, fn);
-  }
-  
   static async createTariff(data: TariffInsert): Promise<AdminResult<unknown>> {
     return runDb(async () => {
       const { data: result, error } = await supabase
@@ -191,45 +180,43 @@ export class AdminService {
   // ==================== SUBSCRIPTION OPERATIONS ====================
   
   static async activateUserTariff(userId: string, tariffId: number): Promise<AdminResult<unknown>> {
-    return this.dedupe<unknown>(`activate:${userId}`, async () => {
-      const edge = await invokeAdminEdge<unknown>('admin-activate-tariff', { userId, tariffId });
-      if (edge.success) return edge;
-      return runDb(async () => {
-        const { error: deactivateError } = await supabase
-          .from('user_subscriptions')
-          .update({ is_active: false })
-          .eq('user_id', userId)
-          .eq('is_active', true);
-        if (deactivateError) throw deactivateError;
-        const { data: tariff, error: tariffError } = await supabase
-          .from('tariffs')
-          .select('duration_days, is_lifetime')
-          .eq('id', tariffId)
-          .single();
-        if (tariffError) throw tariffError;
-        const startDate = new Date();
-        let endDate: Date | null = null;
-        if (!tariff.is_lifetime && tariff.duration_days) {
-          endDate = new Date(startDate);
-          endDate.setDate(endDate.getDate() + tariff.duration_days);
-        }
-        const { data: newSubscription, error: insertError } = await supabase
-          .from('user_subscriptions')
-          .insert({
-            user_id: userId,
-            tariff_id: tariffId,
-            start_date: startDate.toISOString(),
-            end_date: endDate ? endDate.toISOString() : null,
-            is_active: true
-          })
-          .select(`
-            *,
-            tariffs (id,name,description,new_price,currency_id,duration_days,is_lifetime)
-          `)
-          .single();
-        if (insertError) throw insertError;
-        return newSubscription;
-      });
+    const edge = await invokeAdminEdge<unknown>('admin-activate-tariff', { userId, tariffId });
+    if (edge.success) return edge;
+    return runDb(async () => {
+      const { error: deactivateError } = await supabase
+        .from('user_subscriptions')
+        .update({ is_active: false })
+        .eq('user_id', userId)
+        .eq('is_active', true);
+      if (deactivateError) throw deactivateError;
+      const { data: tariff, error: tariffError } = await supabase
+        .from('tariffs')
+        .select('duration_days, is_lifetime')
+        .eq('id', tariffId)
+        .single();
+      if (tariffError) throw tariffError;
+      const startDate = new Date();
+      let endDate: Date | null = null;
+      if (!tariff.is_lifetime && tariff.duration_days) {
+        endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + tariff.duration_days);
+      }
+      const { data: newSubscription, error: insertError } = await supabase
+        .from('user_subscriptions')
+        .insert({
+          user_id: userId,
+          tariff_id: tariffId,
+          start_date: startDate.toISOString(),
+          end_date: endDate ? endDate.toISOString() : null,
+          is_active: true
+        })
+        .select(`
+          *,
+          tariffs (id,name,description,new_price,currency_id,duration_days,is_lifetime)
+        `)
+        .single();
+      if (insertError) throw insertError;
+      return newSubscription;
     });
   }
 
@@ -343,6 +330,20 @@ export class AdminService {
         return data;
       }
       return [] as unknown[];
+    });
+  }
+
+  static async cancelAllInFlightRequests(): Promise<AdminResult<{ cancelled: number }>> {
+    return runDb(async () => {
+      const cancelled = GlobalRequestDeduplicator.cancelAll();
+      return { cancelled };
+    });
+  }
+
+  static async getDeduplicationMetrics(): Promise<AdminResult<RequestDeduplicatorMetrics[]>> {
+    return runDb(async () => {
+      const rows = DeduplicationMonitor.getAllMetrics();
+      return rows;
     });
   }
 }

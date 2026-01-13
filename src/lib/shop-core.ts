@@ -2,7 +2,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { invokeEdgeWithAuth, requireValidSession } from "./session-validation";
 import { UnifiedCacheManager } from "./cache-utils";
 import type { RequireAtLeastOne, RetryOptions } from "./request-handler";
-import { RequestDeduplicatorFactory } from "./request-deduplicator";
+import { GlobalRequestDeduplicator } from "./request-deduplicator";
 
 export interface Shop {
   id: string;
@@ -89,13 +89,6 @@ interface ShopResponse {
 }
 
 export class ShopServiceCore {
-  protected static deduplicator = RequestDeduplicatorFactory.create("shop-service", {
-    ttl: 120_000, // Increased TTL for better hit rate
-    maxSize: 200,
-    enableMetrics: true,
-    errorStrategy: "remove",
-  });
-
   protected static cache = UnifiedCacheManager.create("shop-service", {
     mode: "memory",
     defaultTtlMs: 300_000, // 5 min cache for faster subsequent loads
@@ -184,7 +177,7 @@ export class ShopServiceCore {
   }
 
   protected static async deduplicateRequest<T>(key: string, request: () => Promise<T>): Promise<T> {
-    return await this.deduplicator.dedupe(key, request);
+    return await GlobalRequestDeduplicator.dedupeKey<T>("ShopService", key, async (_ctx) => await request());
   }
 
   protected static getCached<T>(key: string): T | null {
@@ -237,7 +230,7 @@ export class ShopServiceCore {
 
   static clearAllCaches(): void {
     try {
-      this.deduplicator.clear();
+      GlobalRequestDeduplicator.cancelPrefix("ShopService:");
     } catch {
       void 0;
     }

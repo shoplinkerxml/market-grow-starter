@@ -1,7 +1,7 @@
 
 import { UnifiedCacheManager } from "./cache-utils";
 import { invokeEdgeWithAuth } from "./session-validation";
-import { RequestDeduplicatorFactory } from "./request-deduplicator";
+import { GlobalRequestDeduplicator } from "./request-deduplicator";
 
 export interface DashboardStats {
   suppliers: Array<{
@@ -19,12 +19,6 @@ export interface DashboardStats {
 }
 
 export class DashboardService {
-  private static deduplicator = RequestDeduplicatorFactory.create("dashboard-service", {
-    ttl: 60_000, // 1 minute deduplication
-    maxSize: 10,
-    enableMetrics: true,
-  });
-
   private static cache = UnifiedCacheManager.create("dashboard-service", {
     mode: "memory",
     defaultTtlMs: 5_000, // 5 seconds - short TTL since edge now reads fresh from counters
@@ -40,12 +34,14 @@ export class DashboardService {
     }
 
     try {
-      return await this.deduplicator.dedupe(cacheKey, async () => {
-        const stats = await invokeEdgeWithAuth<DashboardStats>("get-dashboard-stats", {});
-        // Only cache successful responses
-        this.cache.set(cacheKey, stats);
-        return stats;
-      });
+      return await GlobalRequestDeduplicator.dedupeExpensive(
+        { service: "DashboardService", method: "getDashboardStats" },
+        async ({ signal }) => {
+          const stats = await invokeEdgeWithAuth<DashboardStats>("get-dashboard-stats", {}, { signal });
+          this.cache.set(cacheKey, stats);
+          return stats;
+        },
+      );
     } catch (error) {
       console.error("Failed to fetch dashboard stats:", error);
       // Return empty stats on error to prevent crashing, but do NOT cache it
@@ -60,6 +56,6 @@ export class DashboardService {
 
   static clearCache(): void {
     this.cache.clearAll();
-    this.deduplicator.clear();
+    GlobalRequestDeduplicator.cancelPrefix("DashboardService:");
   }
 }

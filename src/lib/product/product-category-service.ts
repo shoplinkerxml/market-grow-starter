@@ -1,15 +1,8 @@
 import { invokeEdgeWithAuth, SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
-import { RequestDeduplicatorFactory } from "@/lib/request-deduplicator";
+import { GlobalRequestDeduplicator } from "@/lib/request-deduplicator";
 
 export class ProductCategoryService {
-  private static recomputeDeduplicator = RequestDeduplicatorFactory.create<void>("product-category-service:recompute", {
-    ttl: 30_000,
-    maxSize: 50,
-    enableMetrics: true,
-    errorStrategy: "remove",
-  });
-
   private static edgeError(
     error: { context?: { status?: number }; status?: number; statusCode?: number; message?: string } | null,
     fallbackKey: string,
@@ -48,9 +41,12 @@ export class ProductCategoryService {
 
   static async recomputeStoreCategoryFilterCacheBatch(storeIds: string[]): Promise<void> {
     const unique = Array.from(new Set((storeIds || []).map(String).filter(Boolean)));
-    const tasks = unique.map((sid) =>
-      ProductCategoryService.recomputeDeduplicator.dedupe(sid, () => ProductCategoryService.recomputeStoreCategoryFilterCache(sid)),
-    );
+    const tasks = unique.map((sid) => GlobalRequestDeduplicator.dedupeExpensive(
+      { service: "ProductCategoryService", method: "recomputeStoreCategoryFilterCache", params: { storeId: sid } },
+      async (_ctx) => {
+        await ProductCategoryService.recomputeStoreCategoryFilterCache(sid);
+      },
+    ));
     await Promise.all(tasks);
   }
 
