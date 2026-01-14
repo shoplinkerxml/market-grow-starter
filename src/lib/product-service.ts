@@ -5,7 +5,6 @@ import { ProductLinkService } from "@/lib/product/product-link-service";
 import { ProductImageService } from "@/lib/product/product-image-service";
 import { ProductCategoryService } from "@/lib/product/product-category-service";
 import { ProductLimitService } from "@/lib/product/product-limit-service";
-import { ProductCacheManager } from "@/lib/product/product-cache-manager";
 
 // New services
 import { ProductAggregatorService } from "@/lib/product/product-aggregator-service";
@@ -148,7 +147,7 @@ export class ProductService {
     storeId: string | null,
     mutate: (items: unknown[]) => unknown[],
   ) {
-    ProductCacheManager.updateFirstPageCaches(storeId, mutate);
+    ProductListService.updateFirstPageCaches(storeId, mutate);
   }
 
   static patchProductCaches(
@@ -156,7 +155,7 @@ export class ProductService {
     patch: Partial<Types.ProductAggregated>,
     storeId?: string | null,
   ) {
-    ProductCacheManager.patchProductCaches(productId, patch, storeId);
+    ProductListService.patchProductCaches(productId, patch, storeId);
   }
 
   static async recomputeStoreCategoryFilterCache(storeId: string): Promise<void> {
@@ -335,7 +334,7 @@ export class ProductService {
 
   static clearAllProductsCaches(): void {
     try {
-      ProductCacheManager.clearAllProductsCaches();
+      ProductListService.clearAllProductsCaches();
     } catch {
       void 0;
     }
@@ -521,15 +520,15 @@ export class ProductService {
   }
 
   static clearAllFirstPageCaches() {
-    ProductCacheManager.clearAllFirstPageCaches();
+    ProductListService.clearAllFirstPageCaches();
   }
 
   static clearMasterProductsCaches(): void {
-    ProductCacheManager.clearMasterProductsCaches();
+    ProductListService.clearMasterProductsCaches();
   }
 
   static clearStoreProductsCaches(storeId: string): void {
-    ProductCacheManager.clearStoreProductsCaches(storeId);
+    ProductListService.clearStoreProductsCaches(storeId);
   }
 
   /** Агрегированные справочники для страницы создания товара */

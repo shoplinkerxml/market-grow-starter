@@ -278,15 +278,24 @@ type CacheInstanceConfig = {
   maxSize?: number;
 };
 
+export type CacheGetOrFetchOptions = {
+  bypassCache?: boolean;
+  allowStale?: boolean;
+  ttlMs?: number;
+  softRefreshThresholdMs?: number;
+};
+
 export type UnifiedCacheInstance = {
   namespace: string;
   mode: CacheStorageMode;
   getEnvelope<T>(key: string, allowStale?: boolean): CacheEnvelope<T> | null;
   get<T>(key: string, allowStale?: boolean): T | null;
+  getOrFetch<T>(key: string, fetchFn: () => Promise<T>, options?: CacheGetOrFetchOptions): Promise<T>;
   set<T>(key: string, data: T, ttlMs?: number): void;
   remove(key: string): void;
   clearAll(): void;
   clearWhere(predicate: (subKey: string) => boolean): void;
+  updateWhere<T>(predicate: (subKey: string) => boolean, updater: (data: T) => T | null, ttlMs?: number): void;
 };
 
 function stripVersionPrefix(key: string): string {
@@ -491,6 +500,32 @@ class CacheInstanceImpl implements UnifiedCacheInstance {
     return cached ? cached.data : null;
   }
 
+  async getOrFetch<T>(key: string, fetchFn: () => Promise<T>, options?: CacheGetOrFetchOptions): Promise<T> {
+    const bypassCache = options?.bypassCache === true;
+    const allowStale = options?.allowStale === true;
+    const softRefreshThresholdMs = options?.softRefreshThresholdMs;
+    const ttlMs = options?.ttlMs;
+
+    if (!bypassCache) {
+      const env = this.getEnvelope<T>(key, allowStale);
+      if (env) {
+        const timeLeft = env.expiresAt - Date.now();
+        if (timeLeft > 0) {
+          if (typeof softRefreshThresholdMs === "number" && softRefreshThresholdMs > 0 && timeLeft < softRefreshThresholdMs) {
+            void fetchFn()
+              .then((fresh) => this.set(key, fresh, ttlMs))
+              .catch(() => void 0);
+          }
+          return env.data;
+        }
+      }
+    }
+
+    const fresh = await fetchFn();
+    this.set(key, fresh, ttlMs);
+    return fresh;
+  }
+
   set<T>(key: string, data: T, ttlMs?: number): void {
     const ttl = ttlMs ?? this.defaultTtlMs ?? 0;
     if (!(ttl > 0)) {
@@ -569,6 +604,46 @@ class CacheInstanceImpl implements UnifiedCacheInstance {
       if (predicate(sub)) keysToRemove.add(logical);
     }
     for (const logical of keysToRemove) safeRemoveEverywhereUsing(storages, logical);
+  }
+
+  updateWhere<T>(predicate: (subKey: string) => boolean, updater: (data: T) => T | null, ttlMs?: number): void {
+    const subKeys = new Set<string>();
+
+    if (this.mode === "memory") {
+      for (const fullKey of Array.from(this.memory.keys())) {
+        const sub = this.toSubKey(fullKey);
+        if (predicate(sub)) subKeys.add(sub);
+      }
+    } else {
+      const prefix = `${this.namespace}:`;
+      for (const s of safeGetStorages()) {
+        for (let i = 0; i < s.length; i++) {
+          const k = s.key(i);
+          if (!k) continue;
+          const logical = stripVersionPrefix(k);
+          if (!logical.startsWith(prefix)) continue;
+          const sub = logical.slice(prefix.length);
+          if (predicate(sub)) subKeys.add(sub);
+        }
+      }
+      for (const k of memoryCache.keys()) {
+        const logical = stripVersionPrefix(k);
+        if (!logical.startsWith(prefix)) continue;
+        const sub = logical.slice(prefix.length);
+        if (predicate(sub)) subKeys.add(sub);
+      }
+    }
+
+    for (const subKey of subKeys) {
+      const current = this.get<T>(subKey, false);
+      if (current === null) continue;
+      const next = updater(current);
+      if (next === null) {
+        this.remove(subKey);
+        continue;
+      }
+      this.set(subKey, next, ttlMs);
+    }
   }
 
   invalidateFullKey(pattern: RegExp): number {

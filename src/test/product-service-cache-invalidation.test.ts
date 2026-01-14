@@ -47,7 +47,6 @@ vi.mock("@/lib/session-validation", () => ({
 
 import { ProductService } from "@/lib/product-service";
 import { ProductCoreService } from "@/lib/product/product-core-service";
-import { ProductCacheManager } from "@/lib/product/product-cache-manager";
 import { ProductLinkService } from "@/lib/product/product-link-service";
 import { UserAuthService } from "@/lib/user-auth-service";
 import { ShopService } from "@/lib/shop-service";
@@ -59,7 +58,7 @@ describe("ProductService cache invalidation", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
-    ProductCacheManager.clearAllProductsCaches();
+    ProductService.clearAllProductsCaches();
   });
 
   const expectRelatedInvalidations = () => {
