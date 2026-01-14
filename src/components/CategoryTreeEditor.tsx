@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
-import { CategoryService, type StoreCategory } from "@/lib/category-service";
+import { CategoryService, type Category } from "@/lib/category-service";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, ChevronDown, MoreVertical, Plus, Pencil, Trash2, Check, X, Loader2, RefreshCw, FolderTree } from "lucide-react";
 import { runOptimisticOperation, useSyncStatus } from "@/lib/optimistic-mutation";
@@ -28,13 +28,13 @@ type Store = {
 interface CategoryTreeEditorProps {
   suppliers: Supplier[];
   stores: Store[];
-  categories: StoreCategory[];
+  categories: Category[];
   defaultSupplierId?: string;
   defaultStoreId?: string;
-  onCategoryCreated?: (category: StoreCategory) => void;
+  onCategoryCreated?: (category: Category) => void;
   showStoreSelect?: boolean;
   onSupplierChange?: (supplierId: string) => void;
-  supplierCategoriesMap?: Record<string, StoreCategory[]>;
+  supplierCategoriesMap?: Record<string, Category[]>;
 }
 export const CategoryTreeEditor: React.FC<CategoryTreeEditorProps> = ({
   suppliers,
@@ -90,29 +90,31 @@ export const CategoryTreeEditor: React.FC<CategoryTreeEditorProps> = ({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const [localNewCategories, setLocalNewCategories] = useState<(StoreCategory & { supplier_id?: string })[]>([]);
+  const [localNewCategories, setLocalNewCategories] = useState<Array<Category & { supplier_id?: string | number }>>([]);
 
-  const catList: StoreCategory[] = React.useMemo(() => {
+  const catList: Category[] = React.useMemo(() => {
     const sid = supplierId;
     if (!sid) return [];
     const key = String(sid);
     const base = supplierCategoriesMap?.[key] || [];
     const extra = (categories as any[]).filter(c => String((c as any).supplier_id) === key);
     const locals = (localNewCategories as any[]).filter(c => String((c as any).supplier_id) === key);
-    const map: Record<string, StoreCategory> = {};
+    const map: Record<string, Category> = {};
     for (const it of base) {
-      const ext = String(it.external_id);
+      const ext = it?.external_id != null ? String(it.external_id) : "";
       if (!ext) continue;
       map[ext] = {
+        ...it,
         external_id: ext,
-        name: it.name,
-        parent_external_id: it.parent_external_id ?? null
+        name: it?.name != null ? String(it.name) : "",
+        parent_external_id: (it as any)?.parent_external_id ?? null
       };
     }
     for (const c of extra) {
       const ext = String((c as any).external_id || "");
       if (!ext) continue;
       map[ext] = {
+        ...c,
         external_id: ext,
         name: String((c as any).name || ""),
         parent_external_id: (c as any).parent_external_id ?? null
@@ -122,6 +124,7 @@ export const CategoryTreeEditor: React.FC<CategoryTreeEditorProps> = ({
       const ext = String((c as any).external_id || "");
       if (!ext) continue;
       map[ext] = {
+        ...c,
         external_id: ext,
         name: String((c as any).name || ""),
         parent_external_id: (c as any).parent_external_id ?? null
@@ -129,28 +132,33 @@ export const CategoryTreeEditor: React.FC<CategoryTreeEditorProps> = ({
     }
     return Object.values(map);
   }, [supplierId, supplierCategoriesMap, categories, localNewCategories]);
-  const buildTree = useCallback((items: StoreCategory[]): {
+  const buildTree = useCallback((items: Category[]): {
     id: string;
     name: string;
     external_id: string;
     children: any[];
   }[] => {
-    const byParent: Record<string | "root", StoreCategory[]> = {
+    const byParent: Record<string | "root", Category[]> = {
       root: []
     };
     for (const it of items) {
+      const ext = it?.external_id != null ? String(it.external_id) : "";
+      if (!ext) continue;
       // Treat null, undefined, and empty string as root
-      const parent = it.parent_external_id ?? undefined;
+      const parent = (it as any)?.parent_external_id ?? undefined;
       const key = parent && String(parent).trim() !== "" ? parent as string : "root";
       if (!byParent[key]) byParent[key] = [];
-      byParent[key].push(it);
+      byParent[key].push({ ...it, external_id: ext });
     }
-    const mapNode = (it: StoreCategory): any => ({
-      id: it.external_id,
-      name: it.name,
-      external_id: it.external_id,
-      children: (byParent[it.external_id] || []).map(mapNode)
-    });
+    const mapNode = (it: Category): any => {
+      const ext = it?.external_id != null ? String(it.external_id) : "";
+      return {
+        id: ext,
+        name: it?.name != null ? String(it.name) : "",
+        external_id: ext,
+        children: (byParent[ext] || []).map(mapNode)
+      };
+    };
     return (byParent.root || []).map(mapNode);
   }, []);
   const treeData = useMemo(() => buildTree(catList || []), [catList, buildTree]);
@@ -180,7 +188,7 @@ export const CategoryTreeEditor: React.FC<CategoryTreeEditorProps> = ({
     const parentExternalId = createParentExternalId || null;
     const entityKey = supplierId ? `category:${supplierId}:${externalId}` : `category:none:${externalId}`;
 
-    const optimisticCat: StoreCategory & { supplier_id?: string } = {
+    const optimisticCat: Category & { supplier_id?: string | number } = {
       external_id: externalId,
       name,
       parent_external_id: parentExternalId,
@@ -482,9 +490,17 @@ export const CategoryTreeEditor: React.FC<CategoryTreeEditorProps> = ({
                     <SelectValue placeholder={t("select_parent_category")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {(catList || []).map(cat => <SelectItem key={cat.external_id} value={cat.external_id}>
-                        {cat.name}
-                      </SelectItem>)}
+                    {(catList || [])
+                      .filter(cat => cat?.external_id != null && String(cat.external_id).trim() !== "")
+                      .map(cat => {
+                        const ext = String(cat.external_id);
+                        const label = cat?.name != null ? String(cat.name) : ext;
+                        return (
+                          <SelectItem key={ext} value={ext}>
+                            {label}
+                          </SelectItem>
+                        );
+                      })}
                   </SelectContent>
                 </Select>
               </div>

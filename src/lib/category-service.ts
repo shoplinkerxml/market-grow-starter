@@ -3,19 +3,6 @@ import { CACHE_TTL, UnifiedCacheManager } from "@/lib/cache-utils";
 import { SessionValidator } from "@/lib/session-validation";
 import { EdgeClient } from "@/lib/request-handler";
 
-// Minimal DTO shape aligned with UI needs
-export type StoreCategory = {
-  external_id: string;
-  name: string;
-  parent_external_id: string | null;
-};
-
-// Extended DTO used for admin views and precise queries
-export type StoreCategoryFull = StoreCategory & {
-  id: string; // keep as string to avoid numeric/uuid ambiguity in UI
-  supplier_id: string;
-};
-
 export interface CreateCategoryInput {
   supplier_id: string | number;
   external_id: string;
@@ -25,8 +12,17 @@ export interface CreateCategoryInput {
 }
 
 type StoreCategoryRow = Database["public"]["Tables"]["store_categories"]["Row"];
-type StoreCategoryBase = Pick<StoreCategoryRow, "external_id" | "name" | "parent_external_id">;
-type StoreCategoryFullRow = Pick<StoreCategoryRow, "id" | "external_id" | "name" | "parent_external_id" | "supplier_id">;
+type CategoryDb = Pick<
+  StoreCategoryRow,
+  "id" | "external_id" | "name" | "parent_external_id" | "rz_id" | "store_id" | "supplier_id" | "created_at"
+>;
+
+export type Category = Partial<
+  Omit<CategoryDb, "id" | "supplier_id"> & {
+    id: CategoryDb["id"] | string;
+    supplier_id: CategoryDb["supplier_id"] | string;
+  }
+>;
 
 function castNullableNumber(v: unknown): number | undefined {
   if (v === undefined || v === null) return undefined;
@@ -40,22 +36,44 @@ function categoriesSelect(columns: string, supplierId?: string | number) {
   return { columns, supplierId: normalized } as { columns: string; supplierId?: number };
 }
 
-function toFull(row: StoreCategoryFullRow): StoreCategoryFull {
-  return {
-    id: String(row.id),
-    external_id: row.external_id,
-    name: row.name,
-    parent_external_id: row.parent_external_id,
-    supplier_id: String(row.supplier_id),
-  };
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
 }
 
-function toBase(row: StoreCategoryBase): StoreCategory {
-  return {
-    external_id: row.external_id,
-    name: row.name,
-    parent_external_id: row.parent_external_id,
-  };
+function isString(v: unknown): v is string {
+  return typeof v === "string";
+}
+
+function isStringOrNumber(v: unknown): v is string | number {
+  return typeof v === "string" || (typeof v === "number" && Number.isFinite(v));
+}
+
+function isNullableString(v: unknown): v is string | null {
+  return v === null || typeof v === "string";
+}
+
+export function isCategoryBase(v: unknown): v is Category & { external_id: string; name: string; parent_external_id: string | null } {
+  if (!isRecord(v)) return false;
+  if (!isString(v.external_id) || v.external_id.trim() === "") return false;
+  if (!isString(v.name)) return false;
+  if (!isNullableString(v.parent_external_id)) return false;
+  return true;
+}
+
+export function isCategoryFull(
+  v: unknown,
+): v is Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null } {
+  if (!isCategoryBase(v)) return false;
+  const rec = v as Record<string, unknown>;
+  if (!isStringOrNumber(rec.id)) return false;
+  if (!isStringOrNumber(rec.supplier_id)) return false;
+  return true;
+}
+
+function assertArray<T>(items: unknown[], guard: (v: unknown) => v is T, errorMessage: string): asserts items is T[] {
+  for (const it of items) {
+    if (!guard(it)) throw new Error(errorMessage);
+  }
 }
 
 export function invalidateCategoriesCache(): void {
@@ -72,15 +90,15 @@ function chunk<T>(arr: T[], size: number): T[][] {
 export const CategoryService = {
   
   // 0. Read specific category by internal id
-  async getById(id: string | number): Promise<StoreCategoryFull | null> {
+  async getById(id: string | number): Promise<(Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }) | null> {
     const idNum = castNullableNumber(id);
     if (idNum === undefined) return null;
-    const resp = await EdgeClient.invokeWithRetry<{ item?: StoreCategoryFullRow | null }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ item?: Category | null }>("categories", {
       action: "get_by_id",
       id: idNum,
     });
     if (!resp.item) return null;
-    return toFull(resp.item);
+    return isCategoryFull(resp.item) ? resp.item : null;
   },
 
   // 0a. Read category name by internal id (safe)
@@ -91,31 +109,37 @@ export const CategoryService = {
     return resp.name ?? null;
   },
   // 4. Get all categories of supplier
-  async listCategories(supplierId?: string | number): Promise<StoreCategory[]> {
+  async listCategories(
+    supplierId?: string | number,
+  ): Promise<Array<Category & { external_id: string; name: string; parent_external_id: string | null }>> {
     const sel = categoriesSelect("external_id,name,parent_external_id", supplierId);
-    const resp = await EdgeClient.invokeWithRetry<{ rows?: StoreCategoryBase[] }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ rows?: Category[] }>("categories", {
       action: "list",
       supplier_id: sel.supplierId,
     });
-    const rows = resp.rows ?? [];
-    return rows.map(toBase);
+    const rows = (resp.rows ?? []) as unknown[];
+    assertArray<Category & { external_id: string; name: string; parent_external_id: string | null }>(rows, isCategoryBase, "Invalid category row");
+    return rows;
   },
 
   // 1–2. Create category or subcategory
-  async createCategory(input: CreateCategoryInput): Promise<StoreCategory> {
+  async createCategory(input: CreateCategoryInput): Promise<Category & { external_id: string; name: string; parent_external_id: string | null }> {
     const payload = {
       supplier_id: castNullableNumber(input.supplier_id),
       external_id: input.external_id,
       name: input.name,
       parent_external_id: input.parent_external_id ?? null,
     };
-    const resp = await EdgeClient.invokeWithRetry<{ item: StoreCategoryBase }>("categories", { action: "create", data: payload });
+    const resp = await EdgeClient.invokeWithRetry<{ item: Category }>("categories", { action: "create", data: payload });
     invalidateCategoriesCache();
-    return toBase(resp.item);
+    if (!isCategoryBase(resp.item)) throw new Error("Invalid category row");
+    return resp.item;
   },
 
   // 3. Bulk create
-  async bulkCreate(items: CreateCategoryInput[]): Promise<StoreCategory[]> {
+  async bulkCreate(
+    items: CreateCategoryInput[],
+  ): Promise<Array<Category & { external_id: string; name: string; parent_external_id: string | null }>> {
     if (!items || items.length === 0) return [];
     const payload = items.map((it) => ({
       supplier_id: castNullableNumber(it.supplier_id),
@@ -123,25 +147,35 @@ export const CategoryService = {
       name: it.name,
       parent_external_id: it.parent_external_id ?? null,
     }));
-    const resp = await EdgeClient.invokeWithRetry<{ rows?: StoreCategoryBase[] }>("categories", { action: "bulk_create", items: payload });
-    const rows = resp.rows ?? [];
+    const resp = await EdgeClient.invokeWithRetry<{ rows?: Category[] }>("categories", { action: "bulk_create", items: payload });
+    const rows = (resp.rows ?? []) as unknown[];
     invalidateCategoriesCache();
-    return rows.map(toBase);
+    assertArray<Category & { external_id: string; name: string; parent_external_id: string | null }>(rows, isCategoryBase, "Invalid category row");
+    return rows;
   },
 
   // 4. Read all categories for supplier (full shape including id)
-  async getSupplierCategories(supplierId: string | number): Promise<StoreCategoryFull[]> {
+  async getSupplierCategories(
+    supplierId: string | number,
+  ): Promise<Array<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>> {
     const sel = categoriesSelect("id,external_id,name,parent_external_id,supplier_id", supplierId);
-    const resp = await EdgeClient.invokeWithRetry<{ rows?: StoreCategoryFullRow[] }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ rows?: Category[] }>("categories", {
       action: "get_supplier_categories",
       supplier_id: sel.supplierId,
     });
-    const rows = resp.rows ?? [];
-    return rows.map(toFull);
+    const rows = (resp.rows ?? []) as unknown[];
+    assertArray<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>(
+      rows,
+      isCategoryFull,
+      "Invalid full category row",
+    );
+    return rows;
   },
 
   // Aggregated: read categories for multiple suppliers in one request and return a map
-  async getCategoriesMapForSuppliers(supplierIds: Array<string | number>): Promise<Record<string, StoreCategoryFull[]>> {
+  async getCategoriesMapForSuppliers(
+    supplierIds: Array<string | number>,
+  ): Promise<Record<string, Array<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>>> {
     const ids = Array.from(new Set((supplierIds || []).map(String).filter(Boolean)));
     if (ids.length === 0) return {};
     const uid = await SessionValidator.validateSession()
@@ -153,7 +187,10 @@ export const CategoryService = {
     });
     const cacheKey = `user:${uid || "current"}`;
 
-    const tryReadLegacy = (): Record<string, StoreCategoryFull[]> | null => {
+    const tryReadLegacy = (): Record<
+      string,
+      Array<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>
+    > | null => {
       try {
         if (typeof window === "undefined") return null;
         const legacyKey = `rq:supplierCategoriesMap:${uid || "current"}`;
@@ -175,7 +212,10 @@ export const CategoryService = {
             } catch {
               void 0;
             }
-            return data as Record<string, StoreCategoryFull[]>;
+            return data as Record<
+              string,
+              Array<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>
+            >;
           }
         }
         return null;
@@ -184,9 +224,11 @@ export const CategoryService = {
       }
     };
 
-    const cached = cache.get<Record<string, StoreCategoryFull[]>>(cacheKey, false);
+    const cached = cache.get<
+      Record<string, Array<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>>
+    >(cacheKey, false);
     const legacy = !cached ? tryReadLegacy() : null;
-    const map: Record<string, StoreCategoryFull[]> =
+    const map: Record<string, Array<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>> =
       (cached && typeof cached === "object" ? cached : null) ??
       (legacy && typeof legacy === "object" ? legacy : null) ??
       {};
@@ -202,7 +244,7 @@ export const CategoryService = {
       for (const batch of batches) {
         const results = await Promise.all(
           batch.map(async (supplierId) => {
-            const resp = await EdgeClient.invokeWithRetry<{ rows?: StoreCategoryFullRow[] }>("categories", {
+            const resp = await EdgeClient.invokeWithRetry<{ rows?: Category[] }>("categories", {
               action: "get_supplier_categories",
               supplier_id: supplierId,
             });
@@ -210,7 +252,13 @@ export const CategoryService = {
           }),
         );
         for (const r of results) {
-          map[r.supplierId] = r.rows.map(toFull);
+          const rows = (r.rows ?? []) as unknown[];
+          assertArray<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>(
+            rows,
+            isCategoryFull,
+            "Invalid full category row",
+          );
+          map[r.supplierId] = rows;
         }
       }
       cache.set(cacheKey, map, CACHE_TTL.supplierCategoriesMap);
@@ -222,43 +270,59 @@ export const CategoryService = {
   },
 
   // 5. Read subcategories of a specific category
-  async getSubcategories(supplierId: string | number, parentExternalId: string): Promise<StoreCategoryFull[]> {
+  async getSubcategories(
+    supplierId: string | number,
+    parentExternalId: string,
+  ): Promise<Array<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>> {
     const normalized = castNullableNumber(supplierId);
-    const resp = await EdgeClient.invokeWithRetry<{ rows?: StoreCategoryFullRow[] }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ rows?: Category[] }>("categories", {
       action: "get_subcategories",
       supplier_id: normalized,
       parent_external_id: parentExternalId,
     });
-    const rows = resp.rows ?? [];
-    return rows.map(toFull);
+    const rows = (resp.rows ?? []) as unknown[];
+    assertArray<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>(
+      rows,
+      isCategoryFull,
+      "Invalid full category row",
+    );
+    return rows;
   },
 
   // 6. Read specific category by external_id
-  async getByExternalId(supplierId: string | number, externalId: string): Promise<StoreCategoryFull | null> {
+  async getByExternalId(
+    supplierId: string | number,
+    externalId: string,
+  ): Promise<(Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }) | null> {
     const normalized = castNullableNumber(supplierId);
-    const resp = await EdgeClient.invokeWithRetry<{ item?: StoreCategoryFullRow | null }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ item?: Category | null }>("categories", {
       action: "get_by_external_id",
       supplier_id: normalized,
       external_id: externalId,
     });
     if (!resp.item) return null;
-    return toFull(resp.item);
+    return isCategoryFull(resp.item) ? resp.item : null;
   },
 
   // 7. Update category name by external_id and supplier_id
-  async updateName(supplierId: string | number, externalId: string, name: string): Promise<StoreCategory> {
+  async updateName(
+    supplierId: string | number,
+    externalId: string,
+    name: string,
+  ): Promise<Category & { external_id: string; name: string; parent_external_id: string | null }> {
     const normalized = castNullableNumber(supplierId);
     if (normalized === undefined) {
       throw new Error("Invalid supplierId");
     }
-    const resp = await EdgeClient.invokeWithRetry<{ item: StoreCategoryBase }>("categories", {
+    const resp = await EdgeClient.invokeWithRetry<{ item: Category }>("categories", {
       action: "update_name",
       supplier_id: normalized,
       external_id: externalId,
       name,
     });
     invalidateCategoriesCache();
-    return toBase(resp.item);
+    if (!isCategoryBase(resp.item)) throw new Error("Invalid category row");
+    return resp.item;
   },
 
   // 8. Delete category by external_id and supplier_id

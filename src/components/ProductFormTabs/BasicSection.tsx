@@ -22,6 +22,27 @@ type Props = {
 }
 
 const BasicSection = React.memo(function BasicSection({ t, basicData, setBasicData, stockData, setStockData, readOnly, editableKeys, categories, selectedCategoryName, onChange }: Props) {
+  const selectableCategories = React.useMemo(() => {
+    return (categories || []).filter((c) => c?.id != null && String(c.id).trim() !== "");
+  }, [categories]);
+
+  const handleCategoryChange = React.useCallback((value: string) => {
+    const cat = (selectableCategories || []).find(c => String(c.id) === String(value));
+    const nextExternalId = cat?.external_id != null ? String(cat.external_id) : '';
+    const nextName = cat?.name != null ? String(cat.name) : '';
+    setBasicData(prev => ({
+      ...prev,
+      category_id: value,
+      category_external_id: nextExternalId,
+      category_name: nextName
+    }));
+    onChange?.({
+      category_id: value,
+      category_external_id: nextExternalId,
+      category_name: nextName
+    });
+  }, [onChange, selectableCategories, setBasicData]);
+
   return (
     <div className="space-y-4 px-2 sm:px-3" data-testid="productFormTabs_basicSection">
       <Collapsible defaultOpen>
@@ -56,27 +77,14 @@ const BasicSection = React.memo(function BasicSection({ t, basicData, setBasicDa
 
             <div className="space-y-2">
               <span id="category_label" className="text-sm font-medium leading-none peer-disabled:opacity-70" data-testid="productFormTabs_categoryText">{t('category')} *</span>
-              <Select value={basicData.category_id} onValueChange={value => {
-                const cat = categories.find(c => String(c.id) === String(value));
-                setBasicData(prev => ({
-                  ...prev,
-                  category_id: value,
-                  category_external_id: cat?.external_id || '',
-                  category_name: cat?.name || ''
-                }));
-                onChange?.({
-                  category_id: value,
-                  category_external_id: cat?.external_id || '',
-                  category_name: cat?.name || ''
-                });
-              }}>
+              <Select value={basicData.category_id} onValueChange={handleCategoryChange}>
                 <SelectTrigger aria-labelledby="category_label" data-testid="productFormTabs_categorySelect">
                   <SelectValue placeholder={selectedCategoryName || t('select_category')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map(category => (
-                    <SelectItem key={category.id} value={String(category.id)}>
-                      {category.name}
+                  {selectableCategories.map(category => (
+                    <SelectItem key={String(category.id)} value={String(category.id)}>
+                      {category?.name != null ? String(category.name) : (category?.external_id != null ? String(category.external_id) : '')}
                     </SelectItem>
                   ))}
                 </SelectContent>

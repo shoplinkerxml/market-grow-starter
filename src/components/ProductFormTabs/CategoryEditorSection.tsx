@@ -43,22 +43,19 @@ export default function CategoryEditorSection({ t, suppliers, categories, setCat
             suppliers={suppliers}
             stores={[]}
             categories={categories}
-            supplierCategoriesMap={preloadedSupplierCategoriesMap as any}
+            supplierCategoriesMap={preloadedSupplierCategoriesMap}
             defaultSupplierId={basicData.supplier_id}
             showStoreSelect={false}
             onSupplierChange={id => setBasicData(prev => ({ ...prev, supplier_id: id }))}
             onCategoryCreated={async cat => {
               setCategories(prev => {
-                const exists = prev?.some(c => String(c.external_id) === String(cat.external_id));
+                const exists = prev?.some(c =>
+                  (cat.id != null && c?.id != null && String(c.id) === String(cat.id)) ||
+                  (cat.external_id != null && c?.external_id != null && String(c.external_id) === String(cat.external_id)),
+                );
                 if (exists) return prev;
-                const next = [...(prev || []), {
-                  id: String(cat.external_id || `${Date.now()}`),
-                  name: cat.name || '',
-                  external_id: String(cat.external_id || ''),
-                  supplier_id: String(basicData.supplier_id || ''),
-                  parent_external_id: cat.parent_external_id == null ? null : String(cat.parent_external_id)
-                }];
-                return next;
+                const hydrated = cat.id != null || cat.external_id != null ? cat : { ...cat, id: String(Date.now()) };
+                return [...(prev || []), hydrated];
               });
             }}
           />

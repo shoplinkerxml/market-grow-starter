@@ -57,13 +57,7 @@ export function useProductLookups(
     return Object.fromEntries(
       entries.map(([sid, list]) => [
         String(sid),
-        (Array.isArray(list) ? list : []).map((c: any) => ({
-          id: String(c?.id ?? ''),
-          name: String(c?.name ?? ''),
-          external_id: String(c?.external_id ?? ''),
-          supplier_id: String(c?.supplier_id ?? ''),
-          parent_external_id: c?.parent_external_id == null ? null : String(c.parent_external_id),
-        })),
+        (Array.isArray(list) ? list : []).filter((c: any) => c && typeof c === 'object'),
       ]),
     );
   }, [lookupsQuery.data]);
@@ -133,12 +127,13 @@ export function useProductLookups(
       return;
     }
     const found = categories.find(c => String(c.id) === categoryId);
-    if (found?.name) {
-      setSelectedCategoryName(found.name);
-      if (categoryName !== found.name) {
+    const foundName = found?.name != null ? String(found.name) : '';
+    if (foundName) {
+      setSelectedCategoryName(foundName);
+      if (categoryName !== foundName) {
         setBasicRef.current?.((prev: BasicData) => ({
           ...prev,
-          category_name: found.name || '',
+          category_name: foundName,
         }));
       }
       return;
@@ -154,7 +149,7 @@ export function useProductLookups(
     if (!found) return;
 
     const nextId = String(found.id || '');
-    const nextName = found.name || '';
+    const nextName = found?.name != null ? String(found.name) : '';
 
     setSelectedCategoryName(nextName);
 

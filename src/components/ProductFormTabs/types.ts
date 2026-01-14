@@ -1,15 +1,11 @@
+import type { Category } from "@/lib/category-service";
+
 export type SupplierOption = {
   id: string;
   supplier_name: string;
 };
 
-export type CategoryOption = {
-  id: string;
-  name: string;
-  external_id: string;
-  supplier_id: string;
-  parent_external_id: string | null;
-};
+export type CategoryOption = Category;
 
 export type CurrencyOption = {
   id: number;

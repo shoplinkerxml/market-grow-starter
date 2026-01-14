@@ -13,6 +13,8 @@ type CreateCategoryInput = {
   parent_external_id?: string | null
 }
 
+const CATEGORY_SELECT = "id,external_id,name,parent_external_id,supplier_id,rz_id,store_id,created_at"
+
 // Валидация входных данных
 function validateCreateInput(data: any): { valid: boolean; error?: string } {
   if (!data?.external_id || typeof data.external_id !== 'string') {
@@ -83,7 +85,7 @@ Deno.serve(async (req) => {
       
       const { data, error } = await supabase
         .from("store_categories")
-        .select("id,external_id,name,parent_external_id,supplier_id")
+        .select(CATEGORY_SELECT)
         .eq("id", id)
         .maybeSingle()
         
@@ -118,7 +120,7 @@ Deno.serve(async (req) => {
       const supplier_id = body?.supplier_id
       let q = supabase
         .from("store_categories")
-        .select("external_id,name,parent_external_id", { count: 'exact' })
+        .select(CATEGORY_SELECT, { count: 'exact' })
         
       if (supplier_id != null) {
         q = q.eq("supplier_id", Number(supplier_id))
@@ -158,7 +160,7 @@ Deno.serve(async (req) => {
       const { data, error } = await supabase
         .from("store_categories")
         .insert([insertData])
-        .select("external_id,name,parent_external_id")
+        .select(CATEGORY_SELECT)
         .maybeSingle()
         
       if (error) {
@@ -212,7 +214,7 @@ Deno.serve(async (req) => {
       const { data, error } = await supabase
         .from("store_categories")
         .insert(validatedItems)
-        .select("external_id,name,parent_external_id")
+        .select(CATEGORY_SELECT)
         
       if (error) {
         return new Response(
@@ -239,7 +241,7 @@ Deno.serve(async (req) => {
       
       const { data, error } = await supabase
         .from("store_categories")
-        .select("id,external_id,name,parent_external_id,supplier_id")
+        .select(CATEGORY_SELECT)
         .eq("supplier_id", supplier_id)
         .order("name")
         
@@ -260,7 +262,7 @@ Deno.serve(async (req) => {
       
       let q = supabase
         .from("store_categories")
-        .select("id,external_id,name,parent_external_id,supplier_id")
+        .select(CATEGORY_SELECT)
         .eq("parent_external_id", parent_external_id)
         .order("name")
         
@@ -294,7 +296,7 @@ Deno.serve(async (req) => {
       
       const { data, error } = await supabase
         .from("store_categories")
-        .select("id,external_id,name,parent_external_id,supplier_id")
+        .select(CATEGORY_SELECT)
         .eq("external_id", external_id)
         .eq("supplier_id", supplier_id)
         .maybeSingle()
@@ -327,7 +329,7 @@ Deno.serve(async (req) => {
         .update({ name })
         .eq("external_id", external_id)
         .eq("supplier_id", supplier_id)
-        .select("external_id,name,parent_external_id")
+        .select(CATEGORY_SELECT)
         .maybeSingle()
         
       if (error) {

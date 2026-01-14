@@ -70,14 +70,8 @@ export const ProductCreate = () => {
     const supplierCategoriesMap = lookupsQuery.data?.supplierCategoriesMap || {};
     return Object.fromEntries(
       Object.entries(supplierCategoriesMap || {}).map(([sid, list]) => [
-        sid,
-        (list || []).map((c: any) => ({
-          id: String(c.id),
-          name: String(c.name || ""),
-          external_id: String(c.external_id || ""),
-          supplier_id: String(c.supplier_id || ""),
-          parent_external_id: c.parent_external_id == null ? null : String(c.parent_external_id),
-        })),
+        String(sid),
+        (Array.isArray(list) ? list : []).filter((c: any) => c && typeof c === "object"),
       ]),
     );
   }, [lookupsQuery.data?.supplierCategoriesMap]);
