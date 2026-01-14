@@ -127,7 +127,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, u
   };
 
   return (
-    <aside className={`${isMobileSheet ? 'flex' : 'hidden md:flex max-[1393px]:hidden'} ${collapsed ? 'w-16' : 'w-64'} transition-all duration-300 shrink-0 flex-col h-screen overflow-hidden bg-admin-sidebar`} data-testid="admin-sidebar">
+    <aside className={`${isMobileSheet ? 'flex' : 'hidden md:flex max-[1393px]:hidden'} ${collapsed ? 'w-16' : 'w-64'} transition-all duration-300 shrink-0 flex-col h-screen overflow-hidden bg-emerald-50/80 dark:bg-emerald-950/20`} data-testid="admin-sidebar">
       <div className="p-4" data-testid="sidebar-logo-section">
         <Logo collapsed={collapsed} className="mb-8" />
       </div>

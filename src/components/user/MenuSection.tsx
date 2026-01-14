@@ -151,7 +151,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
                     (!hasAccess && !isAlwaysAccessibleItem(item)) ? "opacity-50 cursor-not-allowed pointer-events-none" : (
                       isActiveItem(item)
                         ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50 shadow-sm"
-                        : "hover:bg-emerald-50 hover:text-[#10b981] border border-transparent"
+                        : "hover:bg-emerald-50 border border-transparent"
                     )
                   )}
                   aria-label={`${translatedTitle} - ${isExpanded ? "Collapse" : "Expand"} submenu`}
@@ -159,18 +159,21 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
                   <div className={cn("flex items-center", collapsed ? "justify-center" : "min-w-0 flex-1")}> 
                     <DynamicIcon 
                       name={item.icon_name || getAutoIcon({ title: item.title, path: item.path, page_type: item.page_type })} 
-                      className={cn(collapsed ? "w-5 h-5 shrink-0" : "w-5 h-5 mr-3 shrink-0")}
+                      className={cn(
+                        collapsed ? "w-5 h-5 shrink-0" : "w-5 h-5 mr-3 shrink-0",
+                        "transition-transform duration-200 ease-out group-hover:scale-110 group-hover:text-black dark:group-hover:text-white"
+                      )}
                     />
                     {!collapsed && (
-                      <span className="truncate flex-1">{translatedTitle}</span>
+                      <span className="truncate flex-1 group-hover:text-black dark:group-hover:text-white group-hover:font-semibold">{translatedTitle}</span>
                     )}
                   </div>
                   {!collapsed && (
                     <div className="ml-2">
                       {isExpanded ? (
-                        <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-[#10b981] transform rotate-180 transition-transform duration-200" />
+                        <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-black dark:group-hover:text-white transform rotate-180 transition-transform duration-200" />
                       ) : (
-                        <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-[#10b981] transition-transform duration-200" />
+                        <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-black dark:group-hover:text-white transition-transform duration-200" />
                       )}
                     </div>
                   )}

@@ -21,7 +21,7 @@ export const PageHeader = ({
   return (
     <div
       className={cn(
-        "mb-4 rounded-md bg-emerald-50/80 px-4 py-2 dark:bg-emerald-950/20",
+        "mb-4",
         className
       )}
     >

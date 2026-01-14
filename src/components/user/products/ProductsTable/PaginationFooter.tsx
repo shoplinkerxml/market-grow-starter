@@ -32,10 +32,16 @@ export function PaginationFooter<TData>({
       </div>
 
       <div className="flex items-center gap-2" data-testid="user_products_dataTable_rowsPerPage">
-        <div className="text-sm" data-testid="user_products_dataTable_rowsPerPageLabel">{t("page_size")}</div>
+        <div className="text-xs text-muted-foreground" data-testid="user_products_dataTable_rowsPerPageLabel">{t("page_size")}</div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 px-2" aria-label={t("page_size")} data-testid="user_products_dataTable_pageSize">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 border-0 shadow-none hover:border-0 hover:shadow-none"
+              aria-label={t("page_size")}
+              data-testid="user_products_dataTable_pageSize"
+            >
               <List className="h-4 w-4 mr-2" />
               {table.getState().pagination.pageSize}
               <ChevronDown className="ml-1" />
@@ -57,20 +63,60 @@ export function PaginationFooter<TData>({
       </div>
 
       <div className="flex items-center gap-2" data-testid="user_products_dataTable_pageControls">
-        <div className="text-sm whitespace-nowrap" data-testid="user_products_dataTable_pageIndicator">
+        <div className="text-xs text-muted-foreground whitespace-nowrap" data-testid="user_products_dataTable_pageIndicator">
           {t("page_of")} {pagination.pageIndex + 1} {t("page_of_connector")} {Math.max(1, Math.ceil(((pageInfo?.total ?? rows.length) / pagination.pageSize)))}
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" onClick={() => setPagination(prev => ({ ...prev, pageIndex: 0 }))} disabled={pagination.pageIndex === 0} aria-label={t("first_page")} data-testid="user_products_dataTable_firstPage">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="border-0 shadow-none hover:border-0 hover:shadow-none"
+            onClick={() => setPagination((prev) => ({ ...prev, pageIndex: 0 }))}
+            disabled={pagination.pageIndex === 0}
+            aria-label={t("first_page")}
+            data-testid="user_products_dataTable_firstPage"
+          >
             <ChevronsLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setPagination(prev => ({ ...prev, pageIndex: Math.max(0, prev.pageIndex - 1) }))} disabled={pagination.pageIndex === 0} aria-label={t("previous_page")} data-testid="user_products_dataTable_prevPage">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="border-0 shadow-none hover:border-0 hover:shadow-none"
+            onClick={() => setPagination((prev) => ({ ...prev, pageIndex: Math.max(0, prev.pageIndex - 1) }))}
+            disabled={pagination.pageIndex === 0}
+            aria-label={t("previous_page")}
+            data-testid="user_products_dataTable_prevPage"
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setPagination(prev => ({ ...prev, pageIndex: prev.pageIndex + 1 }))} disabled={(pagination.pageIndex + 1) >= Math.max(1, Math.ceil(((pageInfo?.total ?? rows.length) / pagination.pageSize)))} aria-label={t("next_page")} data-testid="user_products_dataTable_nextPage">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="border-0 shadow-none hover:border-0 hover:shadow-none"
+            onClick={() => setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }))}
+            disabled={(pagination.pageIndex + 1) >= Math.max(1, Math.ceil(((pageInfo?.total ?? rows.length) / pagination.pageSize)))}
+            aria-label={t("next_page")}
+            data-testid="user_products_dataTable_nextPage"
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setPagination(prev => ({ ...prev, pageIndex: Math.max(0, Math.max(1, Math.ceil(((pageInfo?.total ?? rows.length) / pagination.pageSize))) - 1) }))} disabled={(pagination.pageIndex + 1) >= Math.max(1, Math.ceil(((pageInfo?.total ?? rows.length) / pagination.pageSize)))} aria-label={t("last_page")} data-testid="user_products_dataTable_lastPage">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="border-0 shadow-none hover:border-0 hover:shadow-none"
+            onClick={() =>
+              setPagination((prev) => ({
+                ...prev,
+                pageIndex: Math.max(
+                  0,
+                  Math.max(1, Math.ceil(((pageInfo?.total ?? rows.length) / pagination.pageSize))) - 1
+                ),
+              }))
+            }
+            disabled={(pagination.pageIndex + 1) >= Math.max(1, Math.ceil(((pageInfo?.total ?? rows.length) / pagination.pageSize)))}
+            aria-label={t("last_page")}
+            data-testid="user_products_dataTable_lastPage"
+          >
             <ChevronsRight className="h-4 w-4" />
           </Button>
         </div>

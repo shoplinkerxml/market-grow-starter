@@ -20,7 +20,7 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "space-y-2 rounded-md bg-emerald-50/80 px-4 py-2 dark:bg-emerald-950/20",
+        "space-y-2",
         className
       )}
     >

@@ -79,7 +79,7 @@ export const MenuItemWithIcon: React.FC<MenuItemWithIconProps> = ({
 
   const stateClasses = isActive
     ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50 shadow-sm"
-    : "hover:bg-emerald-50 hover:text-[#10b981] border border-transparent hover:border-emerald-200/30 hover:shadow-sm";
+    : "hover:bg-emerald-50 border border-transparent hover:border-emerald-200/30 hover:shadow-sm";
 
   const iconSize = variant === 'dashboard' ? "w-5 h-5" : "w-4 h-4";
   const iconMargin = collapsed ? "" : "mr-3"; // 12px gap between icon and text
@@ -97,10 +97,17 @@ export const MenuItemWithIcon: React.FC<MenuItemWithIconProps> = ({
       <div className="flex items-center min-w-0 flex-1">
         <DynamicIcon 
           name={iconName} 
-          className={cn(iconSize, iconMargin, "shrink-0", variant === 'child' ? "fill-emerald-400 stroke-emerald-400 scale-50" : "")}
+          className={cn(
+            iconSize,
+            iconMargin,
+            "shrink-0",
+            variant === 'child'
+              ? "fill-emerald-400 stroke-emerald-400 scale-50"
+              : "transition-transform duration-200 ease-out group-hover:scale-110 group-hover:text-black dark:group-hover:text-white",
+          )}
         />
         {!collapsed && (
-          <span className="truncate flex-1">
+          <span className="truncate flex-1 group-hover:text-black dark:group-hover:text-white group-hover:font-semibold">
             {translatedTitle}
           </span>
         )}

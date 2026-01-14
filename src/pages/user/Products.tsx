@@ -103,7 +103,7 @@ export const Products = () => {
         breadcrumbItems={breadcrumbs}
         actions={
           <div className="flex gap-2 items-center">
-            <Badge variant="outline" className="text-sm flex items-center gap-1.5">
+            <Badge variant="outline" className="text-sm flex items-center gap-1.5 border-0">
               <Package className="h-4 w-4" />
               <span>{limitInfo.current} / {limitInfo.max}</span>
             </Badge>

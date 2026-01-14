@@ -253,7 +253,7 @@ export const DesktopSidebar = memo(
   }) => {
     return (
       <aside
-        className={`hidden md:flex max-[1393px]:hidden ${collapsed ? "w-16" : "w-64"} transition-all duration-300 shrink-0 border-r bg-background flex-col fixed left-0 top-0 h-screen z-40 overflow-hidden shadow-lg`}
+        className={`hidden md:flex max-[1393px]:hidden ${collapsed ? "w-16" : "w-64"} transition-all duration-300 shrink-0 border-r bg-emerald-50/80 dark:bg-emerald-950/20 flex-col fixed left-0 top-0 h-screen z-40 overflow-hidden shadow-lg`}
       >
         <div className="p-4 shrink-0">
           <UserSidebarBrand collapsed={collapsed} />
