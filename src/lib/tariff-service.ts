@@ -3,6 +3,8 @@ import { Database } from '@/integrations/supabase/types';
 import TariffCache, { getTariffsListCached, invalidateTariffsCache } from './tariff-cache';
 import { PersistentCacheService } from "./persistent-cache-service";
 import { EdgeClient } from "./request-handler";
+import { SubscriptionValidationService } from "./subscription-validation-service";
+import { UserAuthService } from "./user-auth-service";
 
 export type Tariff = Database['public']['Tables']['tariffs']['Row'];
 export type TariffInsert = Database['public']['Tables']['tariffs']['Insert'];
@@ -55,6 +57,11 @@ export class TariffService {
     } catch {
       void 0;
     }
+    try {
+      UserAuthService.clearAuthMeCache();
+    } catch {
+      void 0;
+    }
   }
 
   static clearAllCaches(): void {
@@ -62,10 +69,16 @@ export class TariffService {
   }
 
   static async activateMyTariff(tariffId: number): Promise<{ success: boolean; subscription?: unknown }> {
-    return await EdgeClient.invokeWithRetry<{ success: boolean; subscription?: unknown }>(
+    const result = await EdgeClient.invokeWithRetry<{ success: boolean; subscription?: unknown }>(
       'user-activate-tariff',
       { tariffId },
     );
+    try {
+      SubscriptionValidationService.clearAllCaches();
+    } catch {
+      void 0;
+    }
+    return result;
   }
   static async getTariffsAggregated(includeInactive = false, includeDemo = false): Promise<TariffWithDetails[]> {
     const cacheKey = `list:${includeInactive ? "inactive" : "active"}:${includeDemo ? "demo" : "noDemo"}`;
@@ -510,17 +523,16 @@ export class TariffService {
         throw new Error('Original tariff not found');
       }
       
-      // 2. Get currency data to ensure we have both currency_id and currency_code
-      const currencyId = originalTariff.currency;
-      let currencyCode = 'USD'; // Default
-      
-      if (currencyId && typeof currencyId === 'number') {
+      const currencyId = originalTariff.currency_id;
+      let currencyCode = originalTariff.currency_code || "USD";
+
+      if (!currencyCode && currencyId && typeof currencyId === "number") {
         const { data: currencyData, error: currencyError } = await supabase
-          .from('currencies')
-          .select('code')
-          .eq('id', currencyId)
+          .from("currencies")
+          .select("code")
+          .eq("id", currencyId)
           .single();
-          
+
         if (!currencyError && currencyData) {
           currencyCode = currencyData.code;
         }

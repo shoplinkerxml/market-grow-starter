@@ -1,4 +1,7 @@
 import { GlobalRequestDeduplicator } from './request-deduplicator';
+import { supabase } from "@/integrations/supabase/client";
+import { UnifiedCacheManager } from "./cache-utils";
+import { UserAuthService } from "./user-auth-service";
 // Dev-only logging toggle and transient abort detector
 const __DEV__ = import.meta.env?.DEV ?? false;
 function isTransientAbortError(err: unknown): boolean {
@@ -19,36 +22,15 @@ function isTransientAbortError(err: unknown): boolean {
  * Automatically deactivates expired subscriptions based on end_date
  */
 export class SubscriptionValidationService {
-  // Simple in-memory cache for subscription validation per user
-  private static cache: Map<string, {
-    timestamp: number;
-    result: {
-      hasValidSubscription: boolean;
-      subscription: any | null;
-      isDemo: boolean;
-    };
-  }> = new Map();
-  private static readonly CACHE_MAX_SIZE = 200;
+  private static readonly TTL_MS = 15_000;
+  private static cache = UnifiedCacheManager.create("subscription-validation-service", {
+    mode: "memory",
+    defaultTtlMs: SubscriptionValidationService.TTL_MS,
+    maxSize: 200,
+  });
 
-  // Cache TTL (ms) for subscription status
-  private static readonly TTL_MS = 15000;
-
-  private static cacheGet(userId: string) {
-    const v = this.cache.get(userId);
-    if (!v) return null;
-    this.cache.delete(userId);
-    this.cache.set(userId, v);
-    return v;
-  }
-
-  private static cacheSet(userId: string, value: { timestamp: number; result: { hasValidSubscription: boolean; subscription: any | null; isDemo: boolean } }) {
-    this.cache.delete(userId);
-    this.cache.set(userId, value);
-    while (this.cache.size > this.CACHE_MAX_SIZE) {
-      const oldestKey = this.cache.keys().next().value as string | undefined;
-      if (!oldestKey) break;
-      this.cache.delete(oldestKey);
-    }
+  private static cacheKey(userId: string): string {
+    return `user:${String(userId || "").trim()}`;
   }
   
   /**
@@ -74,6 +56,80 @@ export class SubscriptionValidationService {
     return expired;
   }
 
+  private static computeIsDemo(subscription: any | null): boolean {
+    if (!subscription) return false;
+    const tariffs = (subscription as any)?.tariffs ?? null;
+    return tariffs?.is_free === true && tariffs?.visible === false;
+  }
+
+  private static async fetchActiveSubscription(userId: string): Promise<any | null> {
+    const { data, error } = await supabase
+      .from("user_subscriptions")
+      .select("*, tariffs (*)")
+      .eq("user_id", String(userId))
+      .eq("is_active", true)
+      .order("start_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return (data as any) ?? null;
+  }
+
+  private static async deactivateSubscriptionAtomic(subscriptionId: string | number | null | undefined): Promise<boolean> {
+    const id =
+      typeof subscriptionId === "number"
+        ? subscriptionId
+        : subscriptionId != null
+          ? Number(subscriptionId)
+          : NaN;
+    if (!Number.isFinite(id)) return false;
+
+    const { data, error } = await supabase
+      .from("user_subscriptions")
+      .update({ is_active: false })
+      .eq("id", id)
+      .eq("is_active", true)
+      .select("id");
+
+    if (error) throw error;
+    return Array.isArray(data) ? data.length > 0 : !!data;
+  }
+
+  private static async computeState(userId: string): Promise<{
+    state: { hasValidSubscription: boolean; subscription: any | null; isDemo: boolean };
+    wasDeactivated: boolean;
+  }> {
+    const active = await this.fetchActiveSubscription(userId);
+    if (!active) {
+      return {
+        state: { hasValidSubscription: false, subscription: null, isDemo: false },
+        wasDeactivated: false,
+      };
+    }
+
+    const rawEndDate = (active as any)?.end_date ?? null;
+    if (this.isExpired(typeof rawEndDate === "string" ? rawEndDate : null)) {
+      const wasDeactivated = await this.deactivateSubscriptionAtomic((active as any)?.id);
+      try {
+        UserAuthService.clearAuthMeCache();
+      } catch {
+        void 0;
+      }
+      return {
+        state: { hasValidSubscription: false, subscription: null, isDemo: false },
+        wasDeactivated,
+      };
+    }
+
+    const state = {
+      hasValidSubscription: true,
+      subscription: active,
+      isDemo: this.computeIsDemo(active),
+    };
+    return { state, wasDeactivated: false };
+  }
+
   /**
    * Validate and update user's active subscription
    * Deactivates subscription if end_date has passed
@@ -85,11 +141,13 @@ export class SubscriptionValidationService {
     wasDeactivated: boolean;
   }> {
     try {
-      void userId;
+      const uid = String(userId || "").trim();
+      if (!uid) return { isValid: false, subscription: null, wasDeactivated: false };
+      const computed = await this.computeState(uid);
       return {
-        isValid: false,
-        subscription: null,
-        wasDeactivated: false
+        isValid: computed.state.hasValidSubscription,
+        subscription: computed.state.hasValidSubscription ? computed.state.subscription : null,
+        wasDeactivated: computed.wasDeactivated,
       };
 
     } catch (error) {
@@ -110,55 +168,32 @@ export class SubscriptionValidationService {
    * Validate subscription without auto-creating new ones
    * This should be called on every page load/navigation
    */
-  static async ensureValidSubscription(userId: string, options?: { forceRefresh?: boolean }): Promise<{
+  static async getSubscriptionState(userId: string, options?: { forceRefresh?: boolean }): Promise<{
     hasValidSubscription: boolean;
     subscription: any | null;
     isDemo: boolean;
   }> {
     try {
       const forceRefresh = options?.forceRefresh === true;
+      const uid = String(userId || "").trim();
+      if (!uid) return { hasValidSubscription: false, subscription: null, isDemo: false };
 
-      // Serve from cache if fresh and no force refresh requested
-      const cached = this.cacheGet(userId);
-      const now = Date.now();
-      if (!forceRefresh && cached && (now - cached.timestamp) < this.TTL_MS) {
-        return cached.result;
+      const key = this.cacheKey(uid);
+      if (!forceRefresh) {
+        const cached = this.cache.get<{ hasValidSubscription: boolean; subscription: any | null; isDemo: boolean }>(key);
+        if (cached) return cached;
       }
+
       const run = async () => {
-        // Validate existing subscription and deactivate if expired
-        const validation = await this.validateUserSubscription(userId);
-
-        // If valid subscription exists, return it
-        if (validation.isValid && validation.subscription) {
-          const result = {
-            hasValidSubscription: true,
-            subscription: validation.subscription,
-            isDemo: (validation.subscription.tariffs?.is_free === true) && 
-                    (validation.subscription.tariffs?.visible === false)
-          };
-          // Cache successful result
-          this.cacheSet(userId, { timestamp: Date.now(), result });
-          return result;
-        }
-
-        // No valid subscription - do NOT auto-create, just return false
-        if (__DEV__) console.log('[Subscription] No valid subscription found for user:', userId);
-        const result = {
-          hasValidSubscription: false,
-          subscription: null,
-          isDemo: false
-        };
-        this.cacheSet(userId, { timestamp: Date.now(), result });
-        return result;
-
+        const computed = await this.computeState(uid);
+        this.cache.set(key, computed.state, this.TTL_MS);
+        return computed.state;
       };
 
-      if (forceRefresh) {
-        return await run();
-      }
+      if (forceRefresh) return await run();
 
       return await GlobalRequestDeduplicator.dedupeExpensive(
-        { service: "SubscriptionValidationService", method: "ensureValidSubscription", params: { userId } },
+        { service: "SubscriptionValidationService", method: "getSubscriptionState", params: { userId: uid } },
         async (_ctx) => await run(),
       );
 
@@ -180,8 +215,48 @@ export class SubscriptionValidationService {
    * Get subscription info with validation
    * Returns subscription details or null if expired/invalid
    */
-  static async getValidSubscription(userId: string, options?: { forceRefresh?: boolean }): Promise<any | null> {
-    const result = await this.ensureValidSubscription(userId, options);
+  static async getSubscription(userId: string, options?: { forceRefresh?: boolean }): Promise<any | null> {
+    const result = await this.getSubscriptionState(userId, options);
     return result.hasValidSubscription ? result.subscription : null;
+  }
+
+  static async ensureValidSubscription(userId: string, options?: { forceRefresh?: boolean }): Promise<{
+    hasValidSubscription: boolean;
+    subscription: any | null;
+    isDemo: boolean;
+  }> {
+    return await this.getSubscriptionState(userId, options);
+  }
+
+  static async getValidSubscription(userId: string, options?: { forceRefresh?: boolean }): Promise<any | null> {
+    return await this.getSubscription(userId, options);
+  }
+
+  static clearAllCaches(): void {
+    try {
+      this.cache.clearAll();
+    } catch {
+      void 0;
+    }
+    try {
+      GlobalRequestDeduplicator.cancelPrefix("SubscriptionValidationService:getSubscriptionState");
+    } catch {
+      void 0;
+    }
+    try {
+      UserAuthService.clearAuthMeCache();
+    } catch {
+      void 0;
+    }
+  }
+
+  static clearUserCache(userId: string): void {
+    const uid = String(userId || "").trim();
+    if (!uid) return;
+    try {
+      this.cache.remove(this.cacheKey(uid));
+    } catch {
+      void 0;
+    }
   }
 }

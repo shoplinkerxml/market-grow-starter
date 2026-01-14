@@ -72,6 +72,20 @@ vi.mock("@/lib/request-handler", () => ({
   EdgeClient: { invokeWithRetry: vi.fn(), configure: vi.fn(), use: vi.fn() },
 }));
 
+vi.mock("@/integrations/supabase/client", () => ({
+  SUPABASE_URL: "http://localhost",
+  SUPABASE_PUBLISHABLE_KEY: "test-key",
+  supabase: {
+    from: vi.fn(),
+    functions: { invoke: vi.fn() },
+    auth: {
+      getSession: vi.fn(async () => ({ data: { session: null }, error: null })),
+      refreshSession: vi.fn(async () => ({ data: { session: null }, error: null })),
+      signOut: vi.fn(async () => ({ error: null })),
+    },
+  },
+}));
+
 vi.mock("@/lib/persistent-cache-service", () => ({
   PersistentCacheService: {
     invalidateMenu: vi.fn(),
@@ -90,6 +104,8 @@ import { ShopCountsService } from "@/lib/shop-counts";
 import { UserMenuService } from "@/lib/user-menu-service";
 import { ShopCurrenciesService } from "@/lib/shop-currencies";
 import { ShopCategoriesService } from "@/lib/shop-categories";
+import { supabase } from "@/integrations/supabase/client";
+import { SubscriptionValidationService } from "@/lib/subscription-validation-service";
 
 describe("Service cache invalidation", () => {
   beforeEach(() => {
@@ -252,5 +268,170 @@ describe("Service cache invalidation", () => {
       const body = extractFunctionBlock(tariffService, fn);
       expect(body).toContain("invalidateTariffsCaches");
     }
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: any) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+describe("SubscriptionValidationService", () => {
+  beforeEach(() => {
+    SubscriptionValidationService.clearAllCaches();
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
+  it("dedupes concurrent subscription state fetches by userId", async () => {
+    const d = deferred<{ data: any; error: any }>();
+
+    const selectBuilder: any = {
+      select: vi.fn(() => selectBuilder),
+      eq: vi.fn(() => selectBuilder),
+      order: vi.fn(() => selectBuilder),
+      limit: vi.fn(() => selectBuilder),
+      maybeSingle: vi.fn(() => d.promise),
+    };
+
+    const fromBuilder: any = {
+      select: vi.fn((..._args: any[]) => selectBuilder),
+      update: vi.fn((_patch: any) => {
+        throw new Error("Unexpected update");
+      }),
+    };
+
+    vi.mocked(supabase.from).mockImplementation((_table: any) => fromBuilder);
+
+    const p1 = SubscriptionValidationService.getSubscriptionState("u1");
+    const p2 = SubscriptionValidationService.getSubscriptionState("u1");
+
+    await Promise.resolve();
+    expect(selectBuilder.maybeSingle).toHaveBeenCalledTimes(1);
+
+    d.resolve({
+      data: {
+        id: 1,
+        is_active: true,
+        start_date: "1970-01-01T00:00:00.000Z",
+        end_date: "2999-01-01T00:00:00.000Z",
+        tariffs: { is_free: false, visible: true },
+      },
+      error: null,
+    });
+
+    const [r1, r2] = await Promise.all([p1, p2]);
+    expect(r1.hasValidSubscription).toBe(true);
+    expect(r2.hasValidSubscription).toBe(true);
+    expect(r1.subscription?.id).toBe(1);
+    expect(r2.subscription?.id).toBe(1);
+  });
+
+  it("uses cache within TTL and supports forceRefresh", async () => {
+    const selectBuilder: any = {
+      select: vi.fn(() => selectBuilder),
+      eq: vi.fn(() => selectBuilder),
+      order: vi.fn(() => selectBuilder),
+      limit: vi.fn(() => selectBuilder),
+      maybeSingle: vi.fn(async () => ({
+        data: {
+          id: 1,
+          is_active: true,
+          start_date: "1970-01-01T00:00:00.000Z",
+          end_date: "2999-01-01T00:00:00.000Z",
+          tariffs: { is_free: false, visible: true },
+        },
+        error: null,
+      })),
+    };
+
+    const fromBuilder: any = {
+      select: vi.fn((..._args: any[]) => selectBuilder),
+      update: vi.fn((_patch: any) => {
+        throw new Error("Unexpected update");
+      }),
+    };
+
+    vi.mocked(supabase.from).mockImplementation((_table: any) => fromBuilder);
+
+    await expect(SubscriptionValidationService.getSubscriptionState("u1")).resolves.toMatchObject({
+      hasValidSubscription: true,
+    });
+    await expect(SubscriptionValidationService.getSubscriptionState("u1")).resolves.toMatchObject({
+      hasValidSubscription: true,
+    });
+
+    expect(selectBuilder.maybeSingle).toHaveBeenCalledTimes(1);
+
+    await expect(SubscriptionValidationService.getSubscriptionState("u1", { forceRefresh: true })).resolves.toMatchObject({
+      hasValidSubscription: true,
+    });
+    expect(selectBuilder.maybeSingle).toHaveBeenCalledTimes(2);
+  });
+
+  it("deactivates expired subscription once under concurrency", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2_000));
+
+    const d = deferred<{ data: any; error: any }>();
+    const updateEqCalls: Array<[string, any]> = [];
+
+    const selectBuilder: any = {
+      select: vi.fn(() => selectBuilder),
+      eq: vi.fn(() => selectBuilder),
+      order: vi.fn(() => selectBuilder),
+      limit: vi.fn(() => selectBuilder),
+      maybeSingle: vi.fn(() => d.promise),
+    };
+
+    const updateAfter: any = {
+      eq: vi.fn((col: any, val: any) => {
+        updateEqCalls.push([String(col), val]);
+        return updateAfter;
+      }),
+      select: vi.fn(async () => ({ data: [{ id: 1 }], error: null })),
+    };
+
+    const fromBuilder: any = {
+      select: vi.fn((..._args: any[]) => selectBuilder),
+      update: vi.fn((_patch: any) => updateAfter),
+    };
+
+    vi.mocked(supabase.from).mockImplementation((_table: any) => fromBuilder);
+
+    const p1 = SubscriptionValidationService.getSubscriptionState("u1");
+    const p2 = SubscriptionValidationService.getSubscriptionState("u1");
+
+    await Promise.resolve();
+    expect(selectBuilder.maybeSingle).toHaveBeenCalledTimes(1);
+
+    d.resolve({
+      data: {
+        id: 1,
+        is_active: true,
+        start_date: "1970-01-01T00:00:00.000Z",
+        end_date: "1970-01-01T00:00:01.000Z",
+        tariffs: { is_free: false, visible: true },
+      },
+      error: null,
+    });
+
+    const [r1, r2] = await Promise.all([p1, p2]);
+    expect(r1.hasValidSubscription).toBe(false);
+    expect(r2.hasValidSubscription).toBe(false);
+
+    expect(updateAfter.select).toHaveBeenCalledTimes(1);
+    expect(updateEqCalls).toEqual([
+      ["id", 1],
+      ["is_active", true],
+    ]);
+    expect(vi.mocked(UserAuthService.clearAuthMeCache)).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
   });
 });
