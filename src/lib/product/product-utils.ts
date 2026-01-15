@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/user-service";
 import { EdgeClient } from "@/lib/request-handler";
+import { GlobalRequestDeduplicator } from "@/lib/request-deduplicator";
 
 export function castNullableNumber(value: unknown): number | null {
   if (value === undefined || value === null || value === "") return null;
@@ -21,7 +22,15 @@ export function edgeError(
 
 export async function invokeEdge<T>(name: string, body: Record<string, unknown>): Promise<T> {
   try {
-    return await EdgeClient.invokeWithRetry<T>(name, body);
+    const fn = String(name || "").trim();
+    const shouldDedupe = fn === "user-products-list" || fn === "store-products-list";
+    if (shouldDedupe) {
+      return await GlobalRequestDeduplicator.dedupeExpensive<T>(
+        { service: "ProductListEdge", method: fn, params: body ?? null },
+        async ({ signal }) => await EdgeClient.invokeWithRetry<T>(fn, body, { signal }),
+      );
+    }
+    return await EdgeClient.invokeWithRetry<T>(fn, body);
   } catch (error) {
     edgeError(error as any, name);
     throw new ApiError(name, 500);

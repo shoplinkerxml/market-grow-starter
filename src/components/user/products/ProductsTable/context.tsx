@@ -5,8 +5,10 @@ import type { Table as TanTable } from "@tanstack/react-table";
 import type { Product } from "@/lib/product-service";
 import type { ProductRow } from "./columns";
 import type { ShopAggregated } from "@/lib/shop-service";
+import type { ProductsServerFilters } from "./state";
 
 export type ProductsTableContextValue = {
+  userId: string;
   t: (k: string) => string;
   table: TanTable<ProductRow>;
   storeId?: string;
@@ -16,6 +18,10 @@ export type ProductsTableContextValue = {
   hideDuplicate?: boolean;
   loading: boolean;
   duplicating: boolean;
+  filtersOpen: boolean;
+  setFiltersOpen: (v: boolean) => void;
+  serverFilters: ProductsServerFilters;
+  setServerFilters: (next: ProductsServerFilters | ((prev: ProductsServerFilters) => ProductsServerFilters)) => void;
   queryClient: QueryClient;
   items: ProductRow[];
   stores: ShopAggregated[];

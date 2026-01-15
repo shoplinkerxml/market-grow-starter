@@ -7,9 +7,13 @@ import { UserAuthService } from "@/lib/user-auth-service";
 import { type ShopAggregated } from "@/lib/shop-service";
 import { ShopCountsService } from "@/lib/shop-counts";
 import type { ProductRow } from "./columns";
+import { DEFAULT_PRODUCTS_SERVER_FILTERS, type ProductsServerFilters } from "./state";
+import { ProductsWithDetailsService } from "@/lib/product/products-with-details-service";
 
 type PageInfo = { limit: number; offset: number; hasMore: boolean; nextOffset: number | null; total: number };
 type ResponseData = { products: ProductRow[]; page: PageInfo };
+
+const NO_STORE_FILTER_ID = "__no_store__";
 
 export type ProductsDataArgs = {
   uid: string;
@@ -19,12 +23,48 @@ export type ProductsDataArgs = {
   refreshTrigger?: number;
   onProductsLoaded?: (count: number) => void;
   onLoadingChange?: (loading: boolean) => void;
+  serverFilters?: ProductsServerFilters;
 };
 
-export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrigger, onProductsLoaded, onLoadingChange }: ProductsDataArgs) {
+function normalizeServerFilters(filters: ProductsServerFilters | undefined, storeId?: string) {
+  const f = filters || DEFAULT_PRODUCTS_SERVER_FILTERS;
+  const supplierIds = Array.from(
+    new Set((f.supplierIds || []).map((n) => Number(n)).filter((n) => Number.isFinite(n))),
+  ).sort((a, b) => a - b);
+  const categoryIds = Array.from(
+    new Set((f.categoryIds || []).map((n) => Number(n)).filter((n) => Number.isFinite(n))),
+  ).sort((a, b) => a - b);
+  const storeIdsRaw = storeId ? [] : Array.from(new Set((f.storeIds || []).map(String).filter(Boolean)));
+  const storeIds =
+    storeIdsRaw.includes(NO_STORE_FILTER_ID)
+      ? [NO_STORE_FILTER_ID]
+      : storeIdsRaw.sort((a, b) => a.localeCompare(b));
+  const stockMin = f.stockMin == null ? null : (Number.isFinite(Number(f.stockMin)) ? Number(f.stockMin) : null);
+  const stockMax = f.stockMax == null ? null : (Number.isFinite(Number(f.stockMax)) ? Number(f.stockMax) : null);
+  const priceOrder = f.priceOrder === "asc" || f.priceOrder === "desc" ? f.priceOrder : null;
+  return { supplierIds, categoryIds, storeIds, stockMin, stockMax, priceOrder };
+}
+
+function isDefaultNormalizedFilters(normalized: ReturnType<typeof normalizeServerFilters>) {
+  return (
+    normalized.priceOrder == null &&
+    normalized.supplierIds.length === 0 &&
+    normalized.categoryIds.length === 0 &&
+    normalized.storeIds.length === 0 &&
+    normalized.stockMin == null &&
+    normalized.stockMax == null
+  );
+}
+
+export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrigger, onProductsLoaded, onLoadingChange, serverFilters }: ProductsDataArgs) {
   const queryClient = useQueryClient();
   const productsBaseKey = useMemo(() => ["user", uid, "products", storeId ?? "all"] as const, [uid, storeId]);
-  const productsQueryKey = useMemo(() => [...productsBaseKey, "pageSize", pageSize] as const, [productsBaseKey, pageSize]);
+  const normalizedFilters = useMemo(() => normalizeServerFilters(serverFilters, storeId), [serverFilters, storeId]);
+  const filtersKey = useMemo(() => JSON.stringify(normalizedFilters), [normalizedFilters]);
+  const productsQueryKey = useMemo(
+    () => [...productsBaseKey, "pageSize", pageSize, "filters", filtersKey] as const,
+    [productsBaseKey, pageSize, filtersKey],
+  );
   const shopsMenuKey = useMemo(() => ["user", uid, "shops", "menu"] as const, [uid]);
 
   const mapUserStoresToAgg = useCallback((rows: Array<{ id: string; store_name: string }>) => {
@@ -50,7 +90,23 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const offset = Number.isFinite(pageParam) ? pageParam : 0;
-      const { products, page } = await ProductService.getProductsPage(storeId ?? null, pageSize, offset);
+      if (isDefaultNormalizedFilters(normalizedFilters)) {
+        const { products, page } = await ProductService.getProductsPage(storeId ?? null, pageSize, offset);
+        return { products: products as unknown as ProductRow[], page: page as unknown as PageInfo };
+      }
+      const { products, page } = await ProductsWithDetailsService.getProductsPage(
+        {
+          storeId: storeId ?? null,
+          storeIds: normalizedFilters.storeIds,
+          supplierIds: normalizedFilters.supplierIds,
+          categoryIds: normalizedFilters.categoryIds,
+          stockMin: normalizedFilters.stockMin,
+          stockMax: normalizedFilters.stockMax,
+          priceOrder: normalizedFilters.priceOrder,
+        },
+        pageSize,
+        offset,
+      );
       return { products: products as unknown as ProductRow[], page: page as unknown as PageInfo };
     },
     getNextPageParam: (lastPage) => (lastPage?.page?.nextOffset == null ? undefined : lastPage.page.nextOffset),

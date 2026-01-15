@@ -395,6 +395,8 @@ export const commonDictionary: Dictionary = {
     uk: "Опис відсутній",
     en: "No description provided",
   },
+  min: { uk: "Мін.", en: "Min" },
+  max: { uk: "Макс.", en: "Max" },
   save: { uk: "Зберегти", en: "Save" },
   cancel: { uk: "Скасувати", en: "Cancel" },
   unknown_error: { uk: "Невідома помилка", en: "Unknown error" },

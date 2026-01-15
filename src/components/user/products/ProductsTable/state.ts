@@ -13,6 +13,24 @@ export const ROW_REORDER_ENABLED_KEY = "user_products_rowReorderEnabled_v1";
 
 export const DEFAULT_PAGINATION: PaginationState = { pageIndex: 0, pageSize: 10 };
 
+export type ProductsServerFilters = {
+  priceOrder: "asc" | "desc" | null;
+  supplierIds: number[];
+  categoryIds: number[];
+  storeIds: string[];
+  stockMin: number | null;
+  stockMax: number | null;
+};
+
+export const DEFAULT_PRODUCTS_SERVER_FILTERS: ProductsServerFilters = {
+  priceOrder: null,
+  supplierIds: [],
+  categoryIds: [],
+  storeIds: [],
+  stockMin: null,
+  stockMax: null,
+};
+
 export const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   select: true,
   article: true,
@@ -70,6 +88,8 @@ export type ProductsTableState = {
   rowReorderEnabled: boolean;
   columnFilters: ColumnFiltersState;
   sorting: SortingState;
+  filtersOpen: boolean;
+  serverFilters: ProductsServerFilters;
   storesMenuOpen: boolean;
   selectedStoreIds: string[];
   addingStores: boolean;
@@ -89,6 +109,8 @@ export type ProductsTableAction =
   | { type: "setRowReorderEnabled"; next: boolean | ((prev: boolean) => boolean) }
   | { type: "setColumnFilters"; next: ColumnFiltersState }
   | { type: "setSorting"; next: SortingState }
+  | { type: "setFiltersOpen"; next: boolean }
+  | { type: "setServerFilters"; next: ProductsServerFilters | ((prev: ProductsServerFilters) => ProductsServerFilters) }
   | { type: "setStoresMenuOpen"; next: boolean }
   | { type: "setSelectedStoreIds"; next: string[] | ((prev: string[]) => string[]) }
   | { type: "setAddingStores"; next: boolean }
@@ -129,6 +151,14 @@ export function productsTableReducer(state: ProductsTableState, action: Products
       return { ...state, columnFilters: action.next };
     case "setSorting":
       return { ...state, sorting: action.next };
+    case "setFiltersOpen":
+      return { ...state, filtersOpen: action.next };
+    case "setServerFilters": {
+      const next = typeof action.next === "function" ? action.next(state.serverFilters) : action.next;
+      const nextPagination = { ...state.pagination, pageIndex: 0 };
+      persistPaginationToPrefs(nextPagination);
+      return { ...state, serverFilters: next, pagination: nextPagination, rowSelection: {} };
+    }
     case "setStoresMenuOpen":
       return { ...state, storesMenuOpen: action.next };
     case "setSelectedStoreIds": {

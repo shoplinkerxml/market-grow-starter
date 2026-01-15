@@ -118,6 +118,7 @@ export const shopsDictionary: Dictionary = {
   category_updated_success: { uk: "Категорію оновлено", en: "Category updated" },
   shop_deleting_currency: { uk: "Видалення валюти…", en: "Deleting currency…" },
   shop_deleting_categories: { uk: "Видалення категорій…", en: "Deleting categories…" },
+  without_store: { uk: "Без магазина", en: "Without store" },
   shops_limit_reached: {
     uk: "Досягнуто ліміту магазинів",
     en: "Shop limit reached",

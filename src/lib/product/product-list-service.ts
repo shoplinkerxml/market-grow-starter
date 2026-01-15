@@ -16,7 +16,7 @@ type ProductsPageResponse = {
 export class ProductListService {
   private static readonly SOFT_REFRESH_THRESHOLD_MS = 120_000;
 
-  private static readonly productsPageCache = UnifiedCacheManager.create("products", {
+  private static readonly productsPageCache = UnifiedCacheManager.create("products_v2", {
     mode: "auto",
     defaultTtlMs: CACHE_TTL.productsPage,
   });

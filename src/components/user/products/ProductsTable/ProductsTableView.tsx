@@ -1,15 +1,14 @@
 import { useCallback, useMemo, useRef } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { flexRender, type Row } from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
-import { GripVertical, Package } from "lucide-react";
+import { Package } from "lucide-react";
 import { CopyProgressDialog, DeleteDialog, DeleteProgressDialog } from "./Dialogs";
 import { PaginationFooter } from "./PaginationFooter";
 import { SortableHeader } from "./SortableHeader";
@@ -18,81 +17,10 @@ import { useProductsTableContext } from "./context";
 import type { ProductRow } from "./columns";
 import type { PaginationState } from "./state";
 import { useVirtualRows } from "@/hooks/useVirtualRows";
+import { ProductsFiltersSheet } from "./ProductsFiltersSheet";
+import { SortableProductRow } from "./SortableProductRow";
 
 type PageInfo = { limit: number; offset: number; hasMore: boolean; nextOffset: number | null; total: number };
-
-function SortableProductRow({
-  row,
-  columnsLength,
-  rowHeight,
-  rowReorderEnabled,
-}: {
-  row: Row<ProductRow>;
-  columnsLength: number;
-  rowHeight: number;
-  rowReorderEnabled: boolean;
-}) {
-  const id = String(row.original.id);
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
-    id,
-    disabled: !rowReorderEnabled,
-  });
-  const style = useMemo(
-    () =>
-      ({
-        transform: CSS.Transform.toString(transform),
-        transition,
-        height: rowHeight,
-      }) as React.CSSProperties,
-    [rowHeight, transform, transition],
-  );
-
-  return (
-    <TableRow
-      ref={setNodeRef}
-      key={row.id}
-      data-state={row.getIsSelected() && "selected"}
-      className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isDragging ? "opacity-70" : ""}`}
-      style={style}
-    >
-      {row.getVisibleCells().map((cell) => {
-        if (cell.column.id !== "name_ua") {
-          return <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>;
-        }
-        return (
-          <TableCell key={cell.id}>
-            <div className="flex items-start gap-2 min-w-0">
-              {rowReorderEnabled ? (
-                <button
-                  ref={setActivatorNodeRef}
-                  type="button"
-                  className={`h-11 w-11 sm:h-8 sm:w-8 flex items-center justify-center touch-none cursor-grab active:cursor-grabbing ${isDragging ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                  {...attributes}
-                  {...listeners}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                  }}
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                  }}
-                  aria-label="Reorder row"
-                >
-                  <GripVertical className="h-4 w-4" />
-                </button>
-              ) : null}
-              <div className="min-w-0 flex-1">{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
-            </div>
-          </TableCell>
-        );
-      })}
-      {row.getVisibleCells().length === 0 ? <TableCell colSpan={columnsLength} /> : null}
-    </TableRow>
-  );
-}
 
 export function ProductsTableView({
   columns,
@@ -129,7 +57,7 @@ export function ProductsTableView({
   onToggleRowReorder: () => void;
   onRowDragEnd: (e: DragEndEvent) => void;
 }) {
-  const { t, table, storeId, onCreateNew, canCreate, loading } = useProductsTableContext();
+  const { t, table, storeId, onCreateNew, canCreate, loading, serverFilters } = useProductsTableContext();
   const tableElRef = useRef<HTMLTableElement | null>(null);
   const activeDragTypeRef = useRef<"row" | "column" | null>(null);
   const rowHeight = 72;
@@ -185,7 +113,15 @@ export function ProductsTableView({
     [columnIdSet, handleDragEnd, onRowDragEnd, rowIdSet, rowReorderEnabled],
   );
 
-  if (!loading && (pageInfo?.total ?? rows.length) === 0) {
+  const hasActiveServerFilters =
+    serverFilters.priceOrder !== null ||
+    serverFilters.supplierIds.length > 0 ||
+    serverFilters.categoryIds.length > 0 ||
+    serverFilters.storeIds.length > 0 ||
+    serverFilters.stockMin !== null ||
+    serverFilters.stockMax !== null;
+
+  if (!loading && (pageInfo?.total ?? rows.length) === 0 && !hasActiveServerFilters) {
     return (
       <div className="p-6 bg-background flex justify-center" data-testid="user_products_empty_wrap">
         <div className="w-full max-w-[clamp(18rem,50vw,32rem)]">
@@ -321,6 +257,8 @@ export function ProductsTableView({
 
       <CopyProgressDialog open={copyDialog.open} name={copyDialog.name} t={t} />
       <DeleteProgressDialog open={deleteProgressOpen} t={t} />
+
+      <ProductsFiltersSheet />
 
       <DeleteDialog
         open={deleteDialog.open}

@@ -2,7 +2,7 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Copy, Edit, Trash2, Loader2, Search } from "lucide-react";
+import { Plus, Copy, Edit, Trash2, Loader2, Search, Sliders } from "lucide-react";
 import type { Product } from "@/lib/product-service";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Table as TanTable } from "@tanstack/react-table";
@@ -38,6 +38,7 @@ export function Toolbar({
   onEdit,
   canCreate,
   hideDuplicate,
+  onOpenFilters,
   setDeleteDialog,
   handleDuplicate,
   duplicating,
@@ -67,6 +68,7 @@ export function Toolbar({
   onEdit?: (p: ProductRow) => void;
   canCreate?: boolean;
   hideDuplicate?: boolean;
+  onOpenFilters: () => void;
   setDeleteDialog: (v: { open: boolean; product: ProductRow | null }) => void;
   handleDuplicate: (p: Product) => Promise<void>;
   duplicating?: boolean;
@@ -117,8 +119,8 @@ export function Toolbar({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-0 w-[clamp(10rem,40vw,20rem)] sm:w-[clamp(12rem,40vw,24rem)]">
+      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+        <div className="relative w-full sm:w-64 min-w-0">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={nameFilterInput}
@@ -128,6 +130,21 @@ export function Toolbar({
             disabled={!!loading}
           />
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          aria-label={t("filter")}
+          disabled={controlsDisabled}
+          aria-disabled={controlsDisabled}
+          data-testid="user_products_filter_button"
+          onClick={() => {
+            if (controlsDisabled) return;
+            onOpenFilters();
+          }}
+        >
+          <Sliders className="h-4 w-4" />
+        </Button>
       </div>
 
       <TooltipProvider delayDuration={200}>
@@ -288,6 +305,7 @@ export function ToolbarFromContext() {
     onEdit,
     canCreate,
     hideDuplicate,
+    setFiltersOpen,
     setDeleteDialog,
     handleDuplicate,
     duplicating,
@@ -319,6 +337,7 @@ export function ToolbarFromContext() {
       onEdit={onEdit}
       canCreate={canCreate}
       hideDuplicate={hideDuplicate}
+      onOpenFilters={() => setFiltersOpen(true)}
       setDeleteDialog={setDeleteDialog}
       handleDuplicate={handleDuplicate}
       duplicating={duplicating}

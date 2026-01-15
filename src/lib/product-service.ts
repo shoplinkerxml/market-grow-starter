@@ -258,6 +258,7 @@ export class ProductService {
   ): Promise<void> {
     await ProductLinkService.removeStoreProductLink(productId, storeId);
     try {
+      ProductService.clearMasterProductsCaches();
       ProductService.clearStoreProductsCaches(String(storeId));
     } catch (e) {
       console.error("ProductService.removeStoreProductLink clearStoreProductsCaches failed", e);
@@ -274,6 +275,15 @@ export class ProductService {
     storeIds: string[],
   ): Promise<{ deleted: number; deletedByStore: Record<string, number>; categoryNamesByStore?: Record<string, string[]> }> {
     const out = await ProductLinkService.bulkRemoveStoreProductLinks(productIds, storeIds);
+    try {
+      ProductService.clearMasterProductsCaches();
+      for (const storeId of storeIds || []) {
+        if (!storeId) continue;
+        ProductService.clearStoreProductsCaches(String(storeId));
+      }
+    } catch (error) {
+      console.error("ProductService.bulkRemoveStoreProductLinks clear caches failed", error);
+    }
     try {
       await ProductService.invalidateRelatedAfterProductMutation();
     } catch (error) {
@@ -293,6 +303,15 @@ export class ProductService {
     custom_available?: boolean | null;
   }>): Promise<{ inserted: number; addedByStore: Record<string, number>; categoryNamesByStore?: Record<string, string[]> }> {
     const out = await ProductLinkService.bulkAddStoreProductLinks(payload);
+    try {
+      ProductService.clearMasterProductsCaches();
+      const storeIds = Array.from(new Set((payload || []).map((p) => String(p.store_id || "")).filter(Boolean)));
+      for (const storeId of storeIds) {
+        ProductService.clearStoreProductsCaches(storeId);
+      }
+    } catch (error) {
+      console.error("ProductService.bulkAddStoreProductLinks clear caches failed", error);
+    }
     try {
       await ProductService.invalidateRelatedAfterProductMutation();
     } catch (error) {

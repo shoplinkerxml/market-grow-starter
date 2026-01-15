@@ -30,6 +30,7 @@ import {
   DEFAULT_COLUMN_VISIBILITY,
   COLUMN_ORDER_KEY,
   COLUMN_ORDER_STORE_KEY,
+  DEFAULT_PRODUCTS_SERVER_FILTERS,
   ROW_ORDER_ALL_KEY,
   ROW_ORDER_STORE_PREFIX,
   loadRowOrderFromPrefs,
@@ -73,6 +74,8 @@ function initState(storeId?: string): ProductsTableState {
     rowReorderEnabled: loadRowReorderEnabledFromPrefs(),
     columnFilters: [] as ColumnFiltersState,
     sorting: [] as SortingState,
+    filtersOpen: false,
+    serverFilters: DEFAULT_PRODUCTS_SERVER_FILTERS,
     storesMenuOpen: false,
     selectedStoreIds: [],
     addingStores: false,
@@ -93,7 +96,7 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
   const rowOrderKey = storeId ? `${ROW_ORDER_STORE_PREFIX}${String(storeId)}` : ROW_ORDER_ALL_KEY;
   const hasAdjustedInitialOrderRef = useRef(false);
 
-  const { queryClient, productsBaseKey, items, pageInfo, loading, setProductsCached, stores, loadStoresForMenu } = useProductsData({ uid, storeId, pageSize: state.pagination.pageSize, pageIndex: state.pagination.pageIndex, refreshTrigger, onProductsLoaded, onLoadingChange });
+  const { queryClient, productsBaseKey, items, pageInfo, loading, setProductsCached, stores, loadStoresForMenu } = useProductsData({ uid, storeId, pageSize: state.pagination.pageSize, pageIndex: state.pagination.pageIndex, refreshTrigger, onProductsLoaded, onLoadingChange, serverFilters: state.serverFilters });
   const orderedItems = useMemo(() => applyRowOrder(items, state.rowOrder), [items, state.rowOrder]);
   const productsCount = pageInfo?.total ?? items.length;
   const currentStart = state.pagination.pageIndex * state.pagination.pageSize;
@@ -133,7 +136,13 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
     onRowSelectionChange: (updater) => dispatch({ type: "setRowSelection", next: (typeof updater === "function" ? (updater as any)(state.rowSelection) : updater) as any }),
     onSortingChange: (updater) => {
       if (state.rowReorderEnabled) return;
-      dispatch({ type: "setSorting", next: (typeof updater === "function" ? (updater as any)(state.sorting) : updater) as any });
+      const nextSorting = (typeof updater === "function" ? (updater as any)(state.sorting) : updater) as any;
+      dispatch({ type: "setSorting", next: nextSorting });
+      const first = Array.isArray(nextSorting) ? nextSorting[0] : null;
+      const nextPriceOrder = first?.id === "price" ? (first?.desc ? "desc" : "asc") : null;
+      if (nextPriceOrder !== state.serverFilters.priceOrder) {
+        dispatch({ type: "setServerFilters", next: (prev: any) => ({ ...prev, priceOrder: nextPriceOrder }) });
+      }
     },
     onColumnFiltersChange: (updater) => dispatch({ type: "setColumnFilters", next: (typeof updater === "function" ? (updater as any)(state.columnFilters) : updater) as any }),
     onColumnVisibilityChange: (updater) => dispatch({ type: "setColumnVisibility", next: (typeof updater === "function" ? (updater as any)(state.columnVisibility) : updater) as VisibilityState }),
@@ -218,11 +227,17 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
   const setRemovingStores = useCallback((v: boolean) => dispatch({ type: "setRemovingStores", next: v }), []);
   const setRemovingStoreId = useCallback((v: string | null) => dispatch({ type: "setRemovingStoreId", next: v }), []);
   const setAddingStores = useCallback((v: boolean) => dispatch({ type: "setAddingStores", next: v }), []);
+  const setFiltersOpen = useCallback((v: boolean) => dispatch({ type: "setFiltersOpen", next: v }), []);
+  const setServerFilters = useCallback(
+    (next: any) => dispatch({ type: "setServerFilters", next }),
+    [],
+  );
   const onDeleteDialogChange = useCallback((open: boolean) => dispatch({ type: "setDeleteDialog", next: { open, productId: open ? state.deleteDialog.productId : null } }), [state.deleteDialog.productId]);
   const setPagination = useCallback((updater: PaginationState | ((prev: PaginationState) => PaginationState)) => dispatch({ type: "setPagination", next: updater }), []);
 
   const providerValue = useMemo(
     () => ({
+      userId: uid,
       t,
       table,
       storeId,
@@ -232,6 +247,10 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       hideDuplicate,
       loading,
       duplicating: state.copyDialog.open,
+      filtersOpen: state.filtersOpen,
+      setFiltersOpen,
+      serverFilters: state.serverFilters,
+      setServerFilters,
       queryClient,
       items: orderedItems,
       stores,
@@ -263,6 +282,8 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       queryClient,
       setAddingStores,
       setDeleteDialog,
+      setFiltersOpen,
+      setServerFilters,
       setRemovingStoreId,
       setRemovingStores,
       setSelectedStoreIds,
@@ -275,10 +296,13 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       table,
       state.addingStores,
       state.copyDialog.open,
+      state.filtersOpen,
       state.removingStoreId,
       state.removingStores,
       state.selectedStoreIds,
+      state.serverFilters,
       state.storesMenuOpen,
+      uid,
     ],
   );
   const enableVirtual = !state.rowReorderEnabled && rows.length > 50 && state.pagination.pageSize >= 20;
