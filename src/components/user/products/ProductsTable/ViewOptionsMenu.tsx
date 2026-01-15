@@ -17,20 +17,16 @@ function SortableColumnOption({
   checked,
   onCheckedChange,
   disabled,
-  reorderEnabled,
-  onToggleReorder,
 }: {
   id: string;
   label: string;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabled: boolean;
-  reorderEnabled: boolean;
-  onToggleReorder: () => void;
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id,
-    disabled: disabled ? true : { draggable: !reorderEnabled, droppable: false },
+    disabled,
   });
   const style = useMemo(
     () =>
@@ -43,23 +39,14 @@ function SortableColumnOption({
   );
 
   return (
-    <DropdownMenuItem
-      asChild
-      disabled={disabled}
+    <div
+      ref={setNodeRef as any}
+      style={style}
       data-testid={`user_products_columns_item_${id}`}
-      onSelect={(e) => {
-        e.preventDefault();
-      }}
+      className={`w-full grid grid-cols-[auto,1fr,auto] items-center gap-2 rounded-sm px-2 py-1.5 text-sm ${
+        "bg-white"
+      } ${isDragging ? "ring-2 ring-emerald-400" : ""} ${disabled ? "opacity-50 pointer-events-none" : ""}`}
     >
-      <div
-        ref={setNodeRef as any}
-        style={style}
-        className={`flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm ${
-          reorderEnabled
-            ? "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-900/40"
-            : ""
-        } ${isDragging ? "ring-2 ring-emerald-400" : ""}`}
-      >
         <Checkbox
           checked={checked}
           disabled={disabled}
@@ -67,52 +54,37 @@ function SortableColumnOption({
           onClick={(e) => {
             e.stopPropagation();
           }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+          }}
           aria-label={label}
         />
-        <div
-          ref={reorderEnabled ? setActivatorNodeRef : undefined}
-          className={`min-w-0 flex-1 truncate capitalize ${reorderEnabled ? "cursor-grab select-none touch-none" : ""}`}
-          {...(reorderEnabled ? { ...attributes, ...listeners } : {})}
-        >
+        <div className="min-w-0 flex-1 truncate capitalize">
           {label}
         </div>
         <button
+          ref={setActivatorNodeRef}
           type="button"
-          className={`h-8 w-8 inline-flex items-center justify-center rounded-md border ${
-            reorderEnabled
-              ? "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-900/40 dark:text-emerald-300"
-              : "bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-          }`}
-          aria-pressed={reorderEnabled}
-          aria-label="Toggle reorder"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onToggleReorder();
-          }}
+          aria-label="Reorder"
+          className="h-9 w-9 sm:h-8 sm:w-8 inline-flex items-center justify-center rounded-md border border-transparent text-muted-foreground hover:text-foreground hover:border-border justify-self-end cursor-grab touch-none"
+          {...attributes}
+          {...listeners}
         >
           <GripVertical className="h-4 w-4" />
         </button>
-      </div>
-    </DropdownMenuItem>
+    </div>
   );
 }
 
 export function ViewOptionsMenu<TData>({ table, disabled }: { table: import("@tanstack/react-table").Table<TData>; disabled?: boolean }) {
   const { t } = useI18n();
   const isDisabled = !!disabled;
-  const [activeReorderId, setActiveReorderId] = useState<string | null>(null);
-  const isTouch = useMemo(() => {
-    try {
-      if (typeof window === "undefined") return false;
-      const nav = window.navigator as any;
-      return ("ontouchstart" in window) || (typeof nav?.maxTouchPoints === "number" && nav.maxTouchPoints > 0);
-    } catch {
-      return false;
-    }
-  }, []);
+  const [isDragging, setIsDragging] = useState(false);
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
     useSensor(KeyboardSensor),
   );
@@ -164,17 +136,17 @@ export function ViewOptionsMenu<TData>({ table, disabled }: { table: import("@ta
       if (!over || active.id === over.id) return;
 
       table.setColumnOrder((prev) => {
-        const withoutFixed = prev.filter((id) => id !== "select" && id !== "actions");
-        const fromIndex = withoutFixed.indexOf(String(active.id));
-        const toIndex = withoutFixed.indexOf(String(over.id));
+        const fromIndex = items.indexOf(String(active.id));
+        const toIndex = items.indexOf(String(over.id));
         if (fromIndex === -1 || toIndex === -1) return ensureActionsLast(prev);
 
-        const moved = arrayMove(withoutFixed, fromIndex, toIndex);
-        const next = prev.includes("select") ? ["select", ...moved] : moved;
-        return ensureActionsLast(next);
+        const moved = arrayMove(items, fromIndex, toIndex);
+        const withSelect = prev.includes("select") ? ["select", ...moved] : moved;
+        const withActions = prev.includes("actions") ? [...withSelect, "actions"] : withSelect;
+        return ensureActionsLast(withActions);
       });
     },
-    [table],
+    [items, table],
   );
 
   return (
@@ -200,7 +172,17 @@ export function ViewOptionsMenu<TData>({ table, disabled }: { table: import("@ta
             {t("columns_short")}
           </TooltipContent>
         </Tooltip>
-        <DropdownMenuContent align="end" className="w-56" data-testid="user_products_columns_menu">
+        <DropdownMenuContent
+          align="end"
+          className="w-48 max-h-[70vh] bg-white text-slate-900 border-emerald-400 overflow-y-auto"
+          data-testid="user_products_columns_menu"
+          onInteractOutside={(e) => {
+            if (isDragging) e.preventDefault();
+          }}
+          onCloseAutoFocus={(e) => {
+            if (isDragging) e.preventDefault();
+          }}
+        >
           <DropdownMenuItem disabled className="text-sm">
             {t("toggle_columns")}
           </DropdownMenuItem>
@@ -208,22 +190,31 @@ export function ViewOptionsMenu<TData>({ table, disabled }: { table: import("@ta
           <DndContext
             collisionDetection={closestCenter}
             modifiers={[restrictToVerticalAxis]}
-            onDragEnd={isDisabled ? undefined : handleDragEnd}
+            onDragEnd={
+              isDisabled
+                ? undefined
+                : (e) => {
+                    setIsDragging(false);
+                    handleDragEnd(e);
+                  }
+            }
+            onDragStart={() => setIsDragging(true)}
+            onDragCancel={() => setIsDragging(false)}
             sensors={isDisabled ? [] : sensors}
           >
             <SortableContext items={items} strategy={verticalListSortingStrategy}>
-              {columns.map((column) => (
-                <SortableColumnOption
-                  key={column.id}
-                  id={column.id}
-                  label={labelMap[column.id] ?? (typeof column.columnDef.header === "string" ? column.columnDef.header : column.id)}
-                  checked={column.getIsVisible()}
-                  disabled={isDisabled}
-                  reorderEnabled={!isDisabled && (isTouch || activeReorderId === column.id)}
-                  onToggleReorder={() => setActiveReorderId((prev) => (prev === column.id ? null : column.id))}
-                  onCheckedChange={(checked) => column.toggleVisibility(checked)}
-                />
-              ))}
+              <div className="px-1 py-1">
+                {columns.map((column) => (
+                  <SortableColumnOption
+                    key={column.id}
+                    id={column.id}
+                    label={labelMap[column.id] ?? (typeof column.columnDef.header === "string" ? column.columnDef.header : column.id)}
+                    checked={column.getIsVisible()}
+                    disabled={isDisabled}
+                    onCheckedChange={(checked) => column.toggleVisibility(checked)}
+                  />
+                ))}
+              </div>
             </SortableContext>
           </DndContext>
         </DropdownMenuContent>
