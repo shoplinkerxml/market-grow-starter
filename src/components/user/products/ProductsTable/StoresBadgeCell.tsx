@@ -192,13 +192,13 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
   }
 
   return (
-    <div className="w-full flex flex-wrap gap-1 justify-center">
+    <div className="w-full flex flex-col gap-1 items-center">
       {storeIds.map((id) => {
         const name = storeNames[String(id)] || "";
         const label = name || "…";
         const isOpen = badgeOpenId === String(id);
         return (
-          <div key={id} className="flex items-center min-w-[fit-content] max-w-full">
+          <div key={id} className="flex items-center w-full justify-center">
             <Badge
               variant="secondary"
               className="w-full justify-center h-5 pl-[1px] pr-[1px] rounded-sm text-[10px] border border-emerald-200 bg-emerald-50 text-emerald-700 transition-transform shadow-sm hover:shadow-md hover:-translate-y-[1px] hover:border-emerald-300 max-w-full"

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Edit, MoreHorizontal, Copy, Loader2, Store, Trash2 } from "lucide-react";
+import { Edit, MoreVertical, Copy, Loader2, Store, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { toast } from "sonner";
@@ -106,7 +106,7 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
           aria-disabled={duplicating === true || isDupPending}
           data-testid="user_products_row_actions"
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

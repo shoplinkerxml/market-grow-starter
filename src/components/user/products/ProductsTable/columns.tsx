@@ -1,13 +1,11 @@
 import React from "react";
-import type { ColumnDef, FilterFn, Column } from "@tanstack/react-table";
-import type { Table as TanTable } from "@tanstack/react-table";
+import type { ColumnDef, FilterFn } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { getImageUrl, IMAGE_SIZES } from "@/lib/imageUtils";
 import { Switch } from "@/components/ui/switch";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { format } from "date-fns";
-import { SortToggle } from "./SortToggle";
-import { ColumnFilterMenu } from "./ColumnFilterMenu";
 import { StoresBadgeCell } from "./StoresBadgeCell";
 import { ProductStatusBadge } from "./ProductStatusBadge";
 import { Image as ImageIcon } from "lucide-react";
@@ -41,21 +39,42 @@ const ProductThumbnail = React.memo(({
 
   const baseUrl = product.mainImageUrl || "";
   const { src, onError } = useResolvedImageSrc({ url: baseUrl, width: IMAGE_SIZES.THUMB, fallbackUrl: baseUrl });
+  const largeSrc = baseUrl ? getImageUrl(baseUrl, IMAGE_SIZES.LARGE) : "";
 
   return (
-    <button type="button" onClick={onClick} className="inline-flex">
-      <Avatar className={`${sizeCls} rounded-md cursor-pointer bg-white`}>
-        <AvatarImage
-          src={src}
-          alt={product.name_ua || product.name || ""}
-          className="object-contain"
-          onError={onError}
-        />
-        <AvatarFallback className="bg-primary/5 text-primary rounded-md flex items-center justify-center">
-          <ImageIcon className="w-4 h-4" />
-        </AvatarFallback>
-      </Avatar>
-    </button>
+    <HoverCard openDelay={150} closeDelay={80}>
+      <HoverCardTrigger asChild>
+        <button type="button" onClick={onClick} className="inline-flex">
+          <Avatar className={`${sizeCls} rounded-md cursor-pointer bg-white`}>
+            <AvatarImage
+              src={src}
+              alt={product.name_ua || product.name || ""}
+              className="object-contain"
+              onError={onError}
+            />
+            <AvatarFallback className="bg-primary/5 text-primary rounded-md flex items-center justify-center">
+              <ImageIcon className="w-4 h-4" />
+            </AvatarFallback>
+          </Avatar>
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-[min(22rem,85vw)] p-2" sideOffset={8}>
+        <div className="rounded-md overflow-hidden bg-white">
+          {largeSrc ? (
+            <img
+              src={largeSrc}
+              alt={product.name_ua || product.name || ""}
+              className="w-full max-h-[18rem] object-contain"
+              loading="lazy"
+            />
+          ) : (
+            <div className="h-[10rem] w-full flex items-center justify-center text-muted-foreground">
+              —
+            </div>
+          )}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   );
 });
 
@@ -63,7 +82,7 @@ ProductThumbnail.displayName = "ProductThumbnail";
 
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
-  UAH: 'грн',
+  UAH: '₴',
   USD: '$',
   EUR: '€',
 };
@@ -74,7 +93,7 @@ function getCurrencySymbol(code?: string | null): string {
 }
 
 function formatPrice(price: number | null | undefined, currencyCode?: string | null): string {
-  if (price == null) return '—';
+  if (price == null) return "—";
   const symbol = getCurrencySymbol(currencyCode);
   return `${price} ${symbol}`.trim();
 }
@@ -96,21 +115,8 @@ const stringFilter: FilterFn<ProductRow> = (row, id, value) => {
   return str.toLowerCase().includes(String(value).toLowerCase());
 };
 
-function renderHeader(
-  label: string,
-  column: Column<ProductRow, unknown>,
-  table: TanTable<ProductRow>,
-  extra?: React.ReactNode
-) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="truncate">{label}</span>
-      <div className="flex items-center gap-0 ml-auto">
-        <SortToggle column={column} table={table} />
-        {extra ?? <ColumnFilterMenu column={column} />}
-      </div>
-    </div>
-  );
+function renderHeader(label: string) {
+  return <span className="truncate">{label}</span>;
 }
 
 export type ColumnConfig = {
@@ -195,14 +201,20 @@ function createNameColumn(config: ColumnConfig): ColumnDef<ProductRow> {
     id: "name_ua",
     accessorFn: (row) => row.name_ua ?? row.name ?? "",
     filterFn: stringFilter,
-    header: ({ column, table }) => renderHeader(config.t("table_product"), column, table),
+    header: () => renderHeader(config.t("table_product")),
     cell: ({ row }) => {
       const name = getProductName(row.original);
+      const product = row.original;
       return (
-        <div className="min-w-0 max-w-full" data-testid="user_products_name">
-          <div className="font-medium break-words line-clamp-2 w-full" title={name}>
+        <div className="min-w-0 max-w-[clamp(10rem,26vw,18rem)]" data-testid="user_products_name">
+          <button
+            type="button"
+            className="text-left font-medium break-words line-clamp-2 w-full transition-colors hover:text-emerald-600 hover:font-semibold"
+            title={name}
+            onClick={() => config.onEdit?.(product)}
+          >
             {name}
-          </div>
+          </button>
         </div>
       );
     },
@@ -227,15 +239,15 @@ function createPriceColumn(
       return typeof value === "number" ? value : Number.NEGATIVE_INFINITY;
     },
     filterFn: stringFilter,
-    header: ({ column, table }) => renderHeader(config.t(labelKey), column, table),
+    header: () => renderHeader(config.t(labelKey)),
     cell: ({ row }) => {
       const value = row.original[id];
       const formatted = formatPrice(value, row.original.currency_code);
       const isEmpty = value == null;
       
       return (
-        <span 
-          className={isEmpty ? "text-muted-foreground" : "tabular-nums"}
+        <span
+          className={isEmpty ? "text-muted-foreground whitespace-nowrap" : "tabular-nums whitespace-nowrap"}
           data-testid={isEmpty ? `${testIdMap[id]}_empty` : testIdMap[id]}
         >
           {formatted}
@@ -269,16 +281,7 @@ function createStoresColumn(config: ColumnConfig): ColumnDef<ProductRow> {
       
       return selected.some(name => storeNamesForProduct.includes(name));
     }) as FilterFn<ProductRow>,
-    header: ({ column, table }) => (
-      <div className="flex justify-center w-full">
-        {renderHeader(
-          config.t("stores"), 
-          column, 
-          table, 
-          <ColumnFilterMenu column={column} extraOptions={Object.values(config.storeNames)} />
-        )}
-      </div>
-    ),
+    header: () => <div className="flex justify-center w-full">{renderHeader(config.t("stores"))}</div>,
     size: 96,
     cell: ({ row }) => (
       <div className="flex justify-center w-full">
@@ -385,7 +388,7 @@ export function useProductColumns(config: ColumnConfig): ColumnDef<ProductRow>[]
 }
 
 export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
-  const { t, storeId, categoryFilterOptions } = config;
+  const { t, storeId } = config;
 
   const columns: ColumnDef<ProductRow>[] = [
     createSelectColumn(config),
@@ -395,7 +398,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       id: "status",
       accessorFn: (row) => row.state ?? "",
       filterFn: stringFilter,
-      header: ({ column, table }) => renderHeader(t("table_status"), column, table),
+      header: () => renderHeader(t("table_status")),
       cell: ({ row }) => <ProductStatusBadge state={row.original.state} />,
       enableHiding: true,
     },
@@ -403,7 +406,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       id: "supplier",
       accessorFn: (row) => row.supplierName ?? "",
       filterFn: stringFilter,
-      header: ({ column, table }) => renderHeader(t("supplier"), column, table),
+      header: () => renderHeader(t("supplier")),
       cell: ({ row }) => {
         const name = row.original.supplierName;
         return name ? (
@@ -421,12 +424,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       id: "category",
       accessorFn: (row) => row.categoryName ?? "",
       filterFn: stringFilter,
-      header: ({ column, table }) => renderHeader(
-        t("category"), 
-        column, 
-        table, 
-        <ColumnFilterMenu column={column} extraOptions={storeId ? categoryFilterOptions : []} />
-      ),
+      header: () => renderHeader(t("category")),
       cell: ({ row }) => {
         const name = row.original.categoryName;
         return name ? (
@@ -440,7 +438,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       id: "stock_quantity",
       accessorFn: (row) => typeof row.stock_quantity === "number" ? row.stock_quantity : Number.NEGATIVE_INFINITY,
       filterFn: stringFilter,
-      header: ({ column, table }) => renderHeader(t("table_stock"), column, table),
+      header: () => renderHeader(t("table_stock")),
       cell: ({ row }) => (
         <div className="flex items-center justify-center">
           {row.original.stock_quantity != null ? (
@@ -462,7 +460,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
         }
       },
       filterFn: stringFilter,
-      header: ({ column, table }) => renderHeader(t("table_created"), column, table),
+      header: () => renderHeader(t("table_created")),
       cell: ({ row }) => (
         row.original.created_at ? (
           <div className="flex flex-col">
@@ -482,7 +480,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
     {
       accessorKey: "article",
       filterFn: stringFilter,
-      header: ({ column, table }) => renderHeader(t("article"), column, table),
+      header: () => renderHeader(t("article")),
       cell: ({ row }) => (
         <span className="text-sm text-foreground">{row.original.article || ""}</span>
       ),
@@ -491,7 +489,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
     {
       accessorKey: "vendor",
       filterFn: stringFilter,
-      header: ({ column, table }) => renderHeader(t("vendor"), column, table),
+      header: () => renderHeader(t("vendor")),
       cell: ({ row }) => (
         <span className="text-sm text-foreground">{row.original.vendor || ""}</span>
       ),
@@ -500,7 +498,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
     {
       accessorKey: "docket_ua",
       filterFn: stringFilter,
-      header: ({ column, table }) => renderHeader(t("short_name_ua"), column, table),
+      header: () => renderHeader(t("short_name_ua")),
       cell: ({ row }) => {
         const shortName = row.original.docket_ua || "";
         return (
@@ -518,7 +516,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
     {
       accessorKey: "description_ua",
       filterFn: stringFilter,
-      header: ({ column, table }) => renderHeader(t("product_description_ua"), column, table),
+      header: () => renderHeader(t("product_description_ua")),
       cell: ({ row }) => {
         const desc = row.original.description_ua || "";
         return (
@@ -535,7 +533,6 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
     },
   ];
 
-  // Добавляем колонку магазинов только для общего списка
   if (!storeId) {
     columns.push(createStoresColumn(config));
   }
@@ -546,7 +543,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       id: "active",
       header: t("table_active"),
       enableSorting: false,
-      enableHiding: false,
+      enableHiding: true,
       size: 64,
       cell: ({ row }) => (
         <div className="flex items-center justify-center">

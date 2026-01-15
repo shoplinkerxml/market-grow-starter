@@ -9,16 +9,36 @@ type Props = {
 
 export function SortableHeader({ id, children }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const adjustedTransform =
+    transform
+      ? {
+          ...transform,
+          x: Math.round(transform.x),
+          y: Math.round(transform.y),
+          scaleX: 1,
+          scaleY: 1,
+        }
+      : null;
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Transform.toString(adjustedTransform),
     transition,
     cursor: "grab",
-    opacity: isDragging ? 0.6 : 1,
     userSelect: "none",
+    touchAction: "none",
+    willChange: "transform",
+    transformOrigin: "0 0",
+    backfaceVisibility: "hidden",
+    WebkitFontSmoothing: "antialiased",
   } as React.CSSProperties;
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="inline-flex items-center gap-1">
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`inline-flex items-center gap-1 ${isDragging ? "text-foreground" : ""}`}
+    >
       {children}
     </div>
   );

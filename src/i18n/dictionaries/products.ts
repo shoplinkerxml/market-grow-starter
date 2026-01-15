@@ -442,7 +442,7 @@ export const productsDictionary: Dictionary = {
     en: "Remove failed",
   },
   photo: { uk: "Фото", en: "Photo" },
-  table_product: { uk: "Товар", en: "Product" },
+  table_product: { uk: "Назва товару", en: "Product" },
   supplier: { uk: "Постачальник", en: "Supplier" },
   table_price: { uk: "Ціна", en: "Price" },
   old_price: { uk: "Стара ціна", en: "Old price" },
@@ -452,7 +452,7 @@ export const productsDictionary: Dictionary = {
     uk: "Виберіть категорію",
     en: "Select category",
   },
-  table_stock: { uk: "Залишок", en: "Stock" },
+  table_stock: { uk: "Кількість", en: "Stock" },
   table_active: { uk: "Активний", en: "Active" },
   article: { uk: "Артикул", en: "SKU" },
   article_placeholder: {

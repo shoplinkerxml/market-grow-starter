@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import {
   getCoreRowModel,
   getFacetedRowModel,
@@ -12,7 +12,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useOutletContext } from "react-router-dom";
 import { useI18n } from "@/i18n";
@@ -26,8 +26,16 @@ import { useProductsDelete } from "./useProductsDelete";
 import { useProductsHandlers } from "./useProductsHandlers";
 import {
   DEFAULT_COLUMN_ORDER,
+  DEFAULT_COLUMN_ORDER_STORE,
   DEFAULT_COLUMN_VISIBILITY,
+  COLUMN_ORDER_KEY,
+  COLUMN_ORDER_STORE_KEY,
+  ROW_ORDER_ALL_KEY,
+  ROW_ORDER_STORE_PREFIX,
+  loadRowOrderFromPrefs,
+  loadRowReorderEnabledFromPrefs,
   ensureActionsLast,
+  loadColumnOrderFromPrefs,
   loadColumnVisibilityFromPrefs,
   loadPaginationFromPrefs,
   productsTableReducer,
@@ -39,12 +47,30 @@ import {
 type ProductsTableProps = { onEdit?: (product: Product) => void; onDelete?: (product: Product) => Promise<void> | void; onCreateNew?: () => void; onProductsLoaded?: (count: number) => void; onLoadingChange?: (loading: boolean) => void; refreshTrigger?: number; canCreate?: boolean; storeId?: string; hideDuplicate?: boolean };
 type PageInfo = { limit: number; offset: number; hasMore: boolean; nextOffset: number | null; total: number };
 
+function applyRowOrder(items: ProductRow[], order: string[]): ProductRow[] {
+  if (!Array.isArray(order) || order.length === 0) return items;
+  const pos = new Map<string, number>();
+  for (let i = 0; i < order.length; i += 1) pos.set(String(order[i]), i);
+  const decorated = items.map((item, idx) => {
+    const id = String(item.id);
+    const p = pos.get(id);
+    return { item, idx, p: typeof p === "number" ? p : Number.POSITIVE_INFINITY };
+  });
+  decorated.sort((a, b) => (a.p - b.p) || (a.idx - b.idx));
+  return decorated.map((d) => d.item);
+}
+
 function initState(storeId?: string): ProductsTableState {
+  const columnOrderKey = storeId ? COLUMN_ORDER_STORE_KEY : COLUMN_ORDER_KEY;
+  const defaults = storeId ? DEFAULT_COLUMN_ORDER_STORE : DEFAULT_COLUMN_ORDER;
+  const rowOrderKey = storeId ? `${ROW_ORDER_STORE_PREFIX}${String(storeId)}` : ROW_ORDER_ALL_KEY;
   return {
     pagination: loadPaginationFromPrefs(),
     rowSelection: {},
     columnVisibility: loadColumnVisibilityFromPrefs(DEFAULT_COLUMN_VISIBILITY),
-    columnOrder: withStoreSpecificColumns(DEFAULT_COLUMN_ORDER, storeId),
+    columnOrder: withStoreSpecificColumns(loadColumnOrderFromPrefs(defaults, columnOrderKey), storeId),
+    rowOrder: loadRowOrderFromPrefs(rowOrderKey),
+    rowReorderEnabled: loadRowReorderEnabledFromPrefs(),
     columnFilters: [] as ColumnFiltersState,
     sorting: [] as SortingState,
     storesMenuOpen: false,
@@ -63,12 +89,16 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
   const { user } = useOutletContext<{ user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
   const [state, dispatch] = useReducer(productsTableReducer, storeId, initState);
+  const columnOrderKey = storeId ? COLUMN_ORDER_STORE_KEY : COLUMN_ORDER_KEY;
+  const rowOrderKey = storeId ? `${ROW_ORDER_STORE_PREFIX}${String(storeId)}` : ROW_ORDER_ALL_KEY;
+  const hasAdjustedInitialOrderRef = useRef(false);
 
   const { queryClient, productsBaseKey, items, pageInfo, loading, setProductsCached, stores, loadStoresForMenu } = useProductsData({ uid, storeId, pageSize: state.pagination.pageSize, pageIndex: state.pagination.pageIndex, refreshTrigger, onProductsLoaded, onLoadingChange });
+  const orderedItems = useMemo(() => applyRowOrder(items, state.rowOrder), [items, state.rowOrder]);
   const productsCount = pageInfo?.total ?? items.length;
   const currentStart = state.pagination.pageIndex * state.pagination.pageSize;
   const currentEnd = currentStart + state.pagination.pageSize;
-  const rows = useMemo(() => items.slice(currentStart, Math.min(currentEnd, items.length)), [items, currentEnd, currentStart]);
+  const rows = useMemo(() => orderedItems.slice(currentStart, Math.min(currentEnd, orderedItems.length)), [currentEnd, currentStart, orderedItems]);
   const pageCount = Math.max(1, Math.ceil((productsCount / state.pagination.pageSize) || 1));
 
   useEffect(() => {
@@ -85,10 +115,12 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
   const { handleDuplicate, handleToggleAvailable, handleStoresUpdate, handleRemoveStoreLink } = useProductsHandlers({ t, uid, storeId, canCreate, queryClient, productsBaseKey, setProductsCached, setCopyDialog });
   const columns: ColumnDef<ProductRow>[] = useProductColumns({ t, storeId, categoryFilterOptions, storeNames, stores, loadStoresForMenu, handleRemoveStoreLink, handleStoresUpdate, onEdit: onEdit as any, setDeleteDialog, handleDuplicate, canCreate, hideDuplicate, handleToggleAvailable, duplicating: state.copyDialog.open });
 
+  const sortingEffective = state.rowReorderEnabled ? ([] as SortingState) : state.sorting;
+
   const table = useReactTable({
     data: rows,
     columns,
-    state: { sorting: state.sorting, columnVisibility: state.columnVisibility, rowSelection: state.rowSelection, columnFilters: state.columnFilters, pagination: state.pagination, columnOrder: withStoreSpecificColumns(state.columnOrder, storeId) },
+    state: { sorting: sortingEffective, columnVisibility: state.columnVisibility, rowSelection: state.rowSelection, columnFilters: state.columnFilters, pagination: state.pagination, columnOrder: withStoreSpecificColumns(state.columnOrder, storeId) },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
@@ -99,12 +131,47 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
     pageCount,
     enableRowSelection: true,
     onRowSelectionChange: (updater) => dispatch({ type: "setRowSelection", next: (typeof updater === "function" ? (updater as any)(state.rowSelection) : updater) as any }),
-    onSortingChange: (updater) => dispatch({ type: "setSorting", next: (typeof updater === "function" ? (updater as any)(state.sorting) : updater) as any }),
+    onSortingChange: (updater) => {
+      if (state.rowReorderEnabled) return;
+      dispatch({ type: "setSorting", next: (typeof updater === "function" ? (updater as any)(state.sorting) : updater) as any });
+    },
     onColumnFiltersChange: (updater) => dispatch({ type: "setColumnFilters", next: (typeof updater === "function" ? (updater as any)(state.columnFilters) : updater) as any }),
     onColumnVisibilityChange: (updater) => dispatch({ type: "setColumnVisibility", next: (typeof updater === "function" ? (updater as any)(state.columnVisibility) : updater) as VisibilityState }),
-    onColumnOrderChange: (updater) => dispatch({ type: "setColumnOrder", next: (prev) => ensureActionsLast((typeof updater === "function" ? (updater as (p: string[]) => string[])(prev) : updater) as string[]) }),
+    onColumnOrderChange: (updater) =>
+      dispatch({
+        type: "setColumnOrder",
+        storageKey: columnOrderKey,
+        next: (prev) => ensureActionsLast((typeof updater === "function" ? (updater as (p: string[]) => string[])(prev) : updater) as string[]),
+      }),
     onPaginationChange: (updater) => dispatch({ type: "setPagination", next: updater as any }),
   });
+
+  const toggleRowReorderEnabled = useCallback(() => {
+    const next = !state.rowReorderEnabled;
+    dispatch({ type: "setRowReorderEnabled", next });
+    if (next) dispatch({ type: "setSorting", next: [] as SortingState });
+  }, [state.rowReorderEnabled]);
+
+  useEffect(() => {
+    if (hasAdjustedInitialOrderRef.current) return;
+    hasAdjustedInitialOrderRef.current = true;
+
+    dispatch({
+      type: "setColumnOrder",
+      storageKey: columnOrderKey,
+      next: (prev) => {
+        if (prev.includes("photo")) return prev;
+        const withoutPhoto = prev.filter((id) => id !== "photo");
+        const articleIdx = withoutPhoto.indexOf("article");
+        const insertIdx = articleIdx === -1 ? 1 : articleIdx + 1;
+        return [
+          ...withoutPhoto.slice(0, insertIdx),
+          "photo",
+          ...withoutPhoto.slice(insertIdx),
+        ];
+      },
+    });
+  }, [columnOrderKey]);
 
   useEffect(() => {
     try {
@@ -113,20 +180,34 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
     } catch { void 0; }
   }, [state.rowSelection, table]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    dispatch({ type: "setColumnOrder", next: (prev) => {
+    dispatch({ type: "setColumnOrder", storageKey: columnOrderKey, next: (prev) => {
       const withoutActions = prev.filter((id) => id !== "actions");
       const fromIndex = withoutActions.indexOf(String(active.id));
       const toIndex = withoutActions.indexOf(String(over.id));
       if (fromIndex === -1 || toIndex === -1) return ensureActionsLast(withoutActions);
       return ensureActionsLast(arrayMove(withoutActions, fromIndex, toIndex));
     } });
-  }, []);
+  }, [columnOrderKey]);
 
-  const deleteDialogProduct = useMemo(() => (state.deleteDialog.productId ? (items || []).find((p) => String(p.id) === String(state.deleteDialog.productId)) ?? null : null), [items, state.deleteDialog.productId]);
+  const handleRowDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = orderedItems.map((p) => String(p.id));
+    const fromIndex = ids.indexOf(String(active.id));
+    const toIndex = ids.indexOf(String(over.id));
+    if (fromIndex === -1 || toIndex === -1) return;
+    dispatch({ type: "setRowOrder", storageKey: rowOrderKey, next: arrayMove(ids, fromIndex, toIndex) });
+  }, [orderedItems, rowOrderKey]);
+
+  const deleteDialogProduct = useMemo(() => (state.deleteDialog.productId ? (orderedItems || []).find((p) => String(p.id) === String(state.deleteDialog.productId)) ?? null : null), [orderedItems, state.deleteDialog.productId]);
   const { handleConfirmDelete } = useProductsDelete({ t, uid, storeId, onDelete, refreshTrigger, queryClient, productsBaseKey, table, setProductsCached, setDeleteProgress, closeDeleteDialog });
   const setStores = useCallback((v: ShopAggregated[]) => {
     queryClient.setQueryData(["user", uid, "shops"], v);
@@ -152,7 +233,7 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       loading,
       duplicating: state.copyDialog.open,
       queryClient,
-      items,
+      items: orderedItems,
       stores,
       setStores,
       storesMenuOpen: state.storesMenuOpen,
@@ -174,7 +255,7 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       canCreate,
       handleDuplicate,
       hideDuplicate,
-      items,
+      orderedItems,
       loadStoresForMenu,
       loading,
       onCreateNew,
@@ -200,11 +281,28 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       state.storesMenuOpen,
     ],
   );
-  const enableVirtual = rows.length > 50 && state.pagination.pageSize >= 20;
+  const enableVirtual = !state.rowReorderEnabled && rows.length > 50 && state.pagination.pageSize >= 20;
 
   return (
     <ProductsTableProvider value={providerValue}>
-      <ProductsTableView columns={columns} rows={rows} pageInfo={pageInfo as PageInfo | null} pagination={state.pagination} setPagination={setPagination} copyDialog={state.copyDialog} deleteProgressOpen={state.deleteProgress.open} deleteDialog={{ open: state.deleteDialog.open, product: deleteDialogProduct }} onDeleteDialogChange={onDeleteDialogChange} onConfirmDelete={() => handleConfirmDelete(deleteDialogProduct)} sensors={sensors} handleDragEnd={handleDragEnd} enableVirtual={enableVirtual} />
+      <ProductsTableView
+        columns={columns}
+        rows={rows}
+        pageInfo={pageInfo as PageInfo | null}
+        pagination={state.pagination}
+        setPagination={setPagination}
+        copyDialog={state.copyDialog}
+        deleteProgressOpen={state.deleteProgress.open}
+        deleteDialog={{ open: state.deleteDialog.open, product: deleteDialogProduct }}
+        onDeleteDialogChange={onDeleteDialogChange}
+        onConfirmDelete={() => handleConfirmDelete(deleteDialogProduct)}
+        sensors={sensors}
+        handleDragEnd={handleDragEnd}
+        enableVirtual={enableVirtual}
+        rowReorderEnabled={state.rowReorderEnabled}
+        onToggleRowReorder={toggleRowReorderEnabled}
+        onRowDragEnd={handleRowDragEnd}
+      />
     </ProductsTableProvider>
   );
 };

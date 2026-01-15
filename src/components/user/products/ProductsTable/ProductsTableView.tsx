@@ -1,13 +1,15 @@
-import { useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { flexRender } from "@tanstack/react-table";
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext } from "@dnd-kit/sortable";
+import { flexRender, type Row } from "@tanstack/react-table";
+import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
-import { Package } from "lucide-react";
+import { GripVertical, Package } from "lucide-react";
 import { CopyProgressDialog, DeleteDialog, DeleteProgressDialog } from "./Dialogs";
 import { PaginationFooter } from "./PaginationFooter";
 import { SortableHeader } from "./SortableHeader";
@@ -18,6 +20,79 @@ import type { PaginationState } from "./state";
 import { useVirtualRows } from "@/hooks/useVirtualRows";
 
 type PageInfo = { limit: number; offset: number; hasMore: boolean; nextOffset: number | null; total: number };
+
+function SortableProductRow({
+  row,
+  columnsLength,
+  rowHeight,
+  rowReorderEnabled,
+}: {
+  row: Row<ProductRow>;
+  columnsLength: number;
+  rowHeight: number;
+  rowReorderEnabled: boolean;
+}) {
+  const id = String(row.original.id);
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: !rowReorderEnabled,
+  });
+  const style = useMemo(
+    () =>
+      ({
+        transform: CSS.Transform.toString(transform),
+        transition,
+        height: rowHeight,
+      }) as React.CSSProperties,
+    [rowHeight, transform, transition],
+  );
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      key={row.id}
+      data-state={row.getIsSelected() && "selected"}
+      className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isDragging ? "opacity-70" : ""}`}
+      style={style}
+    >
+      {row.getVisibleCells().map((cell) => {
+        if (cell.column.id !== "name_ua") {
+          return <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>;
+        }
+        return (
+          <TableCell key={cell.id}>
+            <div className="flex items-start gap-2 min-w-0">
+              {rowReorderEnabled ? (
+                <button
+                  ref={setActivatorNodeRef}
+                  type="button"
+                  className={`h-11 w-11 sm:h-8 sm:w-8 flex items-center justify-center touch-none cursor-grab active:cursor-grabbing ${isDragging ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  {...attributes}
+                  {...listeners}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onPointerDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
+                  }}
+                  aria-label="Reorder row"
+                >
+                  <GripVertical className="h-4 w-4" />
+                </button>
+              ) : null}
+              <div className="min-w-0 flex-1">{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
+            </div>
+          </TableCell>
+        );
+      })}
+      {row.getVisibleCells().length === 0 ? <TableCell colSpan={columnsLength} /> : null}
+    </TableRow>
+  );
+}
 
 export function ProductsTableView({
   columns,
@@ -33,6 +108,9 @@ export function ProductsTableView({
   sensors,
   handleDragEnd,
   enableVirtual,
+  rowReorderEnabled,
+  onToggleRowReorder: _onToggleRowReorder,
+  onRowDragEnd,
 }: {
   columns: ColumnDef<ProductRow>[];
   rows: ProductRow[];
@@ -47,11 +125,65 @@ export function ProductsTableView({
   sensors: any;
   handleDragEnd: (e: DragEndEvent) => void;
   enableVirtual: boolean;
+  rowReorderEnabled: boolean;
+  onToggleRowReorder: () => void;
+  onRowDragEnd: (e: DragEndEvent) => void;
 }) {
   const { t, table, storeId, onCreateNew, canCreate, loading } = useProductsTableContext();
   const tableElRef = useRef<HTMLTableElement | null>(null);
+  const activeDragTypeRef = useRef<"row" | "column" | null>(null);
   const rowHeight = 72;
-  const { virtualStart, virtualEnd } = useVirtualRows(enableVirtual, table.getRowModel().rows.length, tableElRef, rowHeight);
+  const enableVirtualEffective = enableVirtual && !rowReorderEnabled;
+  const { virtualStart, virtualEnd } = useVirtualRows(enableVirtualEffective, table.getRowModel().rows.length, tableElRef, rowHeight);
+  const rowIds = useMemo(() => table.getRowModel().rows.map((r) => String((r.original as ProductRow).id)), [table]);
+  const rowIdSet = useMemo(() => new Set(rowIds), [rowIds]);
+  const columnSortableIds = useMemo(
+    () => table.getAllLeafColumns().map((c) => c.id).filter((id) => id !== "actions"),
+    [table],
+  );
+  const columnIdSet = useMemo(() => new Set(columnSortableIds), [columnSortableIds]);
+
+  const handleTableDragStart = useCallback(
+    (event: { active: { id: string | number } }) => {
+      const activeId = String(event.active.id);
+      if (rowReorderEnabled && rowIdSet.has(activeId)) {
+        activeDragTypeRef.current = "row";
+        return;
+      }
+      if (columnIdSet.has(activeId)) {
+        activeDragTypeRef.current = "column";
+        return;
+      }
+      activeDragTypeRef.current = null;
+    },
+    [columnIdSet, rowIdSet, rowReorderEnabled],
+  );
+
+  const handleTableDragCancel = useCallback(() => {
+    activeDragTypeRef.current = null;
+  }, []);
+
+  const handleTableDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const activeId = String(event.active.id);
+      const overId = event.over ? String(event.over.id) : null;
+      const type = activeDragTypeRef.current;
+      activeDragTypeRef.current = null;
+      if (!overId || activeId === overId) return;
+
+      if (type === "row") {
+        if (!rowReorderEnabled || !rowIdSet.has(activeId) || !rowIdSet.has(overId)) return;
+        onRowDragEnd(event);
+        return;
+      }
+
+      if (type === "column") {
+        if (!columnIdSet.has(activeId) || !columnIdSet.has(overId)) return;
+        handleDragEnd(event);
+      }
+    },
+    [columnIdSet, handleDragEnd, onRowDragEnd, rowIdSet, rowReorderEnabled],
+  );
 
   if (!loading && (pageInfo?.total ?? rows.length) === 0) {
     return (
@@ -86,18 +218,27 @@ export function ProductsTableView({
     return <FullPageLoader title={t("products_title")} subtitle={t("products_description")} icon={Package} />;
   }
 
-  const virtualTopH = enableVirtual ? virtualStart * rowHeight : 0;
+  const virtualTopH = enableVirtualEffective ? virtualStart * rowHeight : 0;
   const allRows = table.getRowModel().rows;
-  const slice = enableVirtual ? allRows.slice(virtualStart, virtualEnd) : allRows;
-  const virtualBottomH = enableVirtual ? Math.max(0, (allRows.length - virtualEnd) * rowHeight) : 0;
+  const slice = enableVirtualEffective ? allRows.slice(virtualStart, virtualEnd) : allRows;
+  const virtualBottomH = enableVirtualEffective ? Math.max(0, (allRows.length - virtualEnd) * rowHeight) : 0;
 
   return (
     <div className="flex flex-col gap-4 bg-background px-4 sm:px-6 py-4 h-full min-h-0" data-testid="user_products_dataTable_root">
       <ToolbarFromContext />
       <div className="bg-background flex-1 min-h-0 overflow-hidden" data-testid="user_products_table">
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[
+            (args) => (activeDragTypeRef.current === "row" ? restrictToVerticalAxis(args) : args.transform),
+          ]}
+          onDragStart={handleTableDragStart as any}
+          onDragCancel={handleTableDragCancel}
+          onDragEnd={handleTableDragEnd}
+        >
           <Table ref={tableElRef} wrapperClassName="h-full overflow-y-auto">
-            <TableHeader className="sticky top-0 z-10 bg-muted">
+            <TableHeader className="sticky top-0 z-10 bg-transparent">
               {table.getHeaderGroups().map((headerGroup) => {
                 const ids = headerGroup.headers.map((h) => h.column.id).filter((id) => id !== "actions");
                 return (
@@ -114,7 +255,9 @@ export function ProductsTableView({
                               ? flexRender(header.column.columnDef.header, header.getContext())
                               : (
                                   <SortableHeader id={header.column.id}>
-                                    {flexRender(header.column.columnDef.header, header.getContext())}
+                                    <div className="inline-flex items-center gap-2">
+                                      {flexRender(header.column.columnDef.header, header.getContext())}
+                                    </div>
                                   </SortableHeader>
                                 )}
                         </TableHead>
@@ -126,7 +269,7 @@ export function ProductsTableView({
             </TableHeader>
             <TableBody>
               {table.getRowModel().rows?.length ? (
-                enableVirtual ? (
+                enableVirtualEffective ? (
                   <>
                     {virtualTopH > 0 ? (
                       <TableRow style={{ height: virtualTopH }}>
@@ -137,7 +280,7 @@ export function ProductsTableView({
                       <TableRow
                         key={row.id}
                         data-state={row.getIsSelected() && "selected"}
-                        className="hover:bg-muted/50"
+                        className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                         style={{ height: rowHeight }}
                       >
                         {row.getVisibleCells().map((cell) => (
@@ -152,18 +295,17 @@ export function ProductsTableView({
                     ) : null}
                   </>
                 ) : (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                      className="hover:bg-muted/50"
-                      style={{ height: rowHeight }}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                      ))}
-                    </TableRow>
-                  ))
+                  <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+                    {table.getRowModel().rows.map((row) => (
+                      <SortableProductRow
+                        key={row.id}
+                        row={row}
+                        columnsLength={columns.length}
+                        rowHeight={rowHeight}
+                        rowReorderEnabled={rowReorderEnabled}
+                      />
+                    ))}
+                  </SortableContext>
                 )
               ) : (
                 <TableRow>

@@ -221,7 +221,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
       
       return [];
     },
-    enabled: !storeId,
+    enabled: true,
     retry: false,
     staleTime: 900_000,
     refetchOnMount: false,

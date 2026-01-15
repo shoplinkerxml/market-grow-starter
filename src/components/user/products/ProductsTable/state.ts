@@ -4,16 +4,30 @@ import { CACHE_TTL, UnifiedCacheManager } from "@/lib/cache-utils";
 export type PaginationState = { pageIndex: number; pageSize: number };
 
 export const PAGINATION_KEY = "user_products_pagination";
-export const COLUMN_VIS_KEY = "user_products_columnVisibility";
+export const COLUMN_VIS_KEY = "user_products_columnVisibility_v3";
+export const COLUMN_ORDER_KEY = "user_products_columnOrder_v1";
+export const COLUMN_ORDER_STORE_KEY = "user_products_columnOrder_store_v1";
+export const ROW_ORDER_ALL_KEY = "user_products_rowOrder_all_v1";
+export const ROW_ORDER_STORE_PREFIX = "user_products_rowOrder_store_v1_";
+export const ROW_REORDER_ENABLED_KEY = "user_products_rowReorderEnabled_v1";
 
 export const DEFAULT_PAGINATION: PaginationState = { pageIndex: 0, pageSize: 10 };
 
 export const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   select: true,
-  created_at: false,
+  article: true,
+  photo: true,
+  name_ua: true,
+  price: true,
+  stock_quantity: true,
   supplier: true,
+  stores: true,
+  actions: true,
+  status: false,
+  category: false,
+  created_at: false,
   vendor: false,
-  available: false,
+  active: false,
   docket_ua: false,
   description_ua: false,
   price_old: false,
@@ -22,23 +36,25 @@ export const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
 
 export const DEFAULT_COLUMN_ORDER: string[] = [
   "select",
-  "photo",
   "article",
-  "category",
+  "photo",
   "name_ua",
-  "docket_ua",
-  "description_ua",
   "price",
+  "stock_quantity",
+  "supplier",
+  "stores",
+  "status",
+  "category",
   "price_old",
   "price_promo",
-  "stock_quantity",
   "vendor",
-  "status",
-  "supplier",
+  "docket_ua",
+  "description_ua",
   "created_at",
-  "stores",
   "actions",
 ];
+
+export const DEFAULT_COLUMN_ORDER_STORE: string[] = DEFAULT_COLUMN_ORDER.filter((id) => id !== "stores");
 
 const uiPrefsCache = UnifiedCacheManager.create("auth:uiPrefs", {
   mode: "local",
@@ -50,6 +66,8 @@ export type ProductsTableState = {
   rowSelection: Record<string, boolean>;
   columnVisibility: VisibilityState;
   columnOrder: string[];
+  rowOrder: string[];
+  rowReorderEnabled: boolean;
   columnFilters: ColumnFiltersState;
   sorting: SortingState;
   storesMenuOpen: boolean;
@@ -66,7 +84,9 @@ export type ProductsTableAction =
   | { type: "setPagination"; next: PaginationState | ((prev: PaginationState) => PaginationState) }
   | { type: "setRowSelection"; next: Record<string, boolean> }
   | { type: "setColumnVisibility"; next: VisibilityState }
-  | { type: "setColumnOrder"; next: string[] | ((prev: string[]) => string[]) }
+  | { type: "setColumnOrder"; next: string[] | ((prev: string[]) => string[]); storageKey?: string }
+  | { type: "setRowOrder"; next: string[] | ((prev: string[]) => string[]); storageKey: string }
+  | { type: "setRowReorderEnabled"; next: boolean | ((prev: boolean) => boolean) }
   | { type: "setColumnFilters"; next: ColumnFiltersState }
   | { type: "setSorting"; next: SortingState }
   | { type: "setStoresMenuOpen"; next: boolean }
@@ -92,7 +112,18 @@ export function productsTableReducer(state: ProductsTableState, action: Products
       return { ...state, columnVisibility: action.next };
     case "setColumnOrder": {
       const next = typeof action.next === "function" ? action.next(state.columnOrder) : action.next;
+      persistColumnOrderToPrefs(next, action.storageKey);
       return { ...state, columnOrder: next };
+    }
+    case "setRowOrder": {
+      const next = typeof action.next === "function" ? action.next(state.rowOrder) : action.next;
+      persistRowOrderToPrefs(next, action.storageKey);
+      return { ...state, rowOrder: next };
+    }
+    case "setRowReorderEnabled": {
+      const next = typeof action.next === "function" ? action.next(state.rowReorderEnabled) : action.next;
+      persistRowReorderEnabledToPrefs(next);
+      return { ...state, rowReorderEnabled: next };
     }
     case "setColumnFilters":
       return { ...state, columnFilters: action.next };
@@ -127,9 +158,56 @@ export function ensureActionsLast(next: string[]): string[] {
 }
 
 export function withStoreSpecificColumns(order: string[], storeId?: string): string[] {
-  const filtered = order.filter((id) => id !== "active" && id !== "stores" && id !== "actions");
-  if (storeId) return ensureActionsLast([...filtered, "active", "actions"]);
-  return ensureActionsLast([...filtered, "stores", "actions"]);
+  const withoutActive = order.filter((id) => id !== "active");
+  if (!storeId) return ensureActionsLast(withoutActive);
+
+  if (order.includes("active")) return ensureActionsLast(order);
+
+  const idx = withoutActive.indexOf("actions");
+  const next = idx === -1 ? [...withoutActive, "active"] : [...withoutActive.slice(0, idx), "active", ...withoutActive.slice(idx)];
+  return ensureActionsLast(next);
+}
+
+function normalizeColumnOrder(saved: unknown, defaults: string[]): string[] {
+  const allowed = new Set([...defaults, "active"]);
+  const raw = Array.isArray(saved) ? saved : [];
+  const uniq: string[] = [];
+  const seen = new Set<string>();
+
+  for (const v of raw) {
+    const id = String(v);
+    if (!allowed.has(id)) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    uniq.push(id);
+  }
+
+  for (const id of defaults) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      uniq.push(id);
+    }
+  }
+
+  const withoutActions = uniq.filter((id) => id !== "actions");
+  const withActions = [...withoutActions, "actions"];
+  if (!withActions.includes("select")) return withActions;
+  const withoutSelect = withActions.filter((id) => id !== "select");
+  return ["select", ...withoutSelect];
+}
+
+function normalizeRowOrder(saved: unknown): string[] {
+  const raw = Array.isArray(saved) ? saved : [];
+  const uniq: string[] = [];
+  const seen = new Set<string>();
+  for (const v of raw) {
+    const id = String(v);
+    if (!id) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    uniq.push(id);
+  }
+  return uniq;
 }
 
 export function loadPaginationFromPrefs(): PaginationState {
@@ -183,6 +261,79 @@ export function loadColumnVisibilityFromPrefs(defaults: VisibilityState): Visibi
 export function persistColumnVisibilityToPrefs(vis: VisibilityState) {
   try {
     uiPrefsCache.set(COLUMN_VIS_KEY, vis, CACHE_TTL.uiPrefs);
+  } catch {
+    void 0;
+  }
+}
+
+export function loadColumnOrderFromPrefs(defaults: string[], storageKey: string = COLUMN_ORDER_KEY): string[] {
+  try {
+    const cached = uiPrefsCache.get<string[]>(storageKey, true);
+    if (cached) return normalizeColumnOrder(cached, defaults);
+    const saved = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
+    if (saved) {
+      const parsed = JSON.parse(saved) as unknown;
+      uiPrefsCache.set(storageKey, parsed as any, CACHE_TTL.uiPrefs);
+      return normalizeColumnOrder(parsed, defaults);
+    }
+  } catch {
+    void 0;
+  }
+  return normalizeColumnOrder(defaults, defaults);
+}
+
+export function persistColumnOrderToPrefs(order: string[], storageKey: string = COLUMN_ORDER_KEY) {
+  try {
+    uiPrefsCache.set(storageKey, order, CACHE_TTL.uiPrefs);
+  } catch {
+    void 0;
+  }
+}
+
+export function loadRowOrderFromPrefs(storageKey: string): string[] {
+  try {
+    const cached = uiPrefsCache.get<string[]>(storageKey, true);
+    if (cached) return normalizeRowOrder(cached);
+    const saved = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
+    if (saved) {
+      const parsed = JSON.parse(saved) as unknown;
+      uiPrefsCache.set(storageKey, parsed as any, CACHE_TTL.uiPrefs);
+      return normalizeRowOrder(parsed);
+    }
+  } catch {
+    void 0;
+  }
+  return [];
+}
+
+export function persistRowOrderToPrefs(order: string[], storageKey: string) {
+  try {
+    uiPrefsCache.set(storageKey, normalizeRowOrder(order), CACHE_TTL.uiPrefs);
+  } catch {
+    void 0;
+  }
+}
+
+export function loadRowReorderEnabledFromPrefs(): boolean {
+  try {
+    const cached = uiPrefsCache.get<boolean>(ROW_REORDER_ENABLED_KEY, true);
+    if (typeof cached === "boolean") return cached;
+    const saved = typeof window !== "undefined" ? localStorage.getItem(ROW_REORDER_ENABLED_KEY) : null;
+    if (saved) {
+      const parsed = JSON.parse(saved) as unknown;
+      const v = parsed === true;
+      uiPrefsCache.set(ROW_REORDER_ENABLED_KEY, v, CACHE_TTL.uiPrefs);
+      return v;
+    }
+  } catch {
+    void 0;
+  }
+  return false;
+}
+
+export function persistRowReorderEnabledToPrefs(enabled: boolean) {
+  try {
+    uiPrefsCache.set(ROW_REORDER_ENABLED_KEY, enabled === true, CACHE_TTL.uiPrefs);
   } catch {
     void 0;
   }
