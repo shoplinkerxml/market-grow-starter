@@ -92,25 +92,36 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
     }
   }, [queryClient, product.id, storesList, storeNames, product.linkedStoreIds, prefetchStores, uid]);
 
-  useEffect(() => { if (open) loadStoresAndLinks(); }, [open, loadStoresAndLinks]);
   useEffect(() => { if (Array.isArray(storesList) && storesList.length > 0) setStores(storesList); }, [storesList]);
   useEffect(() => { setLinkedStoreIds(product.linkedStoreIds || []); }, [product.linkedStoreIds]);
 
   if (storeIds.length === 0) {
     return (
       <div className="w-full flex items-center justify-center">
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu
+        open={open}
+        onOpenChange={(v) => {
+          setOpen(v);
+          if (v) void loadStoresAndLinks();
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             className="h-6 w-6 p-0 mx-auto border border-neutral-300 text-neutral-500 bg-neutral-100 hover:bg-neutral-200"
             aria-label={t("menu_stores")}
             data-testid={`user_products_store_add_trigger_${product.id}`}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
           >
             <Store className="h-3.5 w-3.5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="p-1" onPointerLeave={() => setOpen(false)} data-testid={`user_products_store_add_content_${product.id}`}>
+        <DropdownMenuContent align="start" className="p-1" data-testid={`user_products_store_add_content_${product.id}`}>
           {((stores || []).length === 0 && loadingStores) ? (
             <DropdownMenuItem disabled>
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -217,11 +228,17 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                     className="pl-1 pr-1 select-none"
                     title={name}
                     data-testid={`user_products_store_badge_trigger_${product.id}_${id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                    }}
                   >
                     {label}
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="p-1" onPointerLeave={() => setBadgeOpenId(null)} data-testid={`user_products_store_badge_content_${product.id}_${id}`}>
+                <DropdownMenuContent align="start" className="p-1" data-testid={`user_products_store_badge_content_${product.id}_${id}`}>
                   {((stores || []).length === 0 && loadingStores) ? (
                     <DropdownMenuItem disabled>
                       <Loader2 className="h-4 w-4 animate-spin" />
