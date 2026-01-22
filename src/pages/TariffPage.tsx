@@ -121,9 +121,9 @@ const TariffPage = () => {
   const { subscription: subscriptionCtx } = useOutletContext<{ subscription: { hasValidSubscription: boolean; subscription: SubscriptionEntity | null; isDemo: boolean } | null }>();
   useEffect(() => {
     const sub = subscriptionCtx?.subscription || null;
-    const valid = !!sub && sub.is_active !== false;
+    const valid = subscriptionCtx?.hasValidSubscription === true && subscriptionCtx?.isDemo !== true;
     setActiveTariffId(valid ? (sub?.tariff_id ?? null) : null);
-  }, [subscriptionCtx?.subscription]);
+  }, [subscriptionCtx?.hasValidSubscription, subscriptionCtx?.isDemo, subscriptionCtx?.subscription]);
 
   
 
