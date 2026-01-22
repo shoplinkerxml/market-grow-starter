@@ -3,8 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import { TariffService, type TariffWithDetails } from "@/lib/tariff-service";
 import { UserAuthService } from "@/lib/user-auth-service";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   CheckCircle,
@@ -79,6 +81,7 @@ const TariffPage = () => {
   
   
   const [activeTariffId, setActiveTariffId] = useState<number | null>(null);
+  const [activatingTariffId, setActivatingTariffId] = useState<number | null>(null);
 
   const {
     data: tariffsData,
@@ -249,6 +252,9 @@ const TariffPage = () => {
           </div>
         ) : visibleTariffs.map((tariff: TariffWithDetails) => {
           const isPopular = tariff.popular === true;
+          const isActive = activeTariffId === tariff.id;
+          const isActivating = activatingTariffId === tariff.id;
+          const isAnyActivating = activatingTariffId !== null;
           const currencyCode = getTariffCurrencyCode(tariff);
           const currencySymbol = SYMBOL_BY_CURRENCY[currencyCode] || "$";
           const features = Array.isArray((tariff as any).features) ? (tariff as any).features : [];
@@ -406,12 +412,19 @@ const TariffPage = () => {
                 {/* Select Plan Button */}
                 <div className="mt-6 space-y-4">
                   <Button 
-                    className={`w-full ${isPopular ? 'bg-primary hover:bg-primary/90 shadow-lg' : ''}`}
+                    className={cn(
+                      "w-full active:shadow-inner",
+                      isPopular ? "bg-primary shadow-lg" : "",
+                      isAnyActivating ? "cursor-wait" : "",
+                      isActive ? "" : "hover:bg-emerald-600 hover:text-white hover:border-emerald-600"
+                    )}
                     size="lg"
                     variant={isPopular ? "default" : "outline"}
-                    disabled={activeTariffId === tariff.id}
+                    disabled={isActive || isAnyActivating}
                     onClick={async () => {
+                      if (isActive || isAnyActivating) return;
                       try {
+                        setActivatingTariffId(Number(tariff.id));
                         const resp = await TariffService.activateMyTariff(Number(tariff.id));
                         if (!resp?.success) throw new Error("failed_update_tariff");
                         UserAuthService.clearAuthMeCache();
@@ -419,13 +432,20 @@ const TariffPage = () => {
                         toast.success(t('tariff_updated_successfully'));
                         window.location.href = '/user/dashboard';
                       } catch (e) {
+                        setActivatingTariffId(null);
                         const msg = String((e as any)?.message || "").trim();
                         toast.error(msg && msg !== "failed_update_tariff" ? msg : t('failed_update_tariff'));
                       }
                     }}
                   >
-                    <Rocket className="h-4 w-4 mr-2" />
-                    <span className="font-semibold">{activeTariffId === tariff.id ? t('active_tariff_button') : t('select_plan')}</span>
+                    {isActivating ? (
+                      <Spinner className="h-4 w-4 mr-2 border-b-2 border-white" />
+                    ) : (
+                      <Rocket className="h-4 w-4 mr-2" />
+                    )}
+                    <span className="font-semibold">
+                      {isActive ? t('active_tariff_button') : isActivating ? `${t('select_plan')}…` : t('select_plan')}
+                    </span>
                   </Button>
 
 
