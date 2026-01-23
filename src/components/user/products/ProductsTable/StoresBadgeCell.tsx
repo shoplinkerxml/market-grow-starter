@@ -244,41 +244,48 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
           <div key={id} className="flex items-center">
             <DropdownMenu open={openMenuId === String(id)} onOpenChange={(v) => handleOpenChange(String(id), v)}>
               <DropdownMenuTrigger asChild>
-                <Badge
-                  variant="secondary"
-                  className="group relative inline-flex cursor-pointer items-center rounded-md px-2 py-0.5 pr-2 text-[11px] h-5 max-w-[10rem] hover:max-w-[12rem] focus-within:max-w-[12rem] hover:pr-5 focus-within:pr-5 transition-[max-width,padding] duration-150 ease-out"
+                <div
+                  className="group relative inline-block cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                   }}
                   data-testid={`user_products_store_badge_trigger_${product.id}_${id}`}
                 >
-                  <span
-                    className="min-w-0 select-none truncate max-w-[calc(10rem-1.25rem)] group-hover:max-w-[calc(12rem-1.25rem)] group-focus-within:max-w-[calc(12rem-1.25rem)]"
-                    title={name}
-                    data-testid={`user_products_store_badge_${product.id}_${id}`}
+                  <Badge variant="secondary" className="relative inline-flex items-center rounded-md px-2 py-0 text-[11px] h-5 max-w-[10rem] truncate">
+                    <span className="min-w-0 select-none truncate" title={name} data-testid={`user_products_store_badge_${product.id}_${id}`}>
+                      {label}
+                    </span>
+                  </Badge>
+
+                  <Badge
+                    variant="secondary"
+                    className="absolute inset-y-0 left-0 z-20 inline-flex h-full w-[calc(100%+18px)] items-center rounded-md px-2 py-0 pr-6 text-[11px] opacity-0 pointer-events-none overflow-visible transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100"
                   >
-                    {label}
-                  </span>
-                  {onRemove ? (
-                    <button
-                      type="button"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center h-4 w-4 rounded text-muted-foreground opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto hover:bg-secondary/80 hover:text-foreground"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onRemove?.(String(product.id), String(id));
-                      }}
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      aria-label={`remove_store_${id}`}
-                      data-testid={`user_products_store_remove_${id}`}
-                    >
-                      <X className="h-[10px] w-[10px]" />
-                    </button>
-                  ) : null}
-                </Badge>
+                    <span className="min-w-0 flex-1 select-none truncate" title={name}>
+                      {label}
+                    </span>
+                    {onRemove ? (
+                      <button
+                        type="button"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-4 w-4 items-center justify-center rounded text-muted-foreground opacity-0 pointer-events-auto transition-[opacity,transform,color,background-color] duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 hover:scale-110 hover:bg-black/30 hover:text-white active:scale-95"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onRemove?.(String(product.id), String(id));
+                        }}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        aria-label={`remove_store_${id}`}
+                        data-testid={`user_products_store_remove_${id}`}
+                      >
+                        <X className="h-[10px] w-[10px]" />
+                      </button>
+                    ) : null}
+                  </Badge>
+
+                </div>
               </DropdownMenuTrigger>
               {renderStoresDropdownContent(String(id))}
             </DropdownMenu>
