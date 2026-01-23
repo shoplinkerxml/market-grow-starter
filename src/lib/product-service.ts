@@ -325,21 +325,6 @@ export class ProductService {
     } catch (error) {
       console.error("ProductService.bulkRemoveStoreProductLinks invalidate related caches failed", error);
     }
-    try {
-      Promise.resolve()
-        .then(async () => {
-          const { ShopProductSyncService } = await import("@/lib/services/shop-product-sync-service");
-          await ShopProductSyncService.syncAfterBulkRemove(
-            out.deletedByStore || {},
-            (out.categoryNamesByStore as Record<string, string[]>) || {},
-            (productIds || []).map(String),
-            (storeIds || []).map(String),
-          );
-        })
-        .catch(() => void 0);
-    } catch {
-      void 0;
-    }
     return out;
   }
 
@@ -367,25 +352,6 @@ export class ProductService {
       ProductService.invalidateRelatedAfterProductMutation();
     } catch (error) {
       console.error("ProductService.bulkAddStoreProductLinks invalidate related caches failed", error);
-    }
-    try {
-      const links = Array.isArray(payload)
-        ? payload.map((p) => ({ product_id: String(p.product_id || ""), store_id: String(p.store_id || "") })).filter((l) => l.product_id && l.store_id)
-        : [];
-      const productIds = Array.from(new Set(links.map((l) => l.product_id))).filter(Boolean);
-      Promise.resolve()
-        .then(async () => {
-          const { ShopProductSyncService } = await import("@/lib/services/shop-product-sync-service");
-          await ShopProductSyncService.syncAfterBulkAdd(
-            out.addedByStore || {},
-            (out.categoryNamesByStore as Record<string, string[]>) || {},
-            productIds,
-            links,
-          );
-        })
-        .catch(() => void 0);
-    } catch {
-      void 0;
     }
     return out;
   }

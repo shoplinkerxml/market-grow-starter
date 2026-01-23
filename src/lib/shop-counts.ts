@@ -91,7 +91,7 @@ export const ShopCountsService = {
     userId: string,
     storeIds?: string[] | string | null,
     reason?: string,
-    opts?: { broadcast?: boolean },
+    opts?: { broadcast?: boolean; refetch?: "active" | "inactive" | "all" | false },
   ) {
     const uid = userId ? String(userId) : "current";
     const ids = Array.isArray(storeIds)
@@ -147,6 +147,37 @@ export const ShopCountsService = {
         queryClient.removeQueries({ queryKey: this.key(uid, storeId), exact: true });
       } catch {
         void 0;
+      }
+    }
+
+    const refetchType = opts?.refetch;
+    if (refetchType) {
+      try {
+        queryClient.refetchQueries({ queryKey: this.shopsListKey(uid), exact: true, type: refetchType } as any);
+      } catch {
+        void 0;
+      }
+      try {
+        queryClient.refetchQueries({ queryKey: this.shopsMenuKey(uid), exact: true, type: refetchType } as any);
+      } catch {
+        void 0;
+      }
+      try {
+        queryClient.refetchQueries({ queryKey: ["auth", "me"], exact: true, type: refetchType } as any);
+      } catch {
+        void 0;
+      }
+      try {
+        queryClient.refetchQueries({ queryKey: ["user", uid, "dashboard-stats"], exact: true, type: refetchType } as any);
+      } catch {
+        void 0;
+      }
+      for (const storeId of ids) {
+        try {
+          queryClient.refetchQueries({ queryKey: this.shopDetailKey(uid, storeId), exact: true, type: refetchType } as any);
+        } catch {
+          void 0;
+        }
       }
     }
 

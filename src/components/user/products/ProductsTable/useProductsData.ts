@@ -3,8 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@
 import { useProductsRealtime } from "@/hooks/useProductsRealtime";
 import { useProductLinksRealtime } from "@/hooks/useProductLinksRealtime";
 import { ProductService } from "@/lib/product-service";
-import { UserAuthService } from "@/lib/user-auth-service";
-import { type ShopAggregated } from "@/lib/shop-service";
+import { ShopService, type ShopAggregated } from "@/lib/shop-service";
 import { ShopCountsService } from "@/lib/shop-counts";
 import type { ProductRow } from "./columns";
 import { DEFAULT_PRODUCTS_SERVER_FILTERS, type ProductsServerFilters } from "./state";
@@ -66,24 +65,6 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
     [productsBaseKey, pageSize, filtersKey],
   );
   const shopsMenuKey = useMemo(() => ["user", uid, "shops", "menu"] as const, [uid]);
-
-  const mapUserStoresToAgg = useCallback((rows: Array<{ id: string; store_name: string }>) => {
-    const baseIso = new Date(0).toISOString();
-    return rows.map((s) => ({
-      id: String(s.id),
-      user_id: String(uid),
-      store_name: String(s.store_name || ""),
-      store_company: null,
-      store_url: null,
-      template_id: null,
-      xml_config: null,
-      custom_mapping: null,
-      marketplace: undefined,
-      is_active: true,
-      created_at: baseIso,
-      updated_at: baseIso,
-    })) as ShopAggregated[];
-  }, [uid]);
 
   const productsQuery = useInfiniteQuery<ResponseData, Error, InfiniteData<ResponseData, number>, typeof productsQueryKey, number>({
     queryKey: productsQueryKey,
@@ -272,20 +253,18 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
   const storesQuery = useQuery<ShopAggregated[]>({
     queryKey: shopsMenuKey,
     queryFn: async () => {
-      const cachedShops = queryClient.getQueryData<ShopAggregated[]>(["user", uid, "shops"]);
-      if (Array.isArray(cachedShops) && cachedShops.length > 0) return cachedShops;
-      const cachedAuthMe = queryClient.getQueryData<any>(["auth", "me"]);
-      const cachedRows = Array.isArray((cachedAuthMe as any)?.userStores)
-        ? ((cachedAuthMe as any).userStores as Array<{ id: string; store_name: string }>)
-        : null;
-      if (cachedRows && cachedRows.length > 0) return mapUserStoresToAgg(cachedRows);
-      const authMe = await UserAuthService.fetchAuthMe();
-      const rows = Array.isArray((authMe as any)?.userStores)
-        ? ((authMe as any).userStores as Array<{ id: string; store_name: string }>)
-        : [];
-      if (rows.length > 0) return mapUserStoresToAgg(rows);
-      
-      return [];
+      const cached = queryClient.getQueryData<ShopAggregated[]>(shopsMenuKey) || [];
+      const hasCounts =
+        Array.isArray(cached) &&
+        cached.length > 0 &&
+        cached.some((s) => typeof (s as any)?.productsCount === "number" || typeof (s as any)?.categoriesCount === "number");
+
+      const state = queryClient.getQueryState(shopsMenuKey as any);
+      const isInvalidated = !!(state as any)?.isInvalidated;
+      if (hasCounts && !isInvalidated) return cached;
+
+      const fresh = await ShopService.getShopsAggregated({ forceCounts: true });
+      return Array.isArray(fresh) ? fresh : [];
     },
     enabled: true,
     retry: false,
@@ -297,38 +276,34 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
   const stores = useMemo(() => (Array.isArray(storesQuery.data) ? storesQuery.data : []), [storesQuery.data]);
 
   const loadStoresForMenu = useCallback(async () => {
-    const cachedAgg = queryClient.getQueryData<ShopAggregated[]>(shopsMenuKey) || [];
+    const cached = queryClient.getQueryData<ShopAggregated[]>(shopsMenuKey) || [];
     const hasCounts =
-      cachedAgg.length > 0 &&
-      cachedAgg.some((s) => typeof (s as any)?.productsCount === "number" || typeof (s as any)?.categoriesCount === "number");
-    if (hasCounts) return;
+      Array.isArray(cached) &&
+      cached.length > 0 &&
+      cached.some((s) => typeof (s as any)?.productsCount === "number" || typeof (s as any)?.categoriesCount === "number");
+    const state = queryClient.getQueryState(shopsMenuKey as any);
+    const isInvalidated = !!(state as any)?.isInvalidated;
+    if (hasCounts && !isInvalidated) return;
 
-    const cachedShops = queryClient.getQueryData<ShopAggregated[]>(["user", uid, "shops"]);
-    if (Array.isArray(cachedShops) && cachedShops.length > 0) {
-      queryClient.setQueryData<ShopAggregated[]>(shopsMenuKey, cachedShops);
-    }
-
-    const cachedAuthMe = queryClient.getQueryData<any>(["auth", "me"]);
-    const cachedRows = Array.isArray((cachedAuthMe as any)?.userStores)
-      ? ((cachedAuthMe as any).userStores as Array<{ id: string; store_name: string }>)
-      : null;
-    if (cachedRows && cachedRows.length > 0) {
-      const mapped = mapUserStoresToAgg(cachedRows);
-      queryClient.setQueryData<ShopAggregated[]>(shopsMenuKey, mapped);
-    }
-
-    await queryClient.fetchQuery({
+    const fresh = await queryClient.fetchQuery({
       queryKey: shopsMenuKey,
-      queryFn: async () => {
-        const authMe = await UserAuthService.fetchAuthMe();
-        const rows = Array.isArray((authMe as any)?.userStores)
-          ? ((authMe as any).userStores as Array<{ id: string; store_name: string }>)
-          : [];
-        return mapUserStoresToAgg(rows);
-      },
+      queryFn: async () => await ShopService.getShopsAggregated({ forceCounts: true }),
       staleTime: 900_000,
     });
-  }, [mapUserStoresToAgg, queryClient, shopsMenuKey, uid]);
+
+    if (Array.isArray(fresh)) {
+      try {
+        queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], fresh);
+      } catch {
+        void 0;
+      }
+      try {
+        queryClient.setQueryData<ShopAggregated[]>(shopsMenuKey, fresh);
+      } catch {
+        void 0;
+      }
+    }
+  }, [queryClient, shopsMenuKey, uid]);
 
   return {
     queryClient,

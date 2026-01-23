@@ -34,7 +34,7 @@ export class ShopProductSyncService {
       }
 
       for (const uid of uids) {
-        ShopCountsService.invalidate(queryClient, uid, storeIds, "sync_after_bulk_mutation");
+        ShopCountsService.invalidate(queryClient, uid, storeIds, "sync_after_bulk_mutation", { refetch: "inactive" });
       }
     } catch (error) {
       console.warn("[ShopProductSyncService] refreshCountersFromServer failed:", error);

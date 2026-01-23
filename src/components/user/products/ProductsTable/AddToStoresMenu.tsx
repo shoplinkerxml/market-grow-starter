@@ -112,17 +112,22 @@ export function AddToStoresMenu({
     if (isOpen) {
       try {
         await loadStoresForMenu();
+        try {
+          const nextStores = queryClient.getQueryData<StoreAgg[]>(["user", uid, "shops", "menu"]);
+          if (Array.isArray(nextStores)) setStores(nextStores);
+        } catch {
+          void 0;
+        }
         const selected = table.getSelectedRowModel().rows.map((r) => r.original) as ProductRow[];
         if (selected.length === 1) {
           const ids = Array.from(new Set((selected[0].linkedStoreIds || []).map(String)));
           setSelectedStoreIds(ids);
         }
       } catch (error) {
-        console.error('Failed to load stores:', error);
-        setStores([]);
+        toast.error(t("failed_load_shops"));
       }
     }
-  }, [setOpen, loadStoresForMenu, setStores, table, setSelectedStoreIds]);
+  }, [setOpen, loadStoresForMenu, queryClient, uid, setStores, table, setSelectedStoreIds, t]);
 
   const handleAddToStores = async () => {
     if (!hasSelectedProducts || selectedStoreIds.length === 0) return;
