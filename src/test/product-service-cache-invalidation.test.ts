@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/user-auth-service", () => ({
   UserAuthService: { clearAuthMeCache: vi.fn() },
@@ -58,10 +58,22 @@ describe("ProductService cache invalidation", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    vi.useFakeTimers();
     ProductService.clearAllProductsCaches();
   });
 
-  const expectRelatedInvalidations = () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const flushRelatedInvalidations = async () => {
+    await vi.runOnlyPendingTimersAsync();
+    await Promise.resolve();
+    await Promise.resolve();
+  };
+
+  const expectRelatedInvalidations = async () => {
+    await flushRelatedInvalidations();
     expect(UserAuthService.clearAuthMeCache).toHaveBeenCalledTimes(1);
     expect(ShopService.clearAllCaches).toHaveBeenCalledTimes(1);
     expect(PersistentCacheService.invalidateShops).toHaveBeenCalledTimes(1);
@@ -71,37 +83,37 @@ describe("ProductService cache invalidation", () => {
   it("invalidates related caches on createProduct", async () => {
     vi.spyOn(ProductCoreService, "createProduct").mockResolvedValue({ id: "p1" } as any);
     await ProductService.createProduct({} as any);
-    expectRelatedInvalidations();
+    await expectRelatedInvalidations();
   });
 
   it("invalidates related caches on updateProduct", async () => {
     vi.spyOn(ProductCoreService, "updateProduct").mockResolvedValue("p1");
     await ProductService.updateProduct("p1", {} as any);
-    expectRelatedInvalidations();
+    await expectRelatedInvalidations();
   });
 
   it("invalidates related caches on deleteProduct", async () => {
     vi.spyOn(ProductCoreService, "deleteProduct").mockResolvedValue(undefined);
     await ProductService.deleteProduct("p1");
-    expectRelatedInvalidations();
+    await expectRelatedInvalidations();
   });
 
   it("invalidates related caches on bulkDeleteProducts", async () => {
     vi.spyOn(ProductCoreService, "bulkDeleteProducts").mockResolvedValue({ deleted: 2 });
     await ProductService.bulkDeleteProducts(["p1", "p2"]);
-    expectRelatedInvalidations();
+    await expectRelatedInvalidations();
   });
 
   it("invalidates related caches on duplicateProduct", async () => {
     vi.spyOn(ProductCoreService, "duplicateProduct").mockResolvedValue({ id: "p2" } as any);
     await ProductService.duplicateProduct("p1");
-    expectRelatedInvalidations();
+    await expectRelatedInvalidations();
   });
 
   it("invalidates related caches on saveStoreProductEdit", async () => {
     (invokeEdge as any).mockResolvedValue({ product_id: "p1", link: null });
     await ProductService.saveStoreProductEdit("p1", "s1", { name: "n" });
-    expectRelatedInvalidations();
+    await expectRelatedInvalidations();
   });
 
   it("invalidates related caches on bulkAddStoreProductLinks", async () => {
@@ -111,7 +123,7 @@ describe("ProductService cache invalidation", () => {
       categoryNamesByStore: {},
     });
     await ProductService.bulkAddStoreProductLinks([{ product_id: "p1", store_id: "s1" }]);
-    expectRelatedInvalidations();
+    await expectRelatedInvalidations();
   });
 
   it("invalidates related caches on bulkRemoveStoreProductLinks", async () => {
@@ -121,13 +133,13 @@ describe("ProductService cache invalidation", () => {
       categoryNamesByStore: {},
     });
     await ProductService.bulkRemoveStoreProductLinks(["p1"], ["s1"]);
-    expectRelatedInvalidations();
+    await expectRelatedInvalidations();
   });
 
   it("invalidates related caches on removeStoreProductLink", async () => {
     vi.mocked(ProductLinkService.removeStoreProductLink).mockResolvedValue(undefined);
     await ProductService.removeStoreProductLink("p1", "s1");
-    expectRelatedInvalidations();
+    await expectRelatedInvalidations();
   });
 
   it("returns standardized response for getProducts(options)", async () => {

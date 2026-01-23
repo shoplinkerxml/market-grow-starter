@@ -77,8 +77,10 @@ function assertArray<T>(items: unknown[], guard: (v: unknown) => v is T, errorMe
 }
 
 export function invalidateCategoriesCache(): void {
-  try { UnifiedCacheManager.invalidatePattern(/^products:supplierCategoriesMap(?::|$)/); } catch {}
-  try { UnifiedCacheManager.invalidatePattern(/^rq:supplierCategoriesMap(?::|$)/); } catch {}
+  void Promise.allSettled([
+    Promise.resolve().then(() => UnifiedCacheManager.invalidatePattern(/^products:supplierCategoriesMap(?::|$)/)),
+    Promise.resolve().then(() => UnifiedCacheManager.invalidatePattern(/^rq:supplierCategoriesMap(?::|$)/)),
+  ]);
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -86,6 +88,8 @@ function chunk<T>(arr: T[], size: number): T[][] {
   for (let i = 0; i < arr.length; i += size) res.push(arr.slice(i, i + size));
   return res;
 }
+
+const legacyCheckedByUserKey = new Set<string>();
 
 export const CategoryService = {
   
@@ -227,7 +231,8 @@ export const CategoryService = {
     const cached = cache.get<
       Record<string, Array<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>>
     >(cacheKey, false);
-    const legacy = !cached ? tryReadLegacy() : null;
+    const legacyKeyPart = uid || "current";
+    const legacy = !cached && !legacyCheckedByUserKey.has(legacyKeyPart) ? (legacyCheckedByUserKey.add(legacyKeyPart), tryReadLegacy()) : null;
     const map: Record<string, Array<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>> =
       (cached && typeof cached === "object" ? cached : null) ??
       (legacy && typeof legacy === "object" ? legacy : null) ??
@@ -240,17 +245,21 @@ export const CategoryService = {
     });
 
     if (missing.length > 0) {
-      const batches = chunk(missing, 20);
-      for (const batch of batches) {
-        const results = await Promise.all(
-          batch.map(async (supplierId) => {
-            const resp = await EdgeClient.invokeWithRetry<{ rows?: Category[] }>("categories", {
-              action: "get_supplier_categories",
-              supplier_id: supplierId,
-            });
-            return { supplierId: String(supplierId), rows: resp.rows ?? [] };
-          }),
-        );
+      const batches = chunk(missing, 50);
+      const fetchOne = async (supplierId: number) => {
+        const resp = await EdgeClient.invokeWithRetry<{ rows?: Category[] }>("categories", {
+          action: "get_supplier_categories",
+          supplier_id: supplierId,
+        });
+        return { supplierId: String(supplierId), rows: resp.rows ?? [] };
+      };
+      const processBatch = async (batch: number[]) => {
+        const results: Array<{ supplierId: string; rows: Category[] }> = [];
+        for (let i = 0; i < batch.length; i += 10) {
+          const slice = batch.slice(i, i + 10);
+          const partial = await Promise.all(slice.map(fetchOne));
+          results.push(...partial);
+        }
         for (const r of results) {
           const rows = (r.rows ?? []) as unknown[];
           assertArray<Category & { id: string | number; supplier_id: string | number; external_id: string; name: string; parent_external_id: string | null }>(
@@ -260,6 +269,11 @@ export const CategoryService = {
           );
           map[r.supplierId] = rows;
         }
+      };
+      const concurrency = 5;
+      for (let i = 0; i < batches.length; i += concurrency) {
+        const group = batches.slice(i, i + concurrency);
+        await Promise.all(group.map(processBatch));
       }
       cache.set(cacheKey, map, CACHE_TTL.supplierCategoriesMap);
     } else if (legacy) {

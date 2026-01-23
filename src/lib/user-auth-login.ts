@@ -40,7 +40,8 @@ export async function loginUser(
 
       let authMe = await deps.fetchAuthMe();
       for (let i = 0; i < 6 && !authMe.user; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 250));
+        const delay = Math.round(250 * Math.pow(1.5, i));
+        await new Promise((resolve) => setTimeout(resolve, delay));
         deps.clearAuthMeCache();
         authMe = await deps.fetchAuthMe();
       }

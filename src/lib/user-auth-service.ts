@@ -111,22 +111,13 @@ export class UserAuthService {
         return { user: null, subscription: null, tariffLimits: [], menuItems: [], userStores: [] };
       }
       try {
-        const timeoutMs = 12_000;
-        let timeoutId: ReturnType<typeof setTimeout> | null = null;
-        const resp = await Promise.race([
-          EdgeClient.invokeWithRetry<{
-            user?: UserProfile | null;
-            subscription?: unknown | null;
-            tariffLimits?: Array<{ limit_name: string; value: number }>;
-            menuItems?: UserMenuItem[];
-            userStores?: UserStoreLite[];
-          }>("auth-me", {}),
-          new Promise<never>((_, reject) => {
-            timeoutId = setTimeout(() => reject(new Error("auth_me_timeout")), timeoutMs);
-          }),
-        ]).finally(() => {
-          if (timeoutId) clearTimeout(timeoutId);
-        });
+        const resp = await EdgeClient.invokeWithRetry<{
+          user?: UserProfile | null;
+          subscription?: unknown | null;
+          tariffLimits?: Array<{ limit_name: string; value: number }>;
+          menuItems?: UserMenuItem[];
+          userStores?: UserStoreLite[];
+        }>("auth-me", {}, { timeoutMs: 8_000, maxRetries: 1, retryDelayMs: 250, backoff: "exponential" });
         return {
           user: (resp?.user ?? null) as UserProfile | null,
           subscription: resp?.subscription ?? null,
@@ -143,16 +134,10 @@ export class UserAuthService {
   }
 
   static clearAuthMeCache(): void {
-    try {
-      UnifiedCacheManager.invalidatePattern(/^auth:me(?::|$)/);
-    } catch {
-      void 0;
-    }
-    try {
-      PersistentCacheService.invalidateAuthMe();
-    } catch {
-      void 0;
-    }
+    void Promise.allSettled([
+      Promise.resolve().then(() => UnifiedCacheManager.invalidatePattern(/^auth:me(?::|$)/)),
+      Promise.resolve().then(() => PersistentCacheService.invalidateAuthMe()),
+    ]);
   }
 
   /**

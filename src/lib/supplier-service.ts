@@ -39,6 +39,7 @@ export interface SupplierLimitInfo {
 
 export class SupplierService {
   private static readonly SOFT_REFRESH_THRESHOLD_MS = 300_000; // 5 min soft refresh
+  private static softRefreshInFlightByUser = new Set<string>();
 
   private static cache = UnifiedCacheManager.create("rq:suppliers", {
     mode: "auto",
@@ -127,14 +128,17 @@ export class SupplierService {
       const timeLeft = cached.expiresAt - Date.now();
       if (timeLeft > 0 && userId) {
         if (timeLeft < SupplierService.SOFT_REFRESH_THRESHOLD_MS) {
-          void (async () => {
-            try {
-              const rows = await SupplierService.fetchSuppliersFromApi();
-              SupplierService.setSuppliersCache(userId, rows);
-            } catch {
-              void 0;
-            }
-          })();
+          if (!SupplierService.softRefreshInFlightByUser.has(userId)) {
+            SupplierService.softRefreshInFlightByUser.add(userId);
+            void SupplierService.fetchSuppliersFromApi()
+              .then((rows) => {
+                SupplierService.setSuppliersCache(userId, rows);
+              })
+              .catch(() => void 0)
+              .finally(() => {
+                SupplierService.softRefreshInFlightByUser.delete(userId);
+              });
+          }
         }
         return cached.rows;
       }

@@ -210,23 +210,28 @@ export class ShopServiceCore {
   }
 
   protected static async clearShopsCaches(): Promise<void> {
-    this.clearCache("shops");
-    this.clearCache("shops-aggregated");
-    this.clearCache("shop-limit");
-    this.clearCache("shop-limit-info");
     try {
-      const { UserAuthService } = await import("@/lib/user-auth-service");
-      UserAuthService.clearAuthMeCache();
+      this.clearCache("shops");
+      this.clearCache("shops-aggregated");
+      this.clearCache("shop-limit");
+      this.clearCache("shop-limit-info");
     } catch {
       void 0;
     }
-    try {
-      const { PersistentCacheService } = await import("@/lib/persistent-cache-service");
-      PersistentCacheService.invalidateShops();
-      PersistentCacheService.invalidateMenu();
-    } catch {
-      void 0;
-    }
+
+    await Promise.allSettled([
+      import("@/lib/user-auth-service")
+        .then(({ UserAuthService }) => {
+          UserAuthService.clearAuthMeCache();
+        })
+        .catch(() => void 0),
+      import("@/lib/persistent-cache-service")
+        .then(({ PersistentCacheService }) => {
+          PersistentCacheService.invalidateShops();
+          PersistentCacheService.invalidateMenu();
+        })
+        .catch(() => void 0),
+    ]);
   }
 
   static clearAllCaches(): void {

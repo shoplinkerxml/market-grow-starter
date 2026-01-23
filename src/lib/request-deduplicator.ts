@@ -80,6 +80,10 @@ export class RequestDeduplicator<T = unknown> {
   private readonly backoff: RequestDeduplicatorBackoff;
   private readonly retainCompleted: boolean;
   private nextPruneAt = 0;
+  private pruneTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private pendingMetrics: Partial<Record<keyof typeof this.metrics, number>> = {};
+  private metricsFlushScheduled = false;
 
   private metrics: Omit<RequestDeduplicatorMetrics, "name" | "size" | "active" | "avgDurationMs"> & {
     totalDurationMs: number;
@@ -196,12 +200,43 @@ export class RequestDeduplicator<T = unknown> {
 
   private bump<K extends keyof typeof this.metrics>(key: K, by: number = 1): void {
     if (!this.enableMetrics) return;
-    this.metrics[key] += by;
+    this.pendingMetrics[key] = (this.pendingMetrics[key] ?? 0) + by;
+    if (this.metricsFlushScheduled) return;
+    this.metricsFlushScheduled = true;
+    queueMicrotask(() => {
+      this.metricsFlushScheduled = false;
+      const pending = this.pendingMetrics;
+      this.pendingMetrics = {};
+      for (const k of Object.keys(pending) as Array<keyof typeof this.metrics>) {
+        const inc = pending[k];
+        if (typeof inc === "number" && inc !== 0) {
+          this.metrics[k] += inc;
+        }
+      }
+    });
   }
 
-  private pruneExpired(now: number): void {
-    if (this.cache.size <= this.pruneWhenSizeOver && now < this.nextPruneAt) return;
-    if (this.cache.size <= this.pruneWhenSizeOver) {
+  private schedulePrune(): void {
+    if (this.pruneTimer) return;
+    this.pruneTimer = setTimeout(() => {
+      this.pruneTimer = null;
+      try {
+        this.pruneExpired(Date.now(), true);
+      } catch {
+        void 0;
+      }
+      if (this.cache.size > 0) this.schedulePrune();
+    }, 30_000);
+  }
+
+  private pruneExpired(now: number, force: boolean): void {
+    if (!force) {
+      if (this.cache.size <= this.pruneWhenSizeOver && now < this.nextPruneAt) return;
+      if (this.cache.size <= this.pruneWhenSizeOver) {
+        const delay = Math.max(250, this.ttlMs);
+        this.nextPruneAt = now + delay;
+      }
+    } else {
       const delay = Math.max(250, this.ttlMs);
       this.nextPruneAt = now + delay;
     }
@@ -242,7 +277,10 @@ export class RequestDeduplicator<T = unknown> {
   async dedupe<U = T>(key: string, request: ((ctx: { signal: AbortSignal }) => Promise<U>) | (() => Promise<U>)): Promise<U> {
     const now = Date.now();
     this.bump("calls", 1);
-    this.pruneExpired(now);
+    this.schedulePrune();
+    if (this.cache.size > this.pruneWhenSizeOver && now >= this.nextPruneAt) {
+      this.pruneExpired(now, true);
+    }
 
     const existing = this.cache.get(key);
     if (existing) {
@@ -475,7 +513,7 @@ export class DedupeKeyBuilder {
 }
 
 export class DeduplicationMonitor {
-  private static monitoringInterval: ReturnType<typeof setInterval> | null = null;
+  private static monitoringInterval: ReturnType<typeof setTimeout> | null = null;
 
   static getAllMetrics(): RequestDeduplicatorMetrics[] {
     const extra = (() => {
@@ -522,7 +560,7 @@ export class DeduplicationMonitor {
   static stopMonitoring(): void {
     if (!this.monitoringInterval) return;
     try {
-      clearInterval(this.monitoringInterval);
+      clearTimeout(this.monitoringInterval);
     } catch {
       void 0;
     }

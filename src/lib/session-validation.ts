@@ -67,9 +67,10 @@ export interface TokenDebugInfo {
 export class SessionValidator {
   private static readonly REFRESH_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
   private static readonly SESSION_CHECK_INTERVAL = 30 * 1000; // 30 seconds
+  private static sessionCache: { value: SessionValidationResult; expiresAt: number } | null = null;
 
   static clearCache(): void {
-    return;
+    SessionValidator.sessionCache = null;
   }
   
   /**
@@ -77,13 +78,18 @@ export class SessionValidator {
    * Returns detailed information about session state
    */
   static async validateSession(): Promise<SessionValidationResult> {
+    const now = Date.now();
+    const cached = SessionValidator.sessionCache;
+    if (cached && cached.expiresAt > now) {
+      return cached.value;
+    }
     try {
       const { data, error } = await supabase.auth.getSession();
       const session = data?.session ?? null;
         
         if (error) {
           if (__DEV__) console.error("[SessionValidator] Session fetch error:", error);
-          return {
+          const out = {
             isValid: false,
             session: null,
             user: null,
@@ -94,10 +100,12 @@ export class SessionValidator {
             needsRefresh: false,
             error: error.message,
           };
+          SessionValidator.sessionCache = { value: out, expiresAt: now + 2_000 };
+          return out;
         }
         
         if (!session) {
-          return {
+          const out = {
             isValid: false,
             session: null,
             user: null,
@@ -108,9 +116,10 @@ export class SessionValidator {
             needsRefresh: false,
             error: "No active session",
           };
+          SessionValidator.sessionCache = { value: out, expiresAt: now + 2_000 };
+          return out;
         }
         
-        const now = Date.now();
         const expiresAt = session.expires_at ? session.expires_at * 1000 : null;
         const timeUntilExpiry = expiresAt ? expiresAt - now : null;
         const needsRefresh = timeUntilExpiry ? timeUntilExpiry < this.REFRESH_THRESHOLD_MS : false;
@@ -127,10 +136,11 @@ export class SessionValidator {
           needsRefresh,
           error: isExpired ? 'Session expired' : undefined
         };
+        SessionValidator.sessionCache = { value: result, expiresAt: now + 30_000 };
         return result;
     } catch (error) {
       console.error('[SessionValidator] Validation error:', error);
-      return {
+      const out = {
         isValid: false,
         session: null,
         user: null,
@@ -141,6 +151,8 @@ export class SessionValidator {
         needsRefresh: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
+      SessionValidator.sessionCache = { value: out, expiresAt: now + 2_000 };
+      return out;
     }
   }
   
@@ -173,9 +185,9 @@ export class SessionValidator {
     maxWaitTime: number = 10000
   ): Promise<SessionValidationResult> {
     const startTime = Date.now();
-    const checkInterval = 200; // Check every 200ms
+    let interval = 200;
     
-    console.log('[SessionValidator] Waiting for valid session...', { expectedUserId, maxWaitTime });
+    if (__DEV__) console.log('[SessionValidator] Waiting for valid session...', { expectedUserId, maxWaitTime });
     
     while (Date.now() - startTime < maxWaitTime) {
       const validation = await this.validateSession();
@@ -183,29 +195,37 @@ export class SessionValidator {
       if (validation.isValid) {
         // If we're expecting a specific user, verify it matches
         if (expectedUserId && validation.user?.id !== expectedUserId) {
-          console.warn('[SessionValidator] Session user mismatch', {
-            expected: expectedUserId,
-            actual: validation.user?.id
-          });
-          await new Promise(resolve => setTimeout(resolve, checkInterval));
+          if (__DEV__) {
+            console.warn('[SessionValidator] Session user mismatch', {
+              expected: expectedUserId,
+              actual: validation.user?.id
+            });
+          }
+          await new Promise(resolve => setTimeout(resolve, interval));
+          interval = Math.min(Math.floor(interval * 1.5), 1000);
           continue;
         }
         
-        console.log('[SessionValidator] Valid session found', {
-          userId: validation.user?.id,
-          hasAccessToken: !!validation.accessToken,
-          timeUntilExpiry: validation.timeUntilExpiry
-        });
+        if (__DEV__) {
+          console.log('[SessionValidator] Valid session found', {
+            userId: validation.user?.id,
+            hasAccessToken: !!validation.accessToken,
+            timeUntilExpiry: validation.timeUntilExpiry
+          });
+        }
         return validation;
       }
       
-      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      await new Promise(resolve => setTimeout(resolve, interval));
+      interval = Math.min(Math.floor(interval * 1.5), 1000);
     }
     
-    console.warn('[SessionValidator] No valid session found within timeout', {
-      maxWaitTime,
-      expectedUserId
-    });
+    if (__DEV__) {
+      console.warn('[SessionValidator] No valid session found within timeout', {
+        maxWaitTime,
+        expectedUserId
+      });
+    }
     
     return this.validateSession(); // Return final state
   }
