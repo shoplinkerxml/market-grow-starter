@@ -574,6 +574,10 @@ export const commonDictionary: Dictionary = {
   xml_url: { uk: "URL XML", en: "XML URL" },
   
   // New Hero Section translations
+  hero_banner_supplier_prices: {
+    uk: "Автоматизуйте обробку прайсів від постачальників",
+    en: "Automate supplier price list processing",
+  },
   hero_live_banner: { 
     uk: "Запустіться сьогодні — почніть продавати вже завтра!", 
     en: "Launch today — start selling tomorrow!" 
@@ -597,6 +601,10 @@ export const commonDictionary: Dictionary = {
   hero_cta_start: { 
     uk: "Почати", 
     en: "Get started" 
+  },
+  hero_social_proof_with_us: {
+    uk: "З нами понад 1750+ компаній та підприємців",
+    en: "With us: over 1750+ companies and entrepreneurs",
   },
   hero_social_proof_prefix: { 
     uk: "Нам довіряють понад", 

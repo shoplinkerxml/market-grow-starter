@@ -1,51 +1,23 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Check, X } from "lucide-react";
-import { type MouseEvent, useCallback, useEffect, useRef, useState } from "react";
+import { ArrowRight } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useI18n } from "@/i18n";
 
 export function HeroSection() {
   const [isVisible, setIsVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<'without' | 'with'>('without');
   const { t } = useI18n();
   const navigate = useNavigate();
-  const lastTabClickAtRef = useRef<number>(Date.now());
-  const autoSwitchDisabledRef = useRef<boolean>(false);
 
   useEffect(() => {
     setIsVisible(true);
   }, []);
 
-  const handleTabClick = useCallback((next: 'without' | 'with') => {
-    autoSwitchDisabledRef.current = true;
-    lastTabClickAtRef.current = Date.now();
-    setActiveTab(next);
-  }, []);
-
-  const handleTabButtonClick = useCallback(
-    (e: MouseEvent<HTMLButtonElement>) => {
-      const next = e.currentTarget.dataset.tab;
-      if (next !== "without" && next !== "with") return;
-      handleTabClick(next);
-    },
-    [handleTabClick]
-  );
-
   const handleStartClick = useCallback(() => {
     navigate("/user-auth");
   }, [navigate]);
-
-  useEffect(() => {
-    const intervalMs = 3_000;
-    const id = window.setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-      if (autoSwitchDisabledRef.current) return;
-      setActiveTab((prev) => (prev === "without" ? "with" : "without"));
-    }, intervalMs);
-    return () => window.clearInterval(id);
-  }, []);
 
   return (
     <section className="relative flex items-center overflow-hidden bg-background min-h-[calc(100vh-4rem)]">
@@ -69,7 +41,7 @@ export function HeroSection() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
               </span>
-              {t('hero_live_banner')}
+              {t("hero_banner_supplier_prices")}
             </div>
 
             {/* Main Title */}
@@ -81,11 +53,6 @@ export function HeroSection() {
               </span>{" "}
               {t('hero_title_everywhere')}
             </h1>
-
-            {/* Subtitle */}
-            <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-xl">
-              {t('hero_subtitle_new')}
-            </p>
 
             {/* CTA Buttons */}
             <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -118,108 +85,29 @@ export function HeroSection() {
                   </div>
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground">
-                {t('hero_social_proof_prefix')}{" "}
-                <span className="font-bold text-foreground">1750+</span>{" "}
-                {t('hero_social_proof_suffix')}
-              </p>
+              <p className="text-sm text-muted-foreground">{t("hero_social_proof_with_us")}</p>
             </div>
           </div>
 
-          {/* Right Content - Comparison Cards */}
-          <div className="flex-1 w-full max-w-xl">
-            {/* Tabs */}
-            <div className="flex justify-center gap-4 mb-4">
-              <div className="animate-bob will-change-transform [animation-duration:3.6s]">
-                <button
-                  data-tab="without"
-                  onClick={handleTabButtonClick}
-                  className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-300 bg-destructive text-destructive-foreground shadow-md hover:shadow-lg min-w-[16rem] sm:min-w-[18rem] ${
-                    activeTab === 'without'
-                      ? 'ring-2 ring-destructive/50 ring-offset-2 ring-offset-background scale-105'
-                      : 'opacity-85 hover:opacity-100'
-                  }`}
-                >
-                  {t('hero_tab_without')}
-                </button>
-              </div>
-              <div className="animate-bob will-change-transform [animation-duration:3.6s] [animation-delay:900ms]">
-                <button
-                  data-tab="with"
-                  onClick={handleTabButtonClick}
-                  className={`px-8 py-3 rounded-lg text-sm font-semibold transition-all duration-300 bg-primary text-primary-foreground shadow-md hover:shadow-lg min-w-[16rem] sm:min-w-[18rem] ${
-                    activeTab === 'with'
-                      ? 'ring-2 ring-primary/50 ring-offset-2 ring-offset-background scale-105'
-                      : 'opacity-85 hover:opacity-100'
-                  }`}
-                >
-                  {t('hero_tab_with')}
-                </button>
-              </div>
-            </div>
-
-            {/* Comparison Card */}
-            <div className={`relative rounded-2xl border p-6 backdrop-blur-md transition-all duration-500 ${
-              activeTab === 'without' 
-                ? 'border-destructive/30 bg-destructive/5 dark:bg-destructive/10' 
-                : 'border-primary/30 bg-primary/5 dark:bg-primary/10'
-            }`}>
-              {/* Rating Display */}
-              <div className="text-center mb-6">
-                <p className="text-sm text-muted-foreground mb-2">{t('hero_efficiency_rating')}</p>
-                <div className="flex items-baseline justify-center gap-1">
-                  <span className={`text-6xl font-bold tabular-nums ${
-                    activeTab === 'without' ? 'text-destructive' : 'text-primary'
-                  }`}>
-                    {activeTab === 'without' ? '12' : '94'}
-                  </span>
-                  <span className="text-2xl text-muted-foreground">/100</span>
-                </div>
-                {/* Progress Bar */}
-                <div className="mt-4 h-2 w-full rounded-full bg-muted/50 overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-700 ease-out ${
-                      activeTab === 'without' ? 'bg-destructive' : 'bg-primary'
-                    }`}
-                    style={{ width: activeTab === 'without' ? '12%' : '94%' }}
-                  />
-                </div>
-              </div>
-
-              {/* Features List */}
-              <div className="space-y-3">
-                {activeTab === 'without' ? (
-                  <>
-                    <FeatureItem icon="x" text={t('hero_without_1')} />
-                    <FeatureItem icon="x" text={t('hero_without_2')} />
-                    <FeatureItem icon="x" text={t('hero_without_3')} />
-                  </>
-                ) : (
-                  <>
-                    <FeatureItem icon="check" text={t('hero_with_1')} />
-                    <FeatureItem icon="check" text={t('hero_with_2')} />
-                    <FeatureItem icon="check" text={t('hero_with_3')} />
-                  </>
-                )}
-              </div>
+          {/* Right Content */}
+          <div className="flex-1 w-full lg:max-w-none lg:mr-[calc(50%-50vw-2rem)]">
+            <div className="relative flex items-center justify-center pt-6 pb-2 lg:justify-end">
+              <img
+                src="/proposition-phone.svg"
+                alt="Phone"
+                className="relative z-10 w-[15rem] sm:w-[17rem] md:w-[19rem] lg:w-[17.5rem] xl:w-[18rem] drop-shadow-2xl animate-float-slow will-change-transform lg:-mr-[100px] lg:translate-x-[140px] lg:translate-y-16"
+                draggable={false}
+              />
+              <img
+                src="/proposition-charts.svg"
+                alt="Charts"
+                className="pointer-events-none relative w-full max-w-[44rem] opacity-90 dark:opacity-80 lg:w-[28rem] lg:max-w-none xl:w-[32rem] lg:-translate-y-6"
+                draggable={false}
+              />
             </div>
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function FeatureItem({ icon, text }: { icon: 'check' | 'x'; text: string }) {
-  const isCheck = icon === 'check';
-  return (
-    <div className="flex items-start gap-3">
-      <div className={`flex-shrink-0 mt-0.5 ${isCheck ? 'text-primary' : 'text-destructive'}`}>
-        {isCheck ? <Check className="h-5 w-5" /> : <X className="h-5 w-5" />}
-      </div>
-      <span className={`text-sm leading-relaxed ${isCheck ? 'text-foreground' : 'text-muted-foreground'}`}>
-        {text}
-      </span>
-    </div>
   );
 }
