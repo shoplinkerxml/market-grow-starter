@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useLayoutEffect, useRef, type CSSProperties } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,6 +34,8 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
   const [linkedStoreIds, setLinkedStoreIds] = useState<string[]>([]);
   const [loadingStores, setLoadingStores] = useState(false);
   const [togglingStoreIds, setTogglingStoreIds] = useState<string[]>([]);
+  const measureTextRef = useRef<HTMLSpanElement | null>(null);
+  const [storesMenuWidthPx, setStoresMenuWidthPx] = useState<number>(176);
 
   const addMenuId = `add:${product.id}`;
 
@@ -96,6 +98,41 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
   useEffect(() => { if (Array.isArray(storesList) && storesList.length > 0) setStores(storesList); }, [storesList]);
   useEffect(() => { setLinkedStoreIds(product.linkedStoreIds || []); }, [product.linkedStoreIds]);
 
+  useLayoutEffect(() => {
+    if (!openMenuId) return;
+    const measureEl = measureTextRef.current;
+    if (!measureEl) return;
+
+    const labels = (stores || []).map((s) => String(s.store_name || s.store_url || s.id || ""));
+    if (labels.length === 0) {
+      setStoresMenuWidthPx(176);
+      return;
+    }
+
+    const computed = window.getComputedStyle(measureEl);
+    const font = computed.font;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.font = font;
+
+    let maxTextWidth = 0;
+    for (const label of labels) {
+      const w = ctx.measureText(label).width;
+      if (w > maxTextWidth) maxTextWidth = w;
+    }
+
+    const basePaddingPx = 16;
+    const checkboxPx = 16;
+    const gapPx = 8;
+    const safetyPx = 20;
+    const minPx = 140;
+    const maxPx = 360;
+
+    const next = Math.min(maxPx, Math.max(minPx, Math.ceil(maxTextWidth + basePaddingPx + checkboxPx + gapPx + safetyPx)));
+    setStoresMenuWidthPx(next);
+  }, [openMenuId, stores]);
+
   const handleOpenChange = useCallback((menuId: string, v: boolean) => {
     setOpenMenuId((prev) => {
       if (v) return menuId;
@@ -109,7 +146,13 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
     return (
       <DropdownMenuContent
         align="start"
-        className="p-1 w-44 overflow-visible"
+        className="p-1 overflow-visible"
+        style={
+          {
+            width: `${storesMenuWidthPx}px`,
+            ["--stores-menu-hover-extra" as any]: "16px",
+          } as CSSProperties
+        }
         data-testid={`user_products_store_menu_content_${product.id}_${menuId}`}
       >
         {((stores || []).length === 0 && loadingStores) ? (
@@ -130,7 +173,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
               return (
                 <DropdownMenuItem
                   key={id}
-                  className="group relative flex w-44 cursor-pointer items-center gap-2 pl-2 pr-2 hover:bg-muted/60 focus:bg-muted/60 hover:w-56 focus:w-56 hover:pr-8 focus:pr-8 transition-[width,padding] duration-150 ease-out"
+                  className="group relative flex w-full cursor-pointer items-center gap-2 pl-2 pr-2 hover:bg-muted/60 focus:bg-muted/60 hover:w-[calc(100%+var(--stores-menu-hover-extra))] focus:w-[calc(100%+var(--stores-menu-hover-extra))] hover:pr-8 focus:pr-8 transition-[width,padding] duration-150 ease-out"
                   onSelect={(e) => e.preventDefault()}
                   data-testid={`user_products_store_menu_item_${product.id}_${menuId}_${id}`}
                 >
@@ -207,7 +250,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
         )}
       </DropdownMenuContent>
     );
-  }, [linkedStoreIds, loadingStores, product, stores, t, togglingStoreIds, onStoresUpdate]);
+  }, [linkedStoreIds, loadingStores, product, stores, t, togglingStoreIds, onStoresUpdate, storesMenuWidthPx]);
 
   if (storeIds.length === 0) {
     return (
@@ -231,6 +274,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
         </DropdownMenuTrigger>
         {renderStoresDropdownContent(addMenuId)}
       </DropdownMenu>
+      <span ref={measureTextRef} className="fixed -left-[9999px] -top-[9999px] whitespace-nowrap text-sm" />
       </div>
     );
   }
@@ -292,6 +336,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
           </div>
         );
       })}
+      <span ref={measureTextRef} className="fixed -left-[9999px] -top-[9999px] whitespace-nowrap text-sm" />
     </div>
   );
 }
