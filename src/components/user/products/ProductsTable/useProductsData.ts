@@ -64,7 +64,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
     () => [...productsBaseKey, "pageSize", pageSize, "filters", filtersKey] as const,
     [productsBaseKey, pageSize, filtersKey],
   );
-  const shopsMenuKey = useMemo(() => ["user", uid, "shops", "menu"] as const, [uid]);
+  const shopsKey = useMemo(() => ["user", uid, "shops"] as const, [uid]);
 
   const productsQuery = useInfiniteQuery<ResponseData, Error, InfiniteData<ResponseData, number>, typeof productsQueryKey, number>({
     queryKey: productsQueryKey,
@@ -251,15 +251,15 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
   useProductsRealtime(storeId, uid, queryClient);
   useProductLinksRealtime(uid, queryClient);
   const storesQuery = useQuery<ShopAggregated[]>({
-    queryKey: shopsMenuKey,
+    queryKey: shopsKey,
     queryFn: async () => {
-      const cached = queryClient.getQueryData<ShopAggregated[]>(shopsMenuKey) || [];
+      const cached = queryClient.getQueryData<ShopAggregated[]>(shopsKey) || [];
       const hasCounts =
         Array.isArray(cached) &&
         cached.length > 0 &&
         cached.some((s) => typeof (s as any)?.productsCount === "number" || typeof (s as any)?.categoriesCount === "number");
 
-      const state = queryClient.getQueryState(shopsMenuKey as any);
+      const state = queryClient.getQueryState(shopsKey as any);
       const isInvalidated = !!(state as any)?.isInvalidated;
       if (hasCounts && !isInvalidated) return cached;
 
@@ -276,34 +276,29 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
   const stores = useMemo(() => (Array.isArray(storesQuery.data) ? storesQuery.data : []), [storesQuery.data]);
 
   const loadStoresForMenu = useCallback(async () => {
-    const cached = queryClient.getQueryData<ShopAggregated[]>(shopsMenuKey) || [];
+    const cached = queryClient.getQueryData<ShopAggregated[]>(shopsKey) || [];
     const hasCounts =
       Array.isArray(cached) &&
       cached.length > 0 &&
       cached.some((s) => typeof (s as any)?.productsCount === "number" || typeof (s as any)?.categoriesCount === "number");
-    const state = queryClient.getQueryState(shopsMenuKey as any);
+    const state = queryClient.getQueryState(shopsKey as any);
     const isInvalidated = !!(state as any)?.isInvalidated;
     if (hasCounts && !isInvalidated) return;
 
     const fresh = await queryClient.fetchQuery({
-      queryKey: shopsMenuKey,
+      queryKey: shopsKey,
       queryFn: async () => await ShopService.getShopsAggregated({ forceCounts: true }),
       staleTime: 900_000,
     });
 
     if (Array.isArray(fresh)) {
       try {
-        queryClient.setQueryData<ShopAggregated[]>(["user", uid, "shops"], fresh);
-      } catch {
-        void 0;
-      }
-      try {
-        queryClient.setQueryData<ShopAggregated[]>(shopsMenuKey, fresh);
+        queryClient.setQueryData<ShopAggregated[]>(shopsKey, fresh);
       } catch {
         void 0;
       }
     }
-  }, [queryClient, shopsMenuKey, uid]);
+  }, [queryClient, shopsKey]);
 
   return {
     queryClient,

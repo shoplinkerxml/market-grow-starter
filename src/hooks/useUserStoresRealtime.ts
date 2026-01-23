@@ -48,13 +48,9 @@ export function useUserStoresRealtime(userId: string | null | undefined) {
       if (!row || String(row.user_id) !== uid) return;
 
       const shopsKey = ["user", uid, "shops"] as const;
-      const shopsMenuKey = ["user", uid, "shops", "menu"] as const;
 
       const removeFromLists = (storeId: string) => {
         queryClient.setQueryData<any[]>(shopsKey, (prev) =>
-          Array.isArray(prev) ? prev.filter((s) => String(s?.id) !== String(storeId)) : prev
-        );
-        queryClient.setQueryData<any[]>(shopsMenuKey, (prev) =>
           Array.isArray(prev) ? prev.filter((s) => String(s?.id) !== String(storeId)) : prev
         );
       };
@@ -73,14 +69,6 @@ export function useUserStoresRealtime(userId: string | null | undefined) {
         });
 
         queryClient.setQueryData<any[]>(shopsKey, (prev) => {
-          const list = Array.isArray(prev) ? prev : [];
-          const sid = String(store.id);
-          const exists = list.some((s) => String(s?.id) === sid);
-          if (!exists) return [normalize(store), ...list];
-          return list.map((s) => (String(s?.id) === sid ? normalize({ ...s, ...store }) : s));
-        });
-
-        queryClient.setQueryData<any[]>(shopsMenuKey, (prev) => {
           const list = Array.isArray(prev) ? prev : [];
           const sid = String(store.id);
           const exists = list.some((s) => String(s?.id) === sid);

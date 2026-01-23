@@ -223,7 +223,6 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
   const { handleConfirmDelete } = useProductsDelete({ t, uid, storeId, onDelete, refreshTrigger, queryClient, productsBaseKey, table, setProductsCached, setDeleteProgress, closeDeleteDialog });
   const setStores = useCallback((v: ShopAggregated[]) => {
     queryClient.setQueryData(["user", uid, "shops"], v);
-    queryClient.setQueryData(["user", uid, "shops", "menu"], v);
   }, [queryClient, uid]);
   const setStoresMenuOpen = useCallback((v: boolean) => dispatch({ type: "setStoresMenuOpen", next: v }), []);
   const setSelectedStoreIds = useCallback((updater: string[] | ((prev: string[]) => string[])) => dispatch({ type: "setSelectedStoreIds", next: updater }), []);

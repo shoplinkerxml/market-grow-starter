@@ -113,7 +113,7 @@ export function AddToStoresMenu({
       try {
         await loadStoresForMenu();
         try {
-          const nextStores = queryClient.getQueryData<StoreAgg[]>(["user", uid, "shops", "menu"]);
+          const nextStores = queryClient.getQueryData<StoreAgg[]>(["user", uid, "shops"]);
           if (Array.isArray(nextStores)) setStores(nextStores);
         } catch {
           void 0;

@@ -27,14 +27,18 @@ export class ShopProductSyncService {
     if (storeIds.length === 0) return;
     
     try {
-      try {
-        ShopService.clearAllCaches();
-      } catch {
-        void 0;
-      }
+      ShopService.clearAllCaches();
+
+      const fresh = await ShopService.getShopsAggregated({ force: true, forceCounts: true });
 
       for (const uid of uids) {
-        ShopCountsService.invalidate(queryClient, uid, storeIds, "sync_after_bulk_mutation", { refetch: "inactive" });
+        queryClient.setQueryData(ShopCountsService.shopsListKey(uid), Array.isArray(fresh) ? fresh : []);
+
+        ShopCountsService.invalidate(queryClient, uid, storeIds, "sync_after_bulk_mutation", {
+          invalidateAuthMe: false,
+          invalidatePersistentShops: false,
+          invalidateShopsQueries: false,
+        });
       }
     } catch (error) {
       console.warn("[ShopProductSyncService] refreshCountersFromServer failed:", error);

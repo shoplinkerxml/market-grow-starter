@@ -81,7 +81,7 @@ export const ShopCountsService = {
     return ["user", userId ? String(userId) : "current", "shops"] as const;
   },
   shopsMenuKey(userId: string) {
-    return ["user", userId ? String(userId) : "current", "shops", "menu"] as const;
+    return this.shopsListKey(userId);
   },
   shopDetailKey(userId: string, storeId: string) {
     return ["user", userId ? String(userId) : "current", "shopDetail", storeId] as const;
@@ -91,7 +91,13 @@ export const ShopCountsService = {
     userId: string,
     storeIds?: string[] | string | null,
     reason?: string,
-    opts?: { broadcast?: boolean; refetch?: "active" | "inactive" | "all" | false },
+    opts?: {
+      broadcast?: boolean;
+      invalidateAuthMe?: boolean;
+      invalidatePersistentShops?: boolean;
+      invalidateShopsQueries?: boolean;
+      refetch?: "active" | "inactive" | "all" | "none" | false;
+    },
   ) {
     const uid = userId ? String(userId) : "current";
     const ids = Array.isArray(storeIds)
@@ -102,33 +108,46 @@ export const ShopCountsService = {
 
     console.info("[ShopCountsService] invalidate", { userId: uid, storeIds: ids, reason: reason || "unknown" });
 
-    try {
-      import("@/lib/user-auth-service")
-        .then(({ UserAuthService }) => {
-          UserAuthService.clearAuthMeCache();
-        })
-        .catch(() => void 0);
-    } catch {
-      void 0;
+    const refetchType = opts?.refetch === false ? "none" : opts?.refetch;
+
+    if (opts?.invalidateAuthMe !== false) {
+      try {
+        import("@/lib/user-auth-service")
+          .then(({ UserAuthService }) => {
+            UserAuthService.clearAuthMeCache();
+          })
+          .catch(() => void 0);
+      } catch {
+        void 0;
+      }
     }
 
-    try {
-      PersistentCacheService.invalidateShops();
-    } catch {
-      void 0;
+    if (opts?.invalidatePersistentShops !== false) {
+      try {
+        PersistentCacheService.invalidateShops();
+      } catch {
+        void 0;
+      }
     }
 
-    try {
-      queryClient.invalidateQueries({ queryKey: ["auth", "me"], exact: true });
-    } catch {
-      void 0;
+    if (opts?.invalidateAuthMe !== false) {
+      try {
+        queryClient.invalidateQueries({ queryKey: ["auth", "me"], exact: true });
+      } catch {
+        void 0;
+      }
     }
 
-    try {
-      queryClient.invalidateQueries({ queryKey: this.shopsListKey(uid), exact: true });
-      queryClient.invalidateQueries({ queryKey: this.shopsMenuKey(uid), exact: true });
-    } catch {
-      void 0;
+    if (opts?.invalidateShopsQueries !== false) {
+      try {
+        queryClient.invalidateQueries({
+          queryKey: this.shopsListKey(uid),
+          exact: true,
+          refetchType: refetchType as any,
+        });
+      } catch {
+        void 0;
+      }
     }
 
     try {
@@ -147,37 +166,6 @@ export const ShopCountsService = {
         queryClient.removeQueries({ queryKey: this.key(uid, storeId), exact: true });
       } catch {
         void 0;
-      }
-    }
-
-    const refetchType = opts?.refetch;
-    if (refetchType) {
-      try {
-        queryClient.refetchQueries({ queryKey: this.shopsListKey(uid), exact: true, type: refetchType } as any);
-      } catch {
-        void 0;
-      }
-      try {
-        queryClient.refetchQueries({ queryKey: this.shopsMenuKey(uid), exact: true, type: refetchType } as any);
-      } catch {
-        void 0;
-      }
-      try {
-        queryClient.refetchQueries({ queryKey: ["auth", "me"], exact: true, type: refetchType } as any);
-      } catch {
-        void 0;
-      }
-      try {
-        queryClient.refetchQueries({ queryKey: ["user", uid, "dashboard-stats"], exact: true, type: refetchType } as any);
-      } catch {
-        void 0;
-      }
-      for (const storeId of ids) {
-        try {
-          queryClient.refetchQueries({ queryKey: this.shopDetailKey(uid, storeId), exact: true, type: refetchType } as any);
-        } catch {
-          void 0;
-        }
       }
     }
 

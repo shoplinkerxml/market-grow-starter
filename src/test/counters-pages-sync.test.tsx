@@ -223,9 +223,9 @@ describe("Counters sync on pages", () => {
     expect(await screen.findByText("MMA - 1 тов.")).toBeInTheDocument();
   });
 
-  it("/user/products menu: счетчики магазинов обновляются после invalidate shops/menu key", async () => {
+  it("/user/products menu: счетчики магазинов обновляются после invalidate shops key", async () => {
     const ShopsMenuCounters = ({ uid }: { uid: string }) => {
-      const key = ["user", uid, "shops", "menu"] as const;
+      const key = ["user", uid, "shops"] as const;
       const q = useQuery({
         queryKey: key,
         queryFn: async () => await getShopsAggregated({ forceCounts: true }),
