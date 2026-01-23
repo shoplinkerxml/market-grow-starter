@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, Store } from "lucide-react";
+import { Loader2, Store, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { toast } from "sonner";
@@ -29,12 +29,13 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
   const { user } = useOutletContext<{ user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
   const storeIds = product.linkedStoreIds || [];
-  const [open, setOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [stores, setStores] = useState<ShopAggregated[]>([]);
   const [linkedStoreIds, setLinkedStoreIds] = useState<string[]>([]);
   const [loadingStores, setLoadingStores] = useState(false);
   const [togglingStoreIds, setTogglingStoreIds] = useState<string[]>([]);
-  const [badgeOpenId, setBadgeOpenId] = useState<string | null>(null);
+
+  const addMenuId = `add:${product.id}`;
 
   const loadStoresAndLinks = useCallback(async () => {
       let shops: ShopAggregated[] = [];
@@ -95,15 +96,125 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
   useEffect(() => { if (Array.isArray(storesList) && storesList.length > 0) setStores(storesList); }, [storesList]);
   useEffect(() => { setLinkedStoreIds(product.linkedStoreIds || []); }, [product.linkedStoreIds]);
 
+  const handleOpenChange = useCallback((menuId: string, v: boolean) => {
+    setOpenMenuId((prev) => {
+      if (v) return menuId;
+      if (prev === menuId) return null;
+      return prev;
+    });
+    if (v) void loadStoresAndLinks();
+  }, [loadStoresAndLinks]);
+
+  const renderStoresDropdownContent = useCallback((menuId: string) => {
+    return (
+      <DropdownMenuContent
+        align="start"
+        className="p-1 w-44 overflow-visible"
+        data-testid={`user_products_store_menu_content_${product.id}_${menuId}`}
+      >
+        {((stores || []).length === 0 && loadingStores) ? (
+          <DropdownMenuItem disabled>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t("loading")}
+          </DropdownMenuItem>
+        ) : (
+          (stores || []).length === 0 ? (
+            <DropdownMenuItem disabled>—</DropdownMenuItem>
+          ) : (
+            (stores || []).map((s: ShopAggregated) => {
+              const id = String(s.id);
+              const initialLinked = Array.isArray(product.linkedStoreIds) ? (product.linkedStoreIds as string[]).map(String) : [];
+              const checked = initialLinked.includes(id) || linkedStoreIds.includes(id);
+              const isToggling = togglingStoreIds.includes(id);
+
+              return (
+                <DropdownMenuItem
+                  key={id}
+                  className="group relative flex w-44 cursor-pointer items-center gap-2 pl-2 pr-2 hover:bg-muted/60 focus:bg-muted/60 hover:w-56 focus:w-56 hover:pr-8 focus:pr-8 transition-[width,padding] duration-150 ease-out"
+                  onSelect={(e) => e.preventDefault()}
+                  data-testid={`user_products_store_menu_item_${product.id}_${menuId}_${id}`}
+                >
+                  <div className="relative inline-flex items-center justify-center" aria-busy={isToggling}>
+                    <Checkbox
+                      checked={checked}
+                      disabled={isToggling}
+                      onClick={(e) => e.stopPropagation()}
+                      onCheckedChange={async (v) => {
+                        setTogglingStoreIds((prev) => Array.from(new Set([...prev, id])));
+                        const prevIds = linkedStoreIds.slice();
+                        const nextIds = v ? Array.from(new Set([...linkedStoreIds, id])) : linkedStoreIds.filter((x) => String(x) !== String(id));
+                        setLinkedStoreIds(nextIds);
+                        const categoryKey = product.category_id != null ? `cat:${product.category_id}` : product.category_external_id ? `ext:${product.category_external_id}` : null;
+                        try { onStoresUpdate?.(String(product.id), nextIds, { storeIdChanged: id, added: !!v, categoryKey }); } catch { void 0; }
+                        try {
+                          if (v) {
+                            await ProductService.bulkAddStoreProductLinks([
+                              {
+                                product_id: String(product.id),
+                                store_id: String(id),
+                                is_active: true,
+                                custom_price: product.price ?? null,
+                                custom_price_old: product.price_old ?? null,
+                                custom_price_promo: product.price_promo ?? null,
+                                custom_stock_quantity: product.stock_quantity ?? null,
+                                custom_available: product.available ?? true,
+                              },
+                            ]);
+                            ProductService.invalidateStoreLinksCache(String(product.id));
+                            toast.success(t("product_added_to_store"));
+                          } else {
+                            await ProductService.bulkRemoveStoreProductLinks([String(product.id)], [String(id)]);
+                            ProductService.invalidateStoreLinksCache(String(product.id));
+                            toast.success(t("product_removed_from_store"));
+                          }
+                        } catch {
+                          setLinkedStoreIds(prevIds);
+                          toast.error(t("operation_failed"));
+                        } finally {
+                          setTogglingStoreIds((prev) => prev.filter((sid) => sid !== id));
+                        }
+                      }}
+                      aria-label={t("select_store")}
+                    />
+                    {isToggling ? (
+                      <Loader2 className="absolute h-3 w-3 animate-spin text-emerald-600 pointer-events-none" />
+                    ) : null}
+                  </div>
+
+                  <span className="truncate">{s.store_name || s.store_url || id}</span>
+
+                  <button
+                    type="button"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto hover:bg-muted hover:text-foreground"
+                    aria-label="close_menu"
+                    data-testid={`user_products_store_menu_close_${product.id}_${menuId}_${id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setOpenMenuId(null);
+                    }}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </DropdownMenuItem>
+              );
+            })
+          )
+        )}
+      </DropdownMenuContent>
+    );
+  }, [linkedStoreIds, loadingStores, product, stores, t, togglingStoreIds, onStoresUpdate]);
+
   if (storeIds.length === 0) {
     return (
       <div className="w-full flex items-center justify-center">
       <DropdownMenu
-        open={open}
-        onOpenChange={(v) => {
-          setOpen(v);
-          if (v) void loadStoresAndLinks();
-        }}
+        open={openMenuId === addMenuId}
+        onOpenChange={(v) => handleOpenChange(addMenuId, v)}
       >
         <DropdownMenuTrigger asChild>
           <Button
@@ -114,89 +225,11 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
             onClick={(e) => {
               e.stopPropagation();
             }}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-            }}
           >
             <Store className="h-3.5 w-3.5" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="p-1" data-testid={`user_products_store_add_content_${product.id}`}>
-          {((stores || []).length === 0 && loadingStores) ? (
-            <DropdownMenuItem disabled>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {t("loading")}
-            </DropdownMenuItem>
-          ) : (
-            (stores || []).length === 0 ? (
-              <DropdownMenuItem disabled>—</DropdownMenuItem>
-            ) : (
-              (stores || []).map((s: ShopAggregated) => {
-                const id = String(s.id);
-                const initialLinked = Array.isArray(product.linkedStoreIds) ? (product.linkedStoreIds as string[]).map(String) : [];
-                const checked = initialLinked.includes(id) || linkedStoreIds.includes(id);
-                return (
-                  <DropdownMenuItem
-                    key={id}
-                    className="cursor-pointer pr-2 pl-2 hover:bg-muted/60 focus:bg-muted/60"
-                    onSelect={(e) => e.preventDefault()}
-                    data-testid={`user_products_store_add_item_${product.id}_${id}`}
-                  >
-                    <div className="relative mr-2 inline-flex items-center justify-center" aria-busy={togglingStoreIds.includes(id)}>
-                      <Checkbox
-                        checked={checked}
-                        disabled={togglingStoreIds.includes(id)}
-                        onClick={(e) => e.stopPropagation()}
-                        onCheckedChange={async (v) => {
-                          setTogglingStoreIds((prev) => Array.from(new Set([...prev, id])));
-                          const prevIds = linkedStoreIds.slice();
-                          const nextIds = v ? Array.from(new Set([...linkedStoreIds, id])) : linkedStoreIds.filter((x) => String(x) !== String(id));
-                          setLinkedStoreIds(nextIds);
-                          const categoryKey = product.category_id != null ? `cat:${product.category_id}` : product.category_external_id ? `ext:${product.category_external_id}` : null;
-                          try { onStoresUpdate?.(String(product.id), nextIds, { storeIdChanged: id, added: !!v, categoryKey }); } catch { void 0; }
-                          try {
-                            if (v) {
-                              await ProductService.bulkAddStoreProductLinks([
-                                {
-                                  product_id: String(product.id),
-                                  store_id: String(id),
-                                  is_active: true,
-                                  custom_price: product.price ?? null,
-                                  custom_price_old: product.price_old ?? null,
-                                  custom_price_promo: product.price_promo ?? null,
-                                  custom_stock_quantity: product.stock_quantity ?? null,
-                                  custom_available: product.available ?? true,
-                                },
-                              ]);
-                              ProductService.invalidateStoreLinksCache(String(product.id));
-                              toast.success(t("product_added_to_store"));
-                              try { setOpen(true); } catch { void 0; }
-                            } else {
-                              await ProductService.bulkRemoveStoreProductLinks([String(product.id)], [String(id)]);
-                              ProductService.invalidateStoreLinksCache(String(product.id));
-                              toast.success(t("product_removed_from_store"));
-                              try { setOpen(true); } catch { void 0; }
-                            }
-                          } catch {
-                            setLinkedStoreIds(prevIds);
-                            toast.error(t("operation_failed"));
-                          } finally {
-                            setTogglingStoreIds((prev) => prev.filter((sid) => sid !== id));
-                          }
-                        }}
-                        aria-label={t("select_store")}
-                      />
-                      {togglingStoreIds.includes(id) ? (
-                        <Loader2 className="absolute h-3 w-3 animate-spin text-emerald-600 pointer-events-none" />
-                      ) : null}
-                    </div>
-                    <span>{s.store_name || s.store_url || id}</span>
-                  </DropdownMenuItem>
-                );
-              })
-            )
-          )}
-        </DropdownMenuContent>
+        {renderStoresDropdownContent(addMenuId)}
       </DropdownMenu>
       </div>
     );
@@ -207,132 +240,48 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
       {storeIds.map((id) => {
         const name = storeNames[String(id)] || "";
         const label = name || "…";
-        const isOpen = badgeOpenId === String(id);
         return (
           <div key={id} className="flex items-center">
-            <Badge
-              variant="secondary"
-              className="group relative rounded-md px-2 py-0.5 text-[11px] h-5 max-w-[10rem] truncate pr-5"
-            >
-              <DropdownMenu
-                open={isOpen}
-                onOpenChange={(v) => {
-                  const next = v ? String(id) : (badgeOpenId === String(id) ? null : badgeOpenId);
-                  setBadgeOpenId(next);
-                  if (v) loadStoresAndLinks();
-                }}
-              >
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="select-none truncate max-w-[8.5rem]"
-                    title={name}
-                    data-testid={`user_products_store_badge_trigger_${product.id}_${id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                    }}
-                  >
-                    {label}
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="p-1" data-testid={`user_products_store_badge_content_${product.id}_${id}`}>
-                  {((stores || []).length === 0 && loadingStores) ? (
-                    <DropdownMenuItem disabled>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      {t("loading")}
-                    </DropdownMenuItem>
-                  ) : (
-                    (stores || []).length === 0 ? (
-                      <DropdownMenuItem disabled>—</DropdownMenuItem>
-                    ) : (
-                      (stores || []).map((s: ShopAggregated) => {
-                        const sid = String(s.id);
-                        const initialLinked = Array.isArray(product.linkedStoreIds) ? (product.linkedStoreIds as string[]).map(String) : [];
-                        const checked = initialLinked.includes(sid) || linkedStoreIds.includes(sid);
-                        return (
-                          <DropdownMenuItem
-                            key={sid}
-                            className="cursor-pointer pr-2 pl-2 hover:bg-muted/60 focus:bg-muted/60"
-                            onSelect={(e) => e.preventDefault()}
-                            data-testid={`user_products_store_badges_item_${product.id}_${sid}`}
-                          >
-                            <div className="relative mr-2 inline-flex items-center justify-center" aria-busy={togglingStoreIds.includes(sid)}>
-                              <Checkbox
-                                checked={checked}
-                                disabled={togglingStoreIds.includes(sid)}
-                                onClick={(e) => e.stopPropagation()}
-                                onCheckedChange={async (v) => {
-                                  setTogglingStoreIds((prev) => Array.from(new Set([...prev, sid])));
-                                  const prevIds = linkedStoreIds.slice();
-                                  const nextIds = v ? Array.from(new Set([...linkedStoreIds, sid])) : linkedStoreIds.filter((x) => String(x) !== String(sid));
-                                  setLinkedStoreIds(nextIds);
-                                  const categoryKey = product.category_id != null ? `cat:${product.category_id}` : product.category_external_id ? `ext:${product.category_external_id}` : null;
-                                  try { onStoresUpdate?.(String(product.id), nextIds, { storeIdChanged: sid, added: !!v, categoryKey }); } catch { void 0; }
-                                  try {
-                                    if (v) {
-                                      await ProductService.bulkAddStoreProductLinks([
-                                        {
-                                          product_id: String(product.id),
-                                          store_id: String(sid),
-                                          is_active: true,
-                                          custom_price: product.price ?? null,
-                                          custom_price_old: product.price_old ?? null,
-                                          custom_price_promo: product.price_promo ?? null,
-                                          custom_stock_quantity: product.stock_quantity ?? null,
-                                          custom_available: product.available ?? true,
-                                        },
-                                      ]);
-                                      ProductService.invalidateStoreLinksCache(String(product.id));
-                                      toast.success(t("product_added_to_store"));
-                                      try { setBadgeOpenId(String(id)); } catch { void 0; }
-                                    } else {
-                                      await ProductService.bulkRemoveStoreProductLinks([String(product.id)], [String(sid)]);
-                                      ProductService.invalidateStoreLinksCache(String(product.id));
-                                      toast.success(t("product_removed_from_store"));
-                                      try { setBadgeOpenId(String(id)); } catch { void 0; }
-                                    }
-                                  } catch {
-                                    setLinkedStoreIds(prevIds);
-                                    toast.error(t("operation_failed"));
-                                  } finally {
-                                    setTogglingStoreIds((prev) => prev.filter((sid0) => sid0 !== sid));
-                                  }
-                                }}
-                                aria-label={t("select_store")}
-                              />
-                              {togglingStoreIds.includes(sid) ? (
-                                <Loader2 className="absolute h-3 w-3 animate-spin text-emerald-600 pointer-events-none" />
-                              ) : null}
-                            </div>
-                            <span>{s.store_name || s.store_url || "—"}</span>
-                          </DropdownMenuItem>
-                        );
-                      })
-                    )
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {onRemove ? (
-                <button
-                  type="button"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center h-4 w-4 rounded text-muted-foreground opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto hover:bg-secondary/80 hover:text-foreground"
+            <DropdownMenu open={openMenuId === String(id)} onOpenChange={(v) => handleOpenChange(String(id), v)}>
+              <DropdownMenuTrigger asChild>
+                <Badge
+                  variant="secondary"
+                  className="group relative inline-flex cursor-pointer items-center rounded-md px-2 py-0.5 pr-2 text-[11px] h-5 max-w-[10rem] hover:max-w-[12rem] focus-within:max-w-[12rem] hover:pr-5 focus-within:pr-5 transition-[max-width,padding] duration-150 ease-out"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onRemove?.(String(product.id), String(id));
                   }}
-                  aria-label={`remove_store_${id}`}
-                  data-testid={`user_products_store_remove_${id}`}
+                  data-testid={`user_products_store_badge_trigger_${product.id}_${id}`}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x h-[8px] w-[8px]">
-                    <path d="M18 6 6 18"></path>
-                    <path d="M6 6l12 12"></path>
-                  </svg>
-                </button>
-              ) : null}
-            </Badge>
+                  <span
+                    className="min-w-0 select-none truncate max-w-[calc(10rem-1.25rem)] group-hover:max-w-[calc(12rem-1.25rem)] group-focus-within:max-w-[calc(12rem-1.25rem)]"
+                    title={name}
+                    data-testid={`user_products_store_badge_${product.id}_${id}`}
+                  >
+                    {label}
+                  </span>
+                  {onRemove ? (
+                    <button
+                      type="button"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center h-4 w-4 rounded text-muted-foreground opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto hover:bg-secondary/80 hover:text-foreground"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRemove?.(String(product.id), String(id));
+                      }}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      aria-label={`remove_store_${id}`}
+                      data-testid={`user_products_store_remove_${id}`}
+                    >
+                      <X className="h-[10px] w-[10px]" />
+                    </button>
+                  ) : null}
+                </Badge>
+              </DropdownMenuTrigger>
+              {renderStoresDropdownContent(String(id))}
+            </DropdownMenu>
           </div>
         );
       })}
