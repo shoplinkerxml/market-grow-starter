@@ -2,7 +2,7 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Plus, Copy, Edit, Trash2, Loader2, Search, Sliders } from "lucide-react";
+import { Plus, Copy, Edit, Trash2, Loader2, Search, Sliders, LayoutGrid, List } from "lucide-react";
 import type { Product } from "@/lib/product-service";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Table as TanTable } from "@tanstack/react-table";
@@ -10,6 +10,7 @@ import type { ProductRow } from "./columns";
 import type { ShopAggregated } from "@/lib/shop-service";
 import { useSyncStatus } from "@/lib/optimistic-mutation";
 import { useProductsTableContext } from "./context";
+import type { ProductsViewMode } from "./state";
 
 function useDebounce<T>(value: T, delayMs: number): T {
   const [debouncedValue, setDebouncedValue] = React.useState(value);
@@ -38,6 +39,8 @@ export function Toolbar({
   onEdit,
   canCreate,
   hideDuplicate,
+  viewMode,
+  setViewMode,
   onOpenFilters,
   setDeleteDialog,
   handleDuplicate,
@@ -68,6 +71,8 @@ export function Toolbar({
   onEdit?: (p: ProductRow) => void;
   canCreate?: boolean;
   hideDuplicate?: boolean;
+  viewMode: ProductsViewMode;
+  setViewMode: (next: ProductsViewMode) => void;
   onOpenFilters: () => void;
   setDeleteDialog: (v: { open: boolean; product: ProductRow | null }) => void;
   handleDuplicate: (p: Product) => Promise<void>;
@@ -144,6 +149,21 @@ export function Toolbar({
           }}
         >
           <Sliders className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          aria-label={viewMode === "table" ? t("view_cards") : t("view_table")}
+          disabled={controlsDisabled}
+          aria-disabled={controlsDisabled}
+          data-testid="user_products_view_toggle_button"
+          onClick={() => {
+            if (controlsDisabled) return;
+            setViewMode(viewMode === "table" ? "cards" : "table");
+          }}
+        >
+          {viewMode === "table" ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
         </Button>
       </div>
 
@@ -305,6 +325,8 @@ export function ToolbarFromContext() {
     onEdit,
     canCreate,
     hideDuplicate,
+    viewMode,
+    setViewMode,
     setFiltersOpen,
     setDeleteDialog,
     handleDuplicate,
@@ -337,6 +359,8 @@ export function ToolbarFromContext() {
       onEdit={onEdit}
       canCreate={canCreate}
       hideDuplicate={hideDuplicate}
+      viewMode={viewMode}
+      setViewMode={setViewMode}
       onOpenFilters={() => setFiltersOpen(true)}
       setDeleteDialog={setDeleteDialog}
       handleDuplicate={handleDuplicate}

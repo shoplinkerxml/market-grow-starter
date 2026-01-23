@@ -284,6 +284,10 @@ export const productsDictionary: Dictionary = {
     en: "Delete selected",
   },
   view_options: { uk: "Опції перегляду", en: "View options" },
+  view_cards: { uk: "Картки", en: "Cards" },
+  view_table: { uk: "Таблиця", en: "Table" },
+  toggle_view: { uk: "Перемкнути вигляд", en: "Toggle view" },
+  promo_badge: { uk: "АКЦІЯ", en: "SALE" },
   toggle_columns: {
     uk: "Перемикання колонок",
     en: "Toggle columns",

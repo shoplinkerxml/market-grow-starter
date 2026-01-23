@@ -39,10 +39,12 @@ import {
   loadColumnOrderFromPrefs,
   loadColumnVisibilityFromPrefs,
   loadPaginationFromPrefs,
+  loadViewModeFromPrefs,
   productsTableReducer,
   withStoreSpecificColumns,
   type PaginationState,
   type ProductsTableState,
+  type ProductsViewMode,
 } from "./state";
 
 type ProductsTableProps = { onEdit?: (product: Product) => void; onDelete?: (product: Product) => Promise<void> | void; onCreateNew?: () => void; onProductsLoaded?: (count: number) => void; onLoadingChange?: (loading: boolean) => void; refreshTrigger?: number; canCreate?: boolean; storeId?: string; hideDuplicate?: boolean };
@@ -72,6 +74,7 @@ function initState(storeId?: string): ProductsTableState {
     columnOrder: withStoreSpecificColumns(loadColumnOrderFromPrefs(defaults, columnOrderKey), storeId),
     rowOrder: loadRowOrderFromPrefs(rowOrderKey),
     rowReorderEnabled: loadRowReorderEnabledFromPrefs(),
+    viewMode: loadViewModeFromPrefs(),
     columnFilters: [] as ColumnFiltersState,
     sorting: [] as SortingState,
     filtersOpen: false,
@@ -232,6 +235,7 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
     (next: any) => dispatch({ type: "setServerFilters", next }),
     [],
   );
+  const setViewMode = useCallback((next: ProductsViewMode) => dispatch({ type: "setViewMode", next }), []);
   const onDeleteDialogChange = useCallback((open: boolean) => dispatch({ type: "setDeleteDialog", next: { open, productId: open ? state.deleteDialog.productId : null } }), [state.deleteDialog.productId]);
   const setPagination = useCallback((updater: PaginationState | ((prev: PaginationState) => PaginationState)) => dispatch({ type: "setPagination", next: updater }), []);
 
@@ -247,6 +251,8 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       hideDuplicate,
       loading,
       duplicating: state.copyDialog.open,
+      viewMode: state.viewMode,
+      setViewMode,
       filtersOpen: state.filtersOpen,
       setFiltersOpen,
       serverFilters: state.serverFilters,
@@ -280,6 +286,7 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       onCreateNew,
       onEdit,
       queryClient,
+      setViewMode,
       setAddingStores,
       setDeleteDialog,
       setFiltersOpen,
@@ -297,6 +304,7 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       state.addingStores,
       state.copyDialog.open,
       state.filtersOpen,
+      state.viewMode,
       state.removingStoreId,
       state.removingStores,
       state.selectedStoreIds,

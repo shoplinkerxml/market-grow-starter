@@ -5,7 +5,7 @@ import type { Table as TanTable } from "@tanstack/react-table";
 import type { Product } from "@/lib/product-service";
 import type { ProductRow } from "./columns";
 import type { ShopAggregated } from "@/lib/shop-service";
-import type { ProductsServerFilters } from "./state";
+import type { ProductsServerFilters, ProductsViewMode } from "./state";
 
 export type ProductsTableContextValue = {
   userId: string;
@@ -18,6 +18,8 @@ export type ProductsTableContextValue = {
   hideDuplicate?: boolean;
   loading: boolean;
   duplicating: boolean;
+  viewMode: ProductsViewMode;
+  setViewMode: (next: ProductsViewMode) => void;
   filtersOpen: boolean;
   setFiltersOpen: (v: boolean) => void;
   serverFilters: ProductsServerFilters;

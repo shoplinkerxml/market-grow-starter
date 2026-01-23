@@ -19,6 +19,7 @@ import type { PaginationState } from "./state";
 import { useVirtualRows } from "@/hooks/useVirtualRows";
 import { ProductsFiltersSheet } from "./ProductsFiltersSheet";
 import { SortableProductRow } from "./SortableProductRow";
+import { ProductsCardsView } from "./ProductsCardsView";
 
 type PageInfo = { limit: number; offset: number; hasMore: boolean; nextOffset: number | null; total: number };
 
@@ -57,7 +58,7 @@ export function ProductsTableView({
   onToggleRowReorder: () => void;
   onRowDragEnd: (e: DragEndEvent) => void;
 }) {
-  const { t, table, storeId, onCreateNew, canCreate, loading, serverFilters } = useProductsTableContext();
+  const { t, table, storeId, onCreateNew, canCreate, loading, serverFilters, viewMode } = useProductsTableContext();
   const tableElRef = useRef<HTMLTableElement | null>(null);
   const activeDragTypeRef = useRef<"row" | "column" | null>(null);
   const rowHeight = 72;
@@ -162,98 +163,109 @@ export function ProductsTableView({
   return (
     <div className="flex flex-col gap-4 bg-background px-4 sm:px-6 py-4 h-full min-h-0" data-testid="user_products_dataTable_root">
       <ToolbarFromContext />
-      <div className="bg-background flex-1 min-h-0 overflow-hidden" data-testid="user_products_table">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          modifiers={[
-            (args) => (activeDragTypeRef.current === "row" ? restrictToVerticalAxis(args) : args.transform),
-          ]}
-          onDragStart={handleTableDragStart as any}
-          onDragCancel={handleTableDragCancel}
-          onDragEnd={handleTableDragEnd}
-        >
-          <Table ref={tableElRef} wrapperClassName="h-full overflow-y-auto">
-            <TableHeader className="sticky top-0 z-10 bg-transparent">
-              {table.getHeaderGroups().map((headerGroup) => {
-                const ids = headerGroup.headers.map((h) => h.column.id).filter((id) => id !== "actions");
-                return (
-                  <SortableContext key={headerGroup.id} items={ids}>
-                    <TableRow>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead
-                          key={header.id}
-                          className={header.column.id === "actions" ? "text-center" : "text-left"}
+      {viewMode === "cards" ? (
+        <div className="bg-background flex-1 min-h-0 overflow-y-auto" data-testid="user_products_cards_wrap">
+          <ProductsCardsView />
+        </div>
+      ) : (
+        <div className="bg-background flex-1 min-h-0 overflow-hidden" data-testid="user_products_table">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            modifiers={[
+              (args) => (activeDragTypeRef.current === "row" ? restrictToVerticalAxis(args) : args.transform),
+            ]}
+            onDragStart={handleTableDragStart as any}
+            onDragCancel={handleTableDragCancel}
+            onDragEnd={handleTableDragEnd}
+          >
+            <Table ref={tableElRef} wrapperClassName="h-full overflow-y-auto">
+              <TableHeader className="sticky top-0 z-10 bg-transparent">
+                {table.getHeaderGroups().map((headerGroup) => {
+                  const ids = headerGroup.headers.map((h) => h.column.id).filter((id) => id !== "actions");
+                  return (
+                    <SortableContext key={headerGroup.id} items={ids}>
+                      <TableRow>
+                        {headerGroup.headers.map((header) => {
+                          const isCentered = header.column.id === "actions" || header.column.id === "stores";
+                          return (
+                            <TableHead
+                              key={header.id}
+                              className={isCentered ? "text-center" : "text-left"}
+                            >
+                              {header.isPlaceholder
+                                ? null
+                                : header.column.id === "actions"
+                                  ? flexRender(header.column.columnDef.header, header.getContext())
+                                  : (
+                                      <div className={header.column.id === "stores" ? "flex w-full items-center justify-center" : ""}>
+                                        <SortableHeader id={header.column.id}>
+                                          <div className="inline-flex items-center gap-2">
+                                            {flexRender(header.column.columnDef.header, header.getContext())}
+                                          </div>
+                                        </SortableHeader>
+                                      </div>
+                                    )}
+                            </TableHead>
+                          );
+                        })}
+                      </TableRow>
+                    </SortableContext>
+                  );
+                })}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  enableVirtualEffective ? (
+                    <>
+                      {virtualTopH > 0 ? (
+                        <TableRow style={{ height: virtualTopH }}>
+                          <TableCell colSpan={columns.length} />
+                        </TableRow>
+                      ) : null}
+                      {slice.map((row) => (
+                        <TableRow
+                          key={row.id}
+                          data-state={row.getIsSelected() && "selected"}
+                          className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                          style={{ height: rowHeight }}
                         >
-                          {header.isPlaceholder
-                            ? null
-                            : header.column.id === "actions"
-                              ? flexRender(header.column.columnDef.header, header.getContext())
-                              : (
-                                  <SortableHeader id={header.column.id}>
-                                    <div className="inline-flex items-center gap-2">
-                                      {flexRender(header.column.columnDef.header, header.getContext())}
-                                    </div>
-                                  </SortableHeader>
-                                )}
-                        </TableHead>
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                          ))}
+                        </TableRow>
                       ))}
-                    </TableRow>
-                  </SortableContext>
-                );
-              })}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                enableVirtualEffective ? (
-                  <>
-                    {virtualTopH > 0 ? (
-                      <TableRow style={{ height: virtualTopH }}>
-                        <TableCell colSpan={columns.length} />
-                      </TableRow>
-                    ) : null}
-                    {slice.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && "selected"}
-                        className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                        style={{ height: rowHeight }}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                    {virtualBottomH > 0 ? (
-                      <TableRow style={{ height: virtualBottomH }}>
-                        <TableCell colSpan={columns.length} />
-                      </TableRow>
-                    ) : null}
-                  </>
+                      {virtualBottomH > 0 ? (
+                        <TableRow style={{ height: virtualBottomH }}>
+                          <TableCell colSpan={columns.length} />
+                        </TableRow>
+                      ) : null}
+                    </>
+                  ) : (
+                    <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
+                      {table.getRowModel().rows.map((row) => (
+                        <SortableProductRow
+                          key={row.id}
+                          row={row}
+                          columnsLength={columns.length}
+                          rowHeight={rowHeight}
+                          rowReorderEnabled={rowReorderEnabled}
+                        />
+                      ))}
+                    </SortableContext>
+                  )
                 ) : (
-                  <SortableContext items={rowIds} strategy={verticalListSortingStrategy}>
-                    {table.getRowModel().rows.map((row) => (
-                      <SortableProductRow
-                        key={row.id}
-                        row={row}
-                        columnsLength={columns.length}
-                        rowHeight={rowHeight}
-                        rowReorderEnabled={rowReorderEnabled}
-                      />
-                    ))}
-                  </SortableContext>
-                )
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    {t("no_results")}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DndContext>
-      </div>
+                  <TableRow>
+                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                      {t("no_results")}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </DndContext>
+        </div>
+      )}
 
       <CopyProgressDialog open={copyDialog.open} name={copyDialog.name} t={t} />
       <DeleteProgressDialog open={deleteProgressOpen} t={t} />

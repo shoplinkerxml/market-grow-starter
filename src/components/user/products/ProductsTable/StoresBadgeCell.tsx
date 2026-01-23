@@ -203,16 +203,16 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
   }
 
   return (
-    <div className="w-full flex flex-col gap-1 items-center">
+    <div className="w-full flex flex-col items-center gap-1">
       {storeIds.map((id) => {
         const name = storeNames[String(id)] || "";
         const label = name || "…";
         const isOpen = badgeOpenId === String(id);
         return (
-          <div key={id} className="flex items-center w-full justify-center">
+          <div key={id} className="flex items-center">
             <Badge
               variant="secondary"
-              className="w-full justify-center h-5 pl-[1px] pr-[1px] rounded-sm text-[10px] border border-emerald-200 bg-emerald-50 text-emerald-700 transition-transform shadow-sm hover:shadow-md hover:-translate-y-[1px] hover:border-emerald-300 max-w-full"
+              className="group relative rounded-md px-2 py-0.5 text-[11px] h-5 max-w-[10rem] truncate pr-5"
             >
               <DropdownMenu
                 open={isOpen}
@@ -225,7 +225,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="pl-1 pr-1 select-none"
+                    className="select-none truncate max-w-[8.5rem]"
                     title={name}
                     data-testid={`user_products_store_badge_trigger_${product.id}_${id}`}
                     onClick={(e) => {
@@ -318,7 +318,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
               {onRemove ? (
                 <button
                   type="button"
-                  className="ml-0.5 inline-flex items-center justify-center h-[10px] w-[10px] rounded hover:bg-emerald-100 text-emerald-700"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center h-4 w-4 rounded text-muted-foreground opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto hover:bg-secondary/80 hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemove?.(String(product.id), String(id));

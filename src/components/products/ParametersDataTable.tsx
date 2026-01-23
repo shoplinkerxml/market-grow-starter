@@ -33,7 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MoreHorizontal, Columns as ColumnsIcon, ChevronDown, Trash2, Pencil, Plus, Upload, Download, Search, FileSpreadsheet, FileText, File } from "lucide-react";
+import { ArrowLeftRight, Columns as ColumnsIcon, ChevronDown, Trash2, Pencil, Plus, Upload, Download, Search, FileSpreadsheet, FileText, File, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -545,19 +545,22 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
                         size="icon"
                         className="h-8 w-8 hover:bg-transparent"
                         data-testid="parametersDataTable_importExport"
-                        aria-label={`${t('upload')} / ${t('export_section')}`}
+                        aria-label={`Импорт / ${t("export_section")}`}
                       >
-                        <MoreHorizontal className="h-4 w-4 transition-colors" />
+                        <ArrowLeftRight className="h-4 w-4 transition-colors" />
                       </Button>
                     </TooltipTrigger>
                   </DropdownMenuTrigger>
-                  <TooltipContent side="bottom">{`${t("upload")} / ${t("export_section")}`}</TooltipContent>
+                  <TooltipContent side="bottom">{`Импорт / ${t("export_section")}`}</TooltipContent>
                 </Tooltip>
                 <DropdownMenuContent align="end">
                   <DropdownMenuSub>
-                    <DropdownMenuSubTrigger data-testid="parametersDataTable_import_sub">
-                      <Upload className="h-4 w-4 mr-2" />
-                      {t("upload")}
+                    <DropdownMenuSubTrigger
+                      data-testid="parametersDataTable_import_sub"
+                      className="flex-row-reverse justify-end [&>svg:last-child]:ml-0 [&>svg:last-child]:mr-2 [&>svg:first-child]:mr-0 [&>svg:first-child]:ml-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Импорт
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
                       <DropdownMenuItem onClick={triggerImportXlsx} data-testid="parametersDataTable_import_xlsx">
@@ -576,8 +579,11 @@ export function ParametersDataTable({ data, onEditRow, onDeleteRow, onDeleteSele
                   </DropdownMenuSub>
                   <DropdownMenuSeparator />
                   <DropdownMenuSub>
-                    <DropdownMenuSubTrigger data-testid="parametersDataTable_export_sub">
-                      <Download className="h-4 w-4 mr-2" />
+                    <DropdownMenuSubTrigger
+                      data-testid="parametersDataTable_export_sub"
+                      className="flex-row-reverse justify-end [&>svg:last-child]:ml-0 [&>svg:last-child]:mr-2 [&>svg:first-child]:mr-0 [&>svg:first-child]:ml-2"
+                    >
+                      <Download className="h-4 w-4" />
                       {t("export_section")}
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>

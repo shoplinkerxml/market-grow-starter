@@ -10,8 +10,11 @@ export const COLUMN_ORDER_STORE_KEY = "user_products_columnOrder_store_v1";
 export const ROW_ORDER_ALL_KEY = "user_products_rowOrder_all_v1";
 export const ROW_ORDER_STORE_PREFIX = "user_products_rowOrder_store_v1_";
 export const ROW_REORDER_ENABLED_KEY = "user_products_rowReorderEnabled_v1";
+export const VIEW_MODE_KEY = "user_products_viewMode_v1";
 
 export const DEFAULT_PAGINATION: PaginationState = { pageIndex: 0, pageSize: 10 };
+
+export type ProductsViewMode = "table" | "cards";
 
 export type ProductsServerFilters = {
   priceOrder: "asc" | "desc" | null;
@@ -86,6 +89,7 @@ export type ProductsTableState = {
   columnOrder: string[];
   rowOrder: string[];
   rowReorderEnabled: boolean;
+  viewMode: ProductsViewMode;
   columnFilters: ColumnFiltersState;
   sorting: SortingState;
   filtersOpen: boolean;
@@ -107,6 +111,7 @@ export type ProductsTableAction =
   | { type: "setColumnOrder"; next: string[] | ((prev: string[]) => string[]); storageKey?: string }
   | { type: "setRowOrder"; next: string[] | ((prev: string[]) => string[]); storageKey: string }
   | { type: "setRowReorderEnabled"; next: boolean | ((prev: boolean) => boolean) }
+  | { type: "setViewMode"; next: ProductsViewMode }
   | { type: "setColumnFilters"; next: ColumnFiltersState }
   | { type: "setSorting"; next: SortingState }
   | { type: "setFiltersOpen"; next: boolean }
@@ -147,6 +152,9 @@ export function productsTableReducer(state: ProductsTableState, action: Products
       persistRowReorderEnabledToPrefs(next);
       return { ...state, rowReorderEnabled: next };
     }
+    case "setViewMode":
+      persistViewModeToPrefs(action.next);
+      return { ...state, viewMode: action.next };
     case "setColumnFilters":
       return { ...state, columnFilters: action.next };
     case "setSorting":
@@ -364,6 +372,31 @@ export function loadRowReorderEnabledFromPrefs(): boolean {
 export function persistRowReorderEnabledToPrefs(enabled: boolean) {
   try {
     uiPrefsCache.set(ROW_REORDER_ENABLED_KEY, enabled === true, CACHE_TTL.uiPrefs);
+  } catch {
+    void 0;
+  }
+}
+
+export function loadViewModeFromPrefs(): ProductsViewMode {
+  try {
+    const cached = uiPrefsCache.get<ProductsViewMode>(VIEW_MODE_KEY, true);
+    if (cached === "cards" || cached === "table") return cached;
+    const saved = typeof window !== "undefined" ? localStorage.getItem(VIEW_MODE_KEY) : null;
+    if (saved) {
+      const parsed = JSON.parse(saved) as unknown;
+      const v = parsed === "cards" ? "cards" : "table";
+      uiPrefsCache.set(VIEW_MODE_KEY, v, CACHE_TTL.uiPrefs);
+      return v;
+    }
+  } catch {
+    void 0;
+  }
+  return "table";
+}
+
+export function persistViewModeToPrefs(mode: ProductsViewMode) {
+  try {
+    uiPrefsCache.set(VIEW_MODE_KEY, mode, CACHE_TTL.uiPrefs);
   } catch {
     void 0;
   }
