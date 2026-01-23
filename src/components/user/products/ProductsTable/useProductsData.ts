@@ -203,7 +203,17 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
       onProductsLoadedRef.current?.(next.count);
     };
 
-    emit();
+    let scheduled = false;
+    const scheduleEmit = () => {
+      if (scheduled) return;
+      scheduled = true;
+      queueMicrotask(() => {
+        scheduled = false;
+        emit();
+      });
+    };
+
+    scheduleEmit();
 
     const unsubscribe = queryClient.getQueryCache().subscribe((event: any) => {
       const key = event?.query?.queryKey;
@@ -217,7 +227,7 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
       const isShopDetail = key[2] === "shopDetail" && String(key[3]) === sid;
       if (!isCounts && !isShopsList && !isShopDetail) return;
 
-      emit();
+      scheduleEmit();
     });
 
     return () => {

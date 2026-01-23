@@ -1,7 +1,61 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { PersistentCacheService } from "@/lib/persistent-cache-service";
 
 const suppressionTtlMs = 15_000;
 const realtimeDeltaSuppressions = new Map<string, { delta: number; ts: number }>();
+
+type ShopCountsSyncEvent =
+  | {
+      type: "shop_counts_invalidate";
+      tabId: string;
+      ts: number;
+      userId: string;
+      storeIds: string[];
+      reason?: string;
+    };
+
+const SYNC_STORAGE_KEY = "mg:sync";
+
+function getTabId(): string {
+  try {
+    if (typeof globalThis.crypto !== "undefined" && typeof globalThis.crypto.randomUUID === "function") {
+      return globalThis.crypto.randomUUID();
+    }
+  } catch {
+    void 0;
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+const TAB_ID = getTabId();
+
+function broadcastEvent(evt: ShopCountsSyncEvent): void {
+  try {
+    if (typeof window === "undefined") return;
+  } catch {
+    return;
+  }
+
+  try {
+    if (typeof BroadcastChannel !== "undefined") {
+      const ch = new BroadcastChannel("mg:sync");
+      ch.postMessage(evt);
+      try {
+        ch.close();
+      } catch {
+        void 0;
+      }
+    }
+  } catch {
+    void 0;
+  }
+
+  try {
+    window.localStorage.setItem(SYNC_STORAGE_KEY, JSON.stringify(evt));
+  } catch {
+    void 0;
+  }
+}
 
 function suppressionKey(userId: string, storeId: string) {
   return `${userId ? String(userId) : "current"}:${String(storeId)}`;
@@ -14,6 +68,12 @@ function cleanupSuppressions(now: number) {
 }
 
 export const ShopCountsService = {
+  tabId() {
+    return TAB_ID;
+  },
+  syncStorageKey() {
+    return SYNC_STORAGE_KEY;
+  },
   key(userId: string, storeId: string) {
     return ["user", userId ? String(userId) : "current", "shopCounts", storeId] as const;
   },
@@ -31,6 +91,7 @@ export const ShopCountsService = {
     userId: string,
     storeIds?: string[] | string | null,
     reason?: string,
+    opts?: { broadcast?: boolean },
   ) {
     const uid = userId ? String(userId) : "current";
     const ids = Array.isArray(storeIds)
@@ -52,11 +113,7 @@ export const ShopCountsService = {
     }
 
     try {
-      import("@/lib/persistent-cache-service")
-        .then(({ PersistentCacheService }) => {
-          PersistentCacheService.invalidateShops();
-        })
-        .catch(() => void 0);
+      PersistentCacheService.invalidateShops();
     } catch {
       void 0;
     }
@@ -74,6 +131,12 @@ export const ShopCountsService = {
       void 0;
     }
 
+    try {
+      queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard-stats"], exact: true });
+    } catch {
+      void 0;
+    }
+
     for (const storeId of ids) {
       try {
         queryClient.invalidateQueries({ queryKey: this.shopDetailKey(uid, storeId), exact: true });
@@ -85,6 +148,17 @@ export const ShopCountsService = {
       } catch {
         void 0;
       }
+    }
+
+    if (opts?.broadcast !== false && ids.length > 0) {
+      broadcastEvent({
+        type: "shop_counts_invalidate",
+        tabId: TAB_ID,
+        ts: Date.now(),
+        userId: uid,
+        storeIds: ids,
+        reason,
+      });
     }
   },
   suppressRealtimeProductsDelta(userId: string, storeId: string, delta: number) {

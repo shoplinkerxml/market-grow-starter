@@ -56,14 +56,19 @@ export class ShopProductSyncService {
     if (!userId) return;
 
     const uids = Array.from(new Set([String(userId), "current"]));
-    const storeIds = Object.keys(addedByStore);
+    const storeIds =
+      Object.keys(addedByStore).length > 0
+        ? Object.keys(addedByStore)
+        : Array.from(new Set((links || []).map((l) => String(l.store_id)).filter(Boolean)));
 
     // Suppress realtime updates for these stores to avoid double-counting
-    for (const uid of uids) {
-      for (const storeId of storeIds) {
-        const addedCount = addedByStore[storeId] || 0;
-        if (addedCount === 0) continue;
-        ShopCountsService.suppressRealtimeProductsDelta(uid, storeId, addedCount);
+    if (Object.keys(addedByStore).length > 0) {
+      for (const uid of uids) {
+        for (const storeId of storeIds) {
+          const addedCount = addedByStore[storeId] || 0;
+          if (addedCount === 0) continue;
+          ShopCountsService.suppressRealtimeProductsDelta(uid, storeId, addedCount);
+        }
       }
     }
 

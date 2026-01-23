@@ -123,6 +123,64 @@ export function useCountersRealtime(userId: string | null | undefined) {
     if (!userId) return;
     const uid = String(userId);
 
+    const handleSyncEvent = (raw: unknown) => {
+      if (!raw || typeof raw !== "object") return;
+      const evt = raw as { type?: string; tabId?: string; userId?: string; storeIds?: unknown; reason?: string };
+      if (evt.type !== "shop_counts_invalidate") return;
+      if (evt.tabId && evt.tabId === ShopCountsService.tabId()) return;
+      const ids = Array.isArray(evt.storeIds) ? (evt.storeIds as unknown[]).map(String).filter(Boolean) : [];
+      if (ids.length === 0) return;
+      const targetUserId = evt.userId ? String(evt.userId) : "current";
+      if (targetUserId !== uid && targetUserId !== "current") return;
+
+      try {
+        DashboardService.clearCache();
+      } catch {
+        void 0;
+      }
+
+      try {
+        queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard-stats"], exact: true });
+      } catch {
+        void 0;
+      }
+
+      ShopCountsService.invalidate(queryClient, targetUserId, ids, `x_tab:${evt.reason || "unknown"}`, { broadcast: false });
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (!e) return;
+      if (e.key !== ShopCountsService.syncStorageKey()) return;
+      if (!e.newValue) return;
+      try {
+        handleSyncEvent(JSON.parse(e.newValue));
+      } catch {
+        void 0;
+      }
+    };
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        bc = new BroadcastChannel("mg:sync");
+        bc.onmessage = (msg) => {
+          try {
+            handleSyncEvent((msg as MessageEvent).data);
+          } catch {
+            void 0;
+          }
+        };
+      }
+    } catch {
+      bc = null;
+    }
+
+    try {
+      window.addEventListener("storage", handleStorage);
+    } catch {
+      void 0;
+    }
+
     const handleLocalMutation = (e: CustomEvent<{ entityIds: string[] }>) => {
       const ids = e.detail?.entityIds || [];
       ids.forEach((raw) => {
@@ -200,6 +258,16 @@ export function useCountersRealtime(userId: string | null | undefined) {
       .subscribe();
 
     return () => {
+      try {
+        window.removeEventListener("storage", handleStorage);
+      } catch {
+        void 0;
+      }
+      try {
+        if (bc) bc.close();
+      } catch {
+        void 0;
+      }
       window.removeEventListener(COUNTERS_MUTATION_EVENT as any, handleLocalMutation as EventListener);
       if (timerRef.current) clearTimeout(timerRef.current);
       try {
