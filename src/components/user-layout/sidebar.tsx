@@ -3,7 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { LogOut, MoreHorizontal } from "lucide-react";
+import { LogOut, MoreHorizontal, TrendingUp } from "lucide-react";
 import { MenuSection } from "@/components/user/MenuSection";
 import type { MenuSectionModel } from "@/components/user-layout/types";
 import type { UserMenuItem } from "@/lib/user-menu-service";
@@ -25,19 +25,25 @@ function buildTree(items: UserMenuItem[]): Record<number | "root", UserMenuItem[
 
 export const UserSidebarBrand = memo(({ collapsed }: { collapsed: boolean }) => {
   return (
-    <div className="flex items-center justify-between mb-6">
+    <div className="flex items-center justify-between mb-6 px-2">
       {collapsed ? (
         <div className="flex items-center justify-center w-full">
-          <div className="h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">UG</span>
+          <div className="flex items-center gap-3 group cursor-pointer">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg ring-1 ring-emerald-600/20 transition-transform group-hover:scale-105 shrink-0">
+              <TrendingUp className="h-5 w-5 text-white" />
+            </div>
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">UG</span>
+        <div className="flex items-center gap-3 group cursor-pointer">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg ring-1 ring-emerald-600/20 transition-transform group-hover:scale-105 shrink-0">
+            <TrendingUp className="h-5 w-5 text-white" />
           </div>
-          <span className="font-semibold text-lg">UserGrow</span>
+          <div className="flex flex-col -space-y-0.5">
+            <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-emerald-950 to-emerald-700 bg-clip-text text-transparent dark:from-emerald-100 dark:to-emerald-400">
+              MarketGrow
+            </span>
+          </div>
         </div>
       )}
     </div>
