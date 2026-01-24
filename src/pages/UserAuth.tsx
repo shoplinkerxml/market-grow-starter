@@ -198,29 +198,29 @@ const UserAuth = () => {
             </p>
 
             {/* Features Card */}
-            <Card className="bg-emerald-950/40 border-emerald-500/60 text-emerald-100">
+            <Card className="bg-emerald-50 border-emerald-100 text-emerald-900/90 dark:bg-emerald-950/40 dark:border-emerald-500/60 dark:text-emerald-100">
               <CardHeader>
-                <CardTitle className="text-base text-emerald-100">{t("features_title")}</CardTitle>
-                <CardDescription className="text-emerald-200/80">
+                <CardTitle className="text-base text-emerald-900/90 dark:text-emerald-100">{t("features_title")}</CardTitle>
+                <CardDescription className="text-emerald-900/80 dark:text-emerald-200/80">
                   {t("features_subtitle")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <ul className="space-y-2 text-sm text-emerald-200">
+                <ul className="space-y-2 text-sm text-emerald-900/90 dark:text-emerald-200">
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" />
                     {t("feat_integrations")}
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" />
                     {t("feat_convert")}
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" />
                     {t("feat_mapping")}
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-400" />
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" />
                     {t("feat_enrichment")}
                   </li>
                 </ul>
