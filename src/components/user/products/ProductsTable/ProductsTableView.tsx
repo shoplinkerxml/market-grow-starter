@@ -280,7 +280,9 @@ export function ProductsTableView({
         onConfirm={onConfirmDelete}
       />
 
-      <PaginationFooter table={table} pagination={pagination} setPagination={setPagination} pageInfo={pageInfo} rows={rows} />
+      {viewMode === "table" ? (
+        <PaginationFooter table={table} pagination={pagination} setPagination={setPagination} pageInfo={pageInfo} rows={rows} />
+      ) : null}
     </div>
   );
 }

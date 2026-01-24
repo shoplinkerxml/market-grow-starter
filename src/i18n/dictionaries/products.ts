@@ -416,6 +416,22 @@ export const productsDictionary: Dictionary = {
     uk: "Немає активних магазинів",
     en: "No active stores",
   },
+  products_add_to_stores_title: {
+    uk: "Товари додаються до магазинів",
+    en: "Adding products to stores",
+  },
+  products_add_to_stores_description: {
+    uk: "Зачекайте, будь ласка",
+    en: "Please wait",
+  },
+  products_remove_from_stores_title: {
+    uk: "Товари видаляються з магазинів",
+    en: "Removing products from stores",
+  },
+  products_remove_from_stores_description: {
+    uk: "Зачекайте, будь ласка",
+    en: "Please wait",
+  },
   add_product_to_stores: { uk: "Додати товар", en: "Add product" },
   product_added_to_stores: {
     uk: "Товар додано до вибраних магазинів",

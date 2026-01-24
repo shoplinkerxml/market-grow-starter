@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { QueryClient } from "@tanstack/react-query";
 import { ProductService, type Product } from "@/lib/product-service";
 import { useOutletContext } from "react-router-dom";
+import { PageLoadingModal } from "@/components/LoadingSkeletons";
 
 type ProductRow = Product & { linkedStoreIds?: string[] };
 type StoreAgg = { 
@@ -133,6 +134,7 @@ export function AddToStoresMenu({
     if (!hasSelectedProducts || selectedStoreIds.length === 0) return;
 
     const productIds = selectedProducts.map(p => String(p.id));
+    setOpen(false);
     setAddingStores(true);
 
     try {
@@ -251,6 +253,12 @@ export function AddToStoresMenu({
     return sum + normalizeCount(s?.productsCount);
   }, 0);
 
+  const removingAnyStores = removingStores || !!removingStoreId;
+  const showProgressModal = addingStores || removingAnyStores;
+  const progressTitle = addingStores ? t("products_add_to_stores_title") : t("products_remove_from_stores_title");
+  const progressDescription = addingStores ? t("products_add_to_stores_description") : t("products_remove_from_stores_description");
+  const progressIcon = addingStores ? Store : Trash2;
+
   const canDelete = !removingStores
     && effectiveStoreIds.length > 0
     && (hasSelectedProducts || selectedStoreIds.length > 0)
@@ -258,169 +266,171 @@ export function AddToStoresMenu({
   const isTriggerDisabled = !!disabled || (!hasSelectedProducts && !hasAnyLinkedStores);
 
   return (
-    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
-      <TooltipProvider>
-        <Tooltip>
-          <DropdownMenuTrigger asChild>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                disabled={isTriggerDisabled}
-                aria-label={t("add_to_stores")}
-                data-testid="user_products_dataTable_addToStores"
-              >
-                <Store className={`h-4 w-4 ${isTriggerDisabled ? "text-muted-foreground" : ""}`} />
-              </Button>
-            </TooltipTrigger>
-          </DropdownMenuTrigger>
-          <TooltipContent side="bottom">
-            {t("add_to_stores")}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-
-      <DropdownMenuContent align="end" className="p-2">
-        <div className="text-sm mb-2">{t("select_stores")}</div>
-        
-        <ScrollArea className="max-h-[clamp(12rem,40vh,20rem)]">
-          <div className="flex flex-col gap-1">
-            {stores.length === 0 ? (
-              <div className="text-xs text-muted-foreground px-2 py-1">
-                {t("no_active_stores")}
-              </div>
-            ) : (
-              stores.map(store => {
-                const storeId = String(store.id);
-                const isChecked = selectedStoreIds.includes(storeId);
-                const productCount = normalizeCount(store.productsCount);
-                const categoryCount = productCount === 0 ? 0 : normalizeCount(store.categoriesCount);
-                const selectedLinkedCount = selectedProducts.filter((p) => (p.linkedStoreIds || []).includes(storeId)).length;
-                const isRemoving = removingStores || removingStoreId === storeId;
-
-                return (
-                  <DropdownMenuItem
-                    key={storeId}
-                    className="cursor-pointer px-2"
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      setSelectedStoreIds(prev =>
-                        isChecked
-                          ? prev.filter(id => id !== storeId)
-                          : [...prev, storeId]
-                      );
-                    }}
-                    data-testid={`user_products_addToStores_item_${storeId}`}
-                  >
-                    <div className="relative mr-2 inline-flex items-center">
-                      <Checkbox
-                        checked={isChecked}
-                        disabled={isRemoving}
-                        onClick={(e) => e.stopPropagation()}
-                        onCheckedChange={(checked) => {
-                          setSelectedStoreIds(prev =>
-                            checked
-                              ? [...prev, storeId]
-                              : prev.filter(id => id !== storeId)
-                          );
-                        }}
-                        className="mr-2"
-                        aria-label={t("select_store")}
-                      />
-                      {isRemoving && (
-                        <Loader2 className="absolute h-3 w-3 animate-spin text-emerald-600" />
-                      )}
-                    </div>
-
-                    <span className="truncate">
-                      {store.store_name || store.store_url || "—"}
-                    </span>
-
-                    <span className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        <Package className="h-3 w-3" />
-                        <span className="tabular-nums">{productCount}</span>
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <List className="h-3 w-3" />
-                        <span className="tabular-nums">
-                          {categoryCount}
-                        </span>
-                      </span>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        disabled={isRemoving || !isChecked || selectedLinkedCount === 0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveSingleStore(storeId);
-                        }}
-                      >
-                        {removingStoreId === storeId ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </span>
-                  </DropdownMenuItem>
-                );
-              })
-            )}
-          </div>
-        </ScrollArea>
-
-        <DropdownMenuSeparator />
-
-        <div className="flex items-center justify-center gap-2 w-full">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            disabled={addingStores || selectedStoreIds.length === 0 || !hasSelectedProducts}
-            onClick={handleAddToStores}
-            data-testid="user_products_addToStores_confirm"
-          >
-            {addingStores ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4" />
-            )}
-          </Button>
-
-          <TooltipProvider>
-            <Tooltip>
+    <>
+      <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+        <TooltipProvider>
+          <Tooltip>
+            <DropdownMenuTrigger asChild>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`h-8 w-8 ${hasSelectedProducts ? 'border border-green-500' : ''}`}
-                  disabled={!canDelete}
-                  onClick={() => {
-                    const productIds = selectedProducts.map(p => String(p.id));
-                    handleRemoveFromStores(effectiveStoreIds, productIds);
-                  }}
-                  data-testid="user_products_addToStores_delete"
+                  className="h-8 w-8"
+                  disabled={isTriggerDisabled}
+                  aria-label={t("add_to_stores")}
+                  data-testid="user_products_dataTable_addToStores"
                 >
-                  {removingStores ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
+                  <Store className={`h-4 w-4 ${isTriggerDisabled ? "text-muted-foreground" : ""}`} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                {hasSelectedProducts
-                  ? 'Видалити виділені товари з вибраних магазинів'
-                  : 'Видалити всі товари з вибраних магазинів'}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            </DropdownMenuTrigger>
+            <TooltipContent side="bottom">
+              {t("add_to_stores")}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <DropdownMenuContent align="end" className="p-2">
+          <div className="text-sm mb-2">{t("select_stores")}</div>
+          
+          <ScrollArea className="max-h-[clamp(12rem,40vh,20rem)]">
+            <div className="flex flex-col gap-1">
+              {stores.length === 0 ? (
+                <div className="text-xs text-muted-foreground px-2 py-1">
+                  {t("no_active_stores")}
+                </div>
+              ) : (
+                stores.map(store => {
+                  const storeId = String(store.id);
+                  const isChecked = selectedStoreIds.includes(storeId);
+                  const productCount = normalizeCount(store.productsCount);
+                  const categoryCount = productCount === 0 ? 0 : normalizeCount(store.categoriesCount);
+                  const selectedLinkedCount = selectedProducts.filter((p) => (p.linkedStoreIds || []).includes(storeId)).length;
+                  const isRemoving = removingStores || removingStoreId === storeId;
+
+                  return (
+                    <DropdownMenuItem
+                      key={storeId}
+                      className="cursor-pointer px-2"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setSelectedStoreIds(prev =>
+                          isChecked
+                            ? prev.filter(id => id !== storeId)
+                            : [...prev, storeId]
+                        );
+                      }}
+                      data-testid={`user_products_addToStores_item_${storeId}`}
+                    >
+                      <div className="relative mr-2 inline-flex items-center">
+                        <Checkbox
+                          checked={isChecked}
+                          disabled={isRemoving}
+                          onClick={(e) => e.stopPropagation()}
+                          onCheckedChange={(checked) => {
+                            setSelectedStoreIds(prev =>
+                              checked
+                                ? [...prev, storeId]
+                                : prev.filter(id => id !== storeId)
+                            );
+                          }}
+                          className="mr-2"
+                          aria-label={t("select_store")}
+                        />
+                        {isRemoving && (
+                          <Loader2 className="absolute h-3 w-3 animate-spin text-emerald-600" />
+                        )}
+                      </div>
+
+                      <span className="truncate">
+                        {store.store_name || store.store_url || "—"}
+                      </span>
+
+                      <span className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <Package className="h-3 w-3" />
+                          <span className="tabular-nums">{productCount}</span>
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <List className="h-3 w-3" />
+                          <span className="tabular-nums">
+                            {categoryCount}
+                          </span>
+                        </span>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          disabled={isRemoving || !isChecked || selectedLinkedCount === 0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveSingleStore(storeId);
+                          }}
+                        >
+                          {removingStoreId === storeId ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </span>
+                    </DropdownMenuItem>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+
+          <DropdownMenuSeparator />
+
+          <div className="flex items-center justify-center gap-2 w-full">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              disabled={addingStores || selectedStoreIds.length === 0 || !hasSelectedProducts}
+              onClick={handleAddToStores}
+              data-testid="user_products_addToStores_confirm"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-8 w-8 ${hasSelectedProducts ? 'border border-green-500' : ''}`}
+                    disabled={!canDelete}
+                    onClick={() => {
+                      const productIds = selectedProducts.map(p => String(p.id));
+                      handleRemoveFromStores(effectiveStoreIds, productIds);
+                    }}
+                    data-testid="user_products_addToStores_delete"
+                  >
+                    {removingStores ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {hasSelectedProducts
+                    ? 'Видалити виділені товари з вибраних магазинів'
+                    : 'Видалити всі товари з вибраних магазинів'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {showProgressModal ? (
+        <PageLoadingModal title={progressTitle} subtitle={progressDescription} icon={progressIcon} />
+      ) : null}
+    </>
   );
 }
