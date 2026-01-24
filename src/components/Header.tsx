@@ -31,8 +31,8 @@ export function Header() {
   };
   return (
     <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-      <header className={`sticky top-0 z-50 w-full bg-background/80 backdrop-blur-lg supports-[backdrop-filter]:bg-background/60 transition-[border-color] duration-300 ${isScrolled ? 'border-b border-border' : 'border-b border-transparent'}`}>
-        <div className="container flex h-16 items-center justify-between">
+      <header className="sticky top-0 z-50 w-full bg-transparent">
+        <div className="container flex h-[4.5rem] items-center justify-between bg-transparent pt-2">
           <div className="flex items-center justify-center gap-2">
             <div className="bg-gradient-success p-2 rounded-lg shadow-glow ring-1 ring-white/10">
               <TrendingUp className="h-6 w-6 text-white" />
@@ -43,7 +43,7 @@ export function Header() {
             </span>
           </div>
 
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2 mt-2">
             <Button asChild variant="ghost" size="icon">
               <a href="/docs" aria-label={t("nav_api_docs")}>
                 <FileText className="h-5 w-5" />
@@ -57,7 +57,7 @@ export function Header() {
             <div className="animate-bob will-change-transform [animation-duration:3.6s]">
               <Button
                 size="lg"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-2 font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-2 min-w-[12rem] font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
                 onClick={() => navigate('/user-auth')}
               >
                 {t('hero_cta_start')}
