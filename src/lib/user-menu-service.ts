@@ -101,6 +101,14 @@ export class UserMenuService {
     if (path.includes('payment') || path.includes('платеж')) {
       return 'CreditCard';
     }
+
+    if (title.includes('довідник') || title.includes('directory') || title.includes('reference')) {
+      return 'BookOpen';
+    }
+
+    if (path.includes('dovid') || path.includes('directory') || path.includes('reference')) {
+      return 'BookOpen';
+    }
     
     // Return existing icon or default to circle if none
     return 'circle';
@@ -123,12 +131,18 @@ export class UserMenuService {
            item.title.toLowerCase().includes('магазин') ||
            item.title.toLowerCase().includes('payment') ||
            item.title.toLowerCase().includes('платеж') ||
+          item.title.toLowerCase().includes('довідник') ||
+          item.title.toLowerCase().includes('directory') ||
+          item.title.toLowerCase().includes('reference') ||
            item.path.toLowerCase().includes('supplier') ||
            item.path.toLowerCase().includes('постачальник') ||
            item.path.toLowerCase().includes('shop') ||
            item.path.toLowerCase().includes('магазин') ||
            item.path.toLowerCase().includes('payment') ||
-           item.path.toLowerCase().includes('платеж'))) {
+          item.path.toLowerCase().includes('платеж') ||
+          item.path.toLowerCase().includes('dovid') ||
+          item.path.toLowerCase().includes('directory') ||
+          item.path.toLowerCase().includes('reference'))) {
         return { ...item, icon_name: this.getAutoIconForMenuItem({ title: item.title, path: item.path }) };
       }
       return item;
@@ -230,12 +244,18 @@ export class UserMenuService {
            menuData.title.toLowerCase().includes('магазин') ||
            menuData.title.toLowerCase().includes('payment') || 
            menuData.title.toLowerCase().includes('платеж') ||
+          menuData.title.toLowerCase().includes('довідник') ||
+          menuData.title.toLowerCase().includes('directory') ||
+          menuData.title.toLowerCase().includes('reference') ||
            menuData.path.toLowerCase().includes('supplier') || 
            menuData.path.toLowerCase().includes('постачальник') ||
            menuData.path.toLowerCase().includes('shop') || 
            menuData.path.toLowerCase().includes('магазин') ||
            menuData.path.toLowerCase().includes('payment') || 
-           menuData.path.toLowerCase().includes('платеж'))) {
+          menuData.path.toLowerCase().includes('платеж') ||
+          menuData.path.toLowerCase().includes('dovid') ||
+          menuData.path.toLowerCase().includes('directory') ||
+          menuData.path.toLowerCase().includes('reference'))) {
         icon_name = this.getAutoIconForMenuItem({ title: menuData.title, path: menuData.path });
       }
 

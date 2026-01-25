@@ -33,11 +33,18 @@ const STATIC_ROUTES: StaticRouteConfig[] = [
 ];
 
 function normalizeItemPath(path: string): string {
-  return String(path || "").replace(/^\/+/, "").replace(/^user\/?/, "").replace(/^\/+/, "");
+  return String(path || "")
+    .replace(/^\/+/, "")
+    .replace(/^user\/?/, "")
+    .replace(/^\/+/, "")
+    .toLowerCase();
 }
 
 function normalizeLocationPath(pathname: string): string {
-  return String(pathname || "").replace(/^\/user\/?/, "").replace(/^\/+/, "");
+  return String(pathname || "")
+    .replace(/^\/user\/?/, "")
+    .replace(/^\/+/, "")
+    .toLowerCase();
 }
 
 function isPathMatch(current: string, candidate: string): boolean {
@@ -107,12 +114,18 @@ export const UserMenuProvider: React.FC<{
           title.includes("магазин") ||
           title.includes("payment") ||
           title.includes("платеж") ||
+          title.includes("довідник") ||
+          title.includes("directory") ||
+          title.includes("reference") ||
           path.includes("supplier") ||
           path.includes("постачальник") ||
           path.includes("shop") ||
           path.includes("магазин") ||
           path.includes("payment") ||
-          path.includes("платеж"));
+          path.includes("платеж") ||
+          path.includes("dovid") ||
+          path.includes("directory") ||
+          path.includes("reference"));
       if (!needsAutoIcon) return item;
       return { ...item, icon_name: UserMenuService.getAutoIconForMenuItem({ title: item.title, path: item.path }) };
     });

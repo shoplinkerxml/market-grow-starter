@@ -52,7 +52,10 @@ function isActivePath(currentPath: string, itemPath: string): boolean {
   const cleanItem = normalizeItemPath(itemPath);
   const current = String(currentPath || "");
   const expected = `/user/${cleanItem}`;
-  return current === expected || current.startsWith(`${expected}/`);
+  if (current === expected || current.startsWith(`${expected}/`)) return true;
+  const currentLower = current.toLowerCase();
+  const expectedLower = expected.toLowerCase();
+  return currentLower === expectedLower || currentLower.startsWith(`${expectedLower}/`);
 }
 
 export const UserLayoutContent = ({

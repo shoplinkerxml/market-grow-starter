@@ -38,6 +38,13 @@ const USER_ROUTE_MAPPING: Record<string, { labelKey: string; parentPath?: string
   "/user/products": { labelKey: "products_title", parentPath: "/user" },
   "/user/Products": { labelKey: "products_title", parentPath: "/user" },
   "/user/products/new-product": { labelKey: "create_product", parentPath: "/user/products" },
+  "/user/dovidnyky": { labelKey: "menu_directories", parentPath: "/user" },
+  "/user/directory": { labelKey: "menu_directories", parentPath: "/user" },
+  "/user/directories": { labelKey: "menu_directories", parentPath: "/user" },
+  "/user/reference": { labelKey: "menu_directories", parentPath: "/user" },
+  "/user/product-templates": { labelKey: "menu_product_templates", parentPath: "/user/directory" },
+  "/user/category-templates": { labelKey: "menu_category_templates", parentPath: "/user/directory" },
+  "/user/product-colors": { labelKey: "menu_product_colors", parentPath: "/user/directory" },
 };
 
 export function useBreadcrumbs(): BreadcrumbItem[] {
@@ -259,6 +266,29 @@ export function usePageInfo() {
         return {
           title: t("shops_title"),
           description: t("shops_description"),
+        };
+      case "/user/dovidnyky":
+      case "/user/directory":
+      case "/user/directories":
+      case "/user/reference":
+        return {
+          title: t("menu_directories"),
+          description: undefined,
+        };
+      case "/user/product-templates":
+        return {
+          title: t("menu_product_templates"),
+          description: undefined,
+        };
+      case "/user/category-templates":
+        return {
+          title: t("menu_category_templates"),
+          description: undefined,
+        };
+      case "/user/product-colors":
+        return {
+          title: t("menu_product_colors"),
+          description: undefined,
         };
       case "/user/products":
       case "/user/Products":

@@ -6,6 +6,9 @@ import { UserMenuItem } from "@/lib/user-menu-service";
 import { UserProfile } from "@/lib/user-auth-schemas";
 import { useI18n } from "@/i18n";
 import { DynamicIcon } from "@/components/ui/dynamic-icon";
+import { PageHeader } from "@/components/PageHeader";
+import { useBreadcrumbs } from "@/hooks/useBreadcrumbs";
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
 import { toast } from "sonner";
 import TariffPage from "./TariffPage";
 import { ListPage } from "@/pages/page-types/ListPage";
@@ -15,6 +18,7 @@ import { ShopService, type Shop, type ShopAggregated } from "@/lib/shop-service"
 import { ShopStructureEditor } from "@/components/user/shops";
 import { ExportDialog } from "@/components/user/shops/ExportDialog";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
+import { FileCode, Layers, Palette } from "lucide-react";
 
 interface UserDashboardContextType {
   user: UserProfile;
@@ -26,6 +30,7 @@ const UserMenuContentByPath = () => {
   const navigate = useNavigate();
   const { user, menuItems } = useOutletContext<UserDashboardContextType>();
   const { t } = useI18n();
+  const breadcrumbs = useBreadcrumbs();
   const queryClient = useQueryClient();
   const uid = user?.id ? String(user.id) : "current";
   const [menuItem, setMenuItem] = useState<UserMenuItem | null>(null);
@@ -123,6 +128,45 @@ const UserMenuContentByPath = () => {
     const iconName = String(foundItem?.icon_name || (normalizedPath.includes("tariff") ? "credit-card" : "") || "FileText");
     return { title, iconName };
   }, [fullPath, menuItem, menuItems, path]);
+
+  const normalizedPath = useMemo(() => {
+    return String(fullPath || path || "").replace(/^\//, "").toLowerCase();
+  }, [fullPath, path]);
+
+  const directoriesConfig = useMemo(
+    () => [
+      {
+        key: "product-templates",
+        titleKey: "menu_product_templates",
+        icon: FileCode,
+        href: "/user/product-templates",
+      },
+      {
+        key: "category-templates",
+        titleKey: "menu_category_templates",
+        icon: Layers,
+        href: "/user/category-templates",
+      },
+      {
+        key: "product-colors",
+        titleKey: "menu_product_colors",
+        icon: Palette,
+        href: "/user/product-colors",
+      },
+    ],
+    [],
+  );
+
+  const directoriesLookup = useMemo(() => {
+    return directoriesConfig.reduce<Record<string, (typeof directoriesConfig)[number]>>((acc, item) => {
+      acc[item.key] = item;
+      return acc;
+    }, {});
+  }, [directoriesConfig]);
+
+  const isDirectoriesPage = useMemo(() => {
+    return ["dovidnyky", "directories", "directory", "reference"].includes(normalizedPath);
+  }, [normalizedPath]);
 
   const PageLoaderIcon = useMemo(() => {
     const iconName = pageMetaForLoader.iconName;
@@ -235,6 +279,56 @@ const UserMenuContentByPath = () => {
         subtitle={pageMetaForLoader.title || undefined}
         icon={PageLoaderIcon}
       />
+    );
+  }
+
+  if (isDirectoriesPage) {
+    return (
+      <div className="p-6 space-y-6">
+        <PageHeader title={menuItem?.title || "Довідники"} breadcrumbItems={breadcrumbs} />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {directoriesConfig.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Card
+                key={item.key}
+                className="card-elevated card-elevated-hover cursor-pointer"
+                onClick={() => navigate(item.href)}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <Icon className="h-8 w-8 text-emerald-600" />
+                  </div>
+                  <CardTitle className="mt-2">{t(item.titleKey as "menu_product_templates")}</CardTitle>
+                </CardHeader>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const placeholderConfig = directoriesLookup[normalizedPath];
+  if (placeholderConfig) {
+    const PlaceholderIcon = placeholderConfig.icon;
+    return (
+      <div className="p-6 space-y-6">
+        <div className="space-y-2">
+          <PageHeader title={t(placeholderConfig.titleKey as "menu_product_templates")} breadcrumbItems={breadcrumbs} />
+        </div>
+        <div className="flex justify-center">
+          <Empty className="border max-w-md">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <PlaceholderIcon />
+              </EmptyMedia>
+              <EmptyTitle>{t(placeholderConfig.titleKey as "menu_product_templates")}</EmptyTitle>
+              <EmptyDescription>{t("no_content_available")}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </div>
+      </div>
     );
   }
 

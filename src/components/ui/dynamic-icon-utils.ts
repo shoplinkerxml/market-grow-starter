@@ -26,6 +26,7 @@ import {
   MoveHorizontal,
   MoveVertical,
   Palette,
+  BookOpen,
   Circle,
   Home,
   User,
@@ -69,6 +70,8 @@ export const MENU_ICONS: Record<string, LucideIcon> = {
   "move-horizontal": MoveHorizontal,
   "move-vertical": MoveVertical,
   palette: Palette,
+  "book-open": BookOpen,
+  BookOpen,
   Layout,
 
   users: Users,
@@ -203,6 +206,7 @@ export const getAutoIcon = (item: { title: string; path: string; page_type?: str
   if (title.includes("supplier") || title.includes("постачальник")) return "truck";
   if (title.includes("shop") || title.includes("магазин")) return "store";
   if (title.includes("payment") || title.includes("платеж")) return "credit-card";
+  if (title.includes("довідник") || title.includes("directory") || title.includes("reference")) return "book-open";
   if (title.includes("permission") || title.includes("дозвол")) return "shield";
   if (title.includes("api")) return "code";
   if (title.includes("media") || title.includes("медіа")) return "image";
@@ -222,6 +226,7 @@ export const getAutoIcon = (item: { title: string; path: string; page_type?: str
   if (path.includes("/suppliers") || path.includes("/постачальники")) return "truck";
   if (path.includes("/shops") || path.includes("/магазины") || path.includes("/магазини")) return "store";
   if (path.includes("/payments") || path.includes("/платежи") || path.includes("/платежі")) return "credit-card";
+  if (path.includes("/dovid") || path.includes("/directory") || path.includes("/reference")) return "book-open";
   if (path.includes("/permissions")) return "shield";
   if (path.includes("/api")) return "code";
   if (path.includes("/media")) return "image";
@@ -229,4 +234,3 @@ export const getAutoIcon = (item: { title: string; path: string; page_type?: str
 
   return "circle";
 };
-
