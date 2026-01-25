@@ -45,21 +45,21 @@ const ProductThumbnail = React.memo(({
     <HoverCard openDelay={150} closeDelay={80}>
       <HoverCardTrigger asChild>
         <button type="button" onClick={onClick} className="inline-flex">
-          <Avatar className={`${sizeCls} rounded-md cursor-pointer bg-white`}>
+          <Avatar className={`${sizeCls} rounded-md cursor-pointer bg-white dark:bg-neutral-900`}>
             <AvatarImage
               src={src}
               alt={product.name_ua || product.name || ""}
               className="object-contain"
               onError={onError}
             />
-            <AvatarFallback className="bg-primary/5 text-primary rounded-md flex items-center justify-center">
+            <AvatarFallback className="bg-primary/5 text-primary rounded-md flex items-center justify-center dark:bg-emerald-900/40 dark:text-emerald-100">
               <ImageIcon className="w-4 h-4" />
             </AvatarFallback>
           </Avatar>
         </button>
       </HoverCardTrigger>
       <HoverCardContent className="w-[min(22rem,85vw)] p-2" sideOffset={8}>
-        <div className="rounded-md overflow-hidden bg-white">
+        <div className="rounded-md overflow-hidden bg-white dark:bg-neutral-900 dark:border dark:border-emerald-500/40">
           {largeSrc ? (
             <img
               src={largeSrc}

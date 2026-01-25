@@ -322,7 +322,7 @@ export default function ShopSettings() {
                 </div>
               </div>
               {storeCurrencies.length === 0 ? (
-                <div className="rounded-lg border bg-card/50 p-6 text-center">
+                <div className="rounded-lg border bg-card/50 p-6 text-center dark:bg-neutral-900/60 dark:border-emerald-500/40">
                   <div className="text-sm font-medium mb-1">{t('no_currencies_found')}</div>
                   <div className="text-xs text-muted-foreground">Додайте валюту та задайте курс відносно базової</div>
                 </div>
@@ -330,7 +330,7 @@ export default function ShopSettings() {
                 <div className="overflow-hidden rounded-lg border">
                   <div className="relative w-full overflow-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-muted">
+                      <thead className="bg-muted dark:bg-neutral-900/70">
                         <tr className="border-b">
                           <th className="h-10 px-3 text-left font-medium text-muted-foreground">Валюта</th>
                           <th className="h-10 px-3 text-left font-medium text-muted-foreground">Курс</th>
@@ -340,7 +340,7 @@ export default function ShopSettings() {
                       </thead>
                       <tbody>
                         {storeCurrencies.map(cur => (
-                          <tr key={cur.code} className="border-b hover:bg-muted/50">
+                          <tr key={cur.code} className="border-b hover:bg-muted/50 dark:hover:bg-emerald-900/30">
                             <td className="px-3 py-2">
                               <Badge variant="outline" className="px-2 py-0.5 text-sm border-0">{cur.code}</Badge>
                             </td>
@@ -361,7 +361,7 @@ export default function ShopSettings() {
                               </div>
                             </td>
                             <td className="px-3 py-2 text-right">
-                              <Button variant="ghost" size="icon" onClick={() => handleDeleteCurrency(cur.code)} disabled={cur.is_base} className="h-8 w-8 transition-all duration-200 hover:bg-muted active:scale-[0.98]" aria-disabled={cur.is_base}>
+                              <Button variant="ghost" size="icon" onClick={() => handleDeleteCurrency(cur.code)} disabled={cur.is_base} className="h-8 w-8 transition-all duration-200 hover:bg-muted dark:hover:bg-emerald-900/30 active:scale-[0.98]" aria-disabled={cur.is_base}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </td>
@@ -426,7 +426,7 @@ export default function ShopSettings() {
                         <ColumnsIcon className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent align="end" className="w-56 bg-white border border-emerald-300/40 dark:bg-neutral-900/80 dark:border-emerald-500/40">
                     <DropdownMenuCheckboxItem checked={showNameCol} onCheckedChange={v => setShowNameCol(!!v)}>{t('category_name')}</DropdownMenuCheckboxItem>
                     <DropdownMenuCheckboxItem checked={showCodeCol} onCheckedChange={v => setShowCodeCol(!!v)}>{t('code')}</DropdownMenuCheckboxItem>
                     <DropdownMenuCheckboxItem checked={showRozetkaCol} onCheckedChange={v => setShowRozetkaCol(!!v)}>{t('rozetka_category')}</DropdownMenuCheckboxItem>
@@ -440,8 +440,8 @@ export default function ShopSettings() {
           <div className="overflow-hidden rounded-lg border">
             <div className="relative w-full overflow-auto">
               <table className="w-full caption-bottom text-sm">
-                <thead className="[&>tr]:border-b sticky top-0 z-10 bg-muted">
-                  <tr className="border-b transition-colors hover:bg-muted/50">
+                <thead className="[&>tr]:border-b sticky top-0 z-10 bg-muted dark:bg-neutral-900/70">
+                  <tr className="border-b transition-colors hover:bg-muted/50 dark:hover:bg-emerald-900/30">
                     <th className="h-10 px-2 text-left align-middle font-medium text-muted-foreground"> 
                       <div className="flex items-center justify-center">
                         <Checkbox checked={selectedRowIds.length === pageRows.length && pageRows.length > 0 ? true : selectedRowIds.length > 0 ? "indeterminate" : false} onCheckedChange={value => {
@@ -459,7 +459,7 @@ export default function ShopSettings() {
                 <tbody className="[&>tr:last-child]:border-0">
                   {pageRows.length === 0 ? <tr>
                       <td colSpan={6} className="p-3 text-center text-sm text-muted-foreground" data-testid="shop_settings_empty">{t('no_categories_found')}</td>
-                    </tr> : pageRows.map(cat => <tr key={cat.store_category_id} className="border-b transition-colors hover:bg-muted/50" data-testid={`shop_settings_row_${cat.store_category_id}`}>
+                    </tr> : pageRows.map(cat => <tr key={cat.store_category_id} className="border-b transition-colors hover:bg-muted/50 dark:hover:bg-emerald-900/30" data-testid={`shop_settings_row_${cat.store_category_id}`}>
                         <td className="p-2 align-middle">
                           <div className="flex items-center justify-center">
                             <Checkbox checked={selectedRowIds.includes(cat.store_category_id)} onCheckedChange={value => {
@@ -475,7 +475,7 @@ export default function ShopSettings() {
                             value={cat.store_rz_id_value || ''}
                             readOnly
                             aria-readonly="true"
-                            className="h-8 w-[10rem] text-sm border-0 focus-visible:ring-0 focus-visible:outline-none shadow-none cursor-not-allowed bg-muted/40"
+                            className="h-8 w-[10rem] text-sm border-0 focus-visible:ring-0 focus-visible:outline-none shadow-none cursor-not-allowed bg-muted/40 dark:bg-neutral-900/60 dark:border dark:border-emerald-500/40"
                             data-testid={`shop_settings_rzid_${cat.store_category_id}`}
                           />
                         </td>}
@@ -491,7 +491,7 @@ export default function ShopSettings() {
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuContent align="end" className="w-40 bg-white border border-emerald-300/40 dark:bg-neutral-900/80 dark:border-emerald-500/40">
                               <DropdownMenuItem onClick={() => {
                                 setEditRow(cat);
                                 setEditExternalId(String(cat.store_external_id ?? cat.base_external_id ?? ''));

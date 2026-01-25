@@ -69,7 +69,7 @@ export const UserHeader = ({ user, onMenuToggle }: UserHeaderProps) => {
   };
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 bg-white border-b">
+    <header className="flex items-center justify-between px-6 py-4 bg-white border-b dark:bg-neutral-950 dark:border-emerald-500/40">
       {/* Left side */}
       <div className="flex items-center gap-4">
         <Button
@@ -87,7 +87,7 @@ export const UserHeader = ({ user, onMenuToggle }: UserHeaderProps) => {
         </Button>
         
         <div className="hidden md:block">
-          <h1 className="text-xl font-semibold text-gray-900">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-emerald-100">
             Welcome back, {user.name}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -131,13 +131,13 @@ export const UserHeader = ({ user, onMenuToggle }: UserHeaderProps) => {
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user.avatar_url || ""} alt={user.name} />
-                <AvatarFallback className="bg-emerald-100 text-emerald-600">
+                <AvatarFallback className="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-200">
                   {getUserInitials(user.name)}
                 </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
+          <DropdownMenuContent className="w-56 dark:bg-neutral-900/90 dark:border-emerald-500/60 dark:text-emerald-100" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">{user.name}</p>

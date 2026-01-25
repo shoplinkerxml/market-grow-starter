@@ -123,7 +123,7 @@ function ProductCard({
       <div className="px-2 pb-2">
         <button
           type="button"
-          className="relative mt-2 block w-full aspect-[4/3] bg-muted/40 rounded-md overflow-hidden"
+          className="relative mt-2 block w-full aspect-[4/3] bg-muted/40 rounded-md overflow-hidden dark:bg-neutral-900/60 dark:border dark:border-emerald-500/40"
           onClick={() => onEdit?.(product)}
         >
           {src ? (
@@ -158,7 +158,7 @@ function ProductCard({
             <Badge
               key={`${product.id}:store:${idx}`}
               variant="secondary"
-              className="rounded-md px-2 py-0.5 text-[11px] h-5 max-w-[10rem] truncate"
+              className="rounded-md px-2 py-0.5 text-[11px] h-5 max-w-[10rem] truncate dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"
               title={label}
             >
               {label}

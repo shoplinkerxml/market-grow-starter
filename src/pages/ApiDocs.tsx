@@ -1451,7 +1451,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
               <h1 className="text-5xl font-semibold tracking-tight text-foreground">
                 MarketGrow API
               </h1>
-              <span className="inline-flex items-center rounded bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground">
+              <span className="inline-flex items-center rounded bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40 dark:text-emerald-100">
                 1.0
               </span>
               <span className="inline-flex items-center rounded bg-emerald-600 px-2 py-1 text-xs font-semibold text-white">
@@ -1759,7 +1759,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                           <div className="text-xs font-semibold text-muted-foreground">
                                             Headers
                                           </div>
-                                          <pre className="bg-muted p-3 rounded overflow-x-auto text-xs">
+                                          <pre className="bg-muted p-3 rounded overflow-x-auto text-xs dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40">
                                             <code>
                                               {JSON.stringify(endpoint.headers, null, 2)}
                                             </code>
@@ -1771,7 +1771,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                           <div className="text-xs font-semibold text-muted-foreground">
                                             Body
                                           </div>
-                                          <pre className="bg-muted p-3 rounded overflow-x-auto text-xs">
+                                          <pre className="bg-muted p-3 rounded overflow-x-auto text-xs dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40">
                                             <code>
                                               {JSON.stringify(endpoint.body, null, 2)}
                                             </code>
@@ -1786,7 +1786,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                       Responses
                                     </div>
                                     <div className="relative">
-                                      <pre className="bg-muted rounded overflow-x-auto text-xs px-3 pb-3 pt-12">
+                                      <pre className="bg-muted rounded overflow-x-auto text-xs px-3 pb-3 pt-12 dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40">
                                         <code>
                                           {responseJson}
                                         </code>
@@ -1797,7 +1797,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                             <Button
                                               variant="outline"
                                               size="sm"
-                                              className="absolute top-2 right-2 border-emerald-200 bg-emerald-100 text-emerald-900 shadow-sm transition hover:bg-emerald-200 hover:shadow-md hover:scale-[1.03] active:scale-100"
+                                              className="absolute top-2 right-2 border-emerald-200 bg-emerald-100 text-emerald-900 shadow-sm transition hover:bg-emerald-200 hover:shadow-md hover:scale-[1.03] active:scale-100 dark:bg-emerald-900/50 dark:text-emerald-100 dark:border-emerald-500/40 dark:hover:bg-emerald-900/70"
                                               data-copy-text={responseJson}
                                               onClick={handleCopyFromButtonData}
                                             >
@@ -1818,7 +1818,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                     cURL
                                   </div>
                                   <div className="relative">
-                                    <pre className="bg-muted rounded overflow-x-auto text-xs px-3 pb-3 pt-12">
+                                    <pre className="bg-muted rounded overflow-x-auto text-xs px-3 pb-3 pt-12 dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40">
                                       <code>{curlCommand}</code>
                                     </pre>
                                     <TooltipProvider>
@@ -1827,7 +1827,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                           <Button
                                             variant="outline"
                                             size="sm"
-                                            className="absolute top-2 right-2 border-emerald-200 bg-emerald-100 text-emerald-900 shadow-sm transition hover:bg-emerald-200 hover:shadow-md hover:scale-[1.03] active:scale-100"
+                                            className="absolute top-2 right-2 border-emerald-200 bg-emerald-100 text-emerald-900 shadow-sm transition hover:bg-emerald-200 hover:shadow-md hover:scale-[1.03] active:scale-100 dark:bg-emerald-900/50 dark:text-emerald-100 dark:border-emerald-500/40 dark:hover:bg-emerald-900/70"
                                             data-copy-text={curlCommand}
                                             onClick={handleCopyFromButtonData}
                                           >
@@ -1877,7 +1877,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                     />
                                   ) : (
                                     <div className="relative">
-                                      <pre className="bg-muted rounded overflow-x-auto text-xs min-h-[120px] px-3 pb-3 pt-12">
+                                      <pre className="bg-muted rounded overflow-x-auto text-xs min-h-[120px] px-3 pb-3 pt-12 dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40">
                                         <code>{script || "// Postman скрипт не задан"}</code>
                                       </pre>
                                       <TooltipProvider>
@@ -1886,7 +1886,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                             <Button
                                               variant="outline"
                                               size="sm"
-                                              className="absolute top-2 right-2 border-emerald-200 bg-emerald-100 text-emerald-900 shadow-sm transition hover:bg-emerald-200 hover:shadow-md hover:scale-[1.03] active:scale-100"
+                                              className="absolute top-2 right-2 border-emerald-200 bg-emerald-100 text-emerald-900 shadow-sm transition hover:bg-emerald-200 hover:shadow-md hover:scale-[1.03] active:scale-100 dark:bg-emerald-900/50 dark:text-emerald-100 dark:border-emerald-500/40 dark:hover:bg-emerald-900/70"
                                               data-copy-text={script}
                                               onClick={handleCopyFromButtonData}
                                               disabled={!script}

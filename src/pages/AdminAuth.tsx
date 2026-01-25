@@ -75,7 +75,7 @@ const AdminAuth = () => {
           type="button" 
           variant="ghost" 
           onClick={() => setLang(lang === "uk" ? "en" : "uk")}
-          className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-700"
+          className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-200 dark:hover:bg-transparent dark:hover:text-emerald-100"
           data-testid="language-toggle"
         >
           {lang === "uk" ? "EN" : "UA"}
@@ -90,25 +90,25 @@ const AdminAuth = () => {
             </div>
             <span className="text-2xl font-bold" data-testid="brand-name">MarketGrow</span>
           </div>
-          <div className="inline-flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full text-sm mb-4" data-testid="hero-badge">
+          <div className="inline-flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full text-sm mb-4 dark:bg-neutral-900/60 dark:border-emerald-500/60 dark:text-emerald-200" data-testid="hero-badge">
             <span>↗</span>
             <span>{t("hero_badge")}</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4" data-testid="hero-title">{t("hero_title")}</h1>
           <p className="text-muted-foreground mb-8" data-testid="hero-description">{t("hero_desc")}</p>
-          <Card className="bg-emerald-50 border-emerald-100" data-testid="features-card">
+          <Card className="bg-emerald-50 border-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-500/60" data-testid="features-card">
             <CardHeader>
               <CardTitle className="text-base" data-testid="features-title">{t("features_title")}</CardTitle>
-              <CardDescription className="text-emerald-900/80" data-testid="features-subtitle">{t("features_subtitle")}</CardDescription>
+              <CardDescription className="text-emerald-900/80 dark:text-emerald-200/80" data-testid="features-subtitle">{t("features_subtitle")}</CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
-              <ul className="space-y-2 text-sm text-emerald-900/90" data-testid="features-list">
-                <li className="flex items-start gap-2"><Plug className="h-4 w-4 mt-0.5" /> {t("feat_integrations")}</li>
-                <li className="flex items-start gap-2"><FileSpreadsheet className="h-4 w-4 mt-0.5" /> {t("feat_convert")}</li>
-                <li className="flex items-start gap-2"><Tags className="h-4 w-4 mt-0.5" /> {t("feat_mapping")}</li>
-                <li className="flex items-start gap-2"><Sparkles className="h-4 w-4 mt-0.5" /> {t("feat_enrichment")}</li>
-                <li className="flex items-start gap-2"><UploadCloud className="h-4 w-4 mt-0.5" /> {t("feat_export")}</li>
-                <li className="flex items-start gap-2"><BarChart3 className="h-4 w-4 mt-0.5" /> {t("feat_analytics")}</li>
+              <ul className="space-y-2 text-sm text-emerald-900/90 dark:text-emerald-200" data-testid="features-list">
+                <li className="flex items-start gap-2"><Plug className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" /> {t("feat_integrations")}</li>
+                <li className="flex items-start gap-2"><FileSpreadsheet className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" /> {t("feat_convert")}</li>
+                <li className="flex items-start gap-2"><Tags className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" /> {t("feat_mapping")}</li>
+                <li className="flex items-start gap-2"><Sparkles className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" /> {t("feat_enrichment")}</li>
+                <li className="flex items-start gap-2"><UploadCloud className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" /> {t("feat_export")}</li>
+                <li className="flex items-start gap-2"><BarChart3 className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" /> {t("feat_analytics")}</li>
               </ul>
             </CardContent>
           </Card>
@@ -118,7 +118,7 @@ const AdminAuth = () => {
       <div className="flex items-center md:items-start justify-center md:justify-start p-6 md:p-0" data-testid="login-section">
         <Card className="w-full max-w-md shadow-sm" data-testid="login-card">
           <CardHeader className="text-center" data-testid="login-header">
-            <div className="mx-auto h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-2" data-testid="shield-icon">
+            <div className="mx-auto h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-2 dark:bg-emerald-900/40 dark:text-emerald-200" data-testid="shield-icon">
               <Shield className="h-5 w-5" />
             </div>
             <div>
@@ -169,4 +169,3 @@ const AdminAuth = () => {
 };
 
 export default AdminAuth;
-

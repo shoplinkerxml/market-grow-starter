@@ -17,7 +17,7 @@ export const VirtualizedXMLTree = ({ items }: VirtualizedXMLTreeProps) => {
     return (
       <div 
         style={style} 
-        className="border-b p-3 hover:bg-gray-50 flex items-center justify-between"
+        className="border-b p-3 hover:bg-gray-50 dark:hover:bg-emerald-900/30 flex items-center justify-between"
       >
         <div className="flex-1">
           <div className="font-mono text-sm font-medium">{item.path}</div>

@@ -144,8 +144,8 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
                     "w-full text-left rounded-md text-sm transition-all duration-200 group flex items-center justify-between",
                     "px-3 py-2",
                     isActiveItem(item)
-                      ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50 shadow-sm"
-                      : "hover:bg-emerald-50 border border-transparent hover:border-emerald-200/30 hover:shadow-sm"
+                      ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50 shadow-sm dark:bg-transparent dark:text-emerald-300 dark:border-emerald-500/60 dark:shadow-none"
+                      : "hover:bg-emerald-50 border border-transparent hover:border-emerald-200/30 hover:shadow-sm dark:hover:bg-transparent dark:hover:border-emerald-500/60 dark:hover:shadow-none"
                   )}
                   aria-label={`${translatedTitle} - ${isExpanded ? "Collapse" : "Expand"} submenu`}
                   data-testid={`menuParent_${item.title.toLowerCase().replace(/\s+/g, '')}_${item.path.replace(/^\//, '').replace(/\//g, '_')}`}
@@ -191,7 +191,7 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
               
               {/* Render children if not collapsed, has children, and is expanded */}
               {!collapsed && hasChildren && isExpanded && (
-                <div className="ml-6 mt-1 space-y-1 border-l border-gray-100 pl-3">
+                <div className="ml-6 mt-1 space-y-1 border-l border-gray-100 pl-3 dark:border-emerald-500/30">
                   {tree[item.id].map((child) => (
                     <MenuItemWithIcon
                       key={child.id}

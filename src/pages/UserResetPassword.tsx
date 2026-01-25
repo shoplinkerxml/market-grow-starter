@@ -110,7 +110,7 @@ const UserResetPassword = () => {
           type="button" 
           variant="ghost" 
           onClick={() => setLang(lang === "uk" ? "en" : "uk")}
-          className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-700"
+          className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-200 dark:hover:bg-transparent dark:hover:text-emerald-100"
         >
           {lang === "uk" ? "EN" : "UA"}
         </Button>
@@ -130,7 +130,7 @@ const UserResetPassword = () => {
             </div>
 
             {/* Hero Badge */}
-            <div className="inline-flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full text-sm mb-4">
+            <div className="inline-flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full text-sm mb-4 dark:bg-neutral-900/60 dark:border-emerald-500/60 dark:text-emerald-200">
               <span>↗</span>
               <span>{t("hero_badge")}</span>
             </div>
@@ -144,32 +144,32 @@ const UserResetPassword = () => {
             </p>
 
             {/* Security Features Card */}
-            <Card className="bg-emerald-50 border-emerald-100">
+            <Card className="bg-emerald-50 border-emerald-100 dark:bg-emerald-950/40 dark:border-emerald-500/60">
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-emerald-600" />
+                  <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   {t("security_features_title") || "Secure Reset"}
                 </CardTitle>
-                <CardDescription className="text-emerald-900/80">
+                <CardDescription className="text-emerald-900/80 dark:text-emerald-200/80">
                   {t("security_features_subtitle") || "Your account security is our priority"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-0">
-                <ul className="space-y-2 text-sm text-emerald-900/90">
+                <ul className="space-y-2 text-sm text-emerald-900/90 dark:text-emerald-200">
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600" />
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" />
                     {t("feat_secure_reset") || "Secure password reset process"}
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600" />
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" />
                     {t("feat_token_validation") || "Token-based validation"}
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600" />
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" />
                     {t("feat_session_timeout") || "Automatic session timeout"}
                   </li>
                   <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600" />
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-600 dark:text-emerald-400" />
                     {t("feat_password_requirements") || "Strong password requirements"}
                   </li>
                 </ul>
@@ -182,7 +182,7 @@ const UserResetPassword = () => {
         <div className="flex items-center md:items-start justify-center md:justify-start p-6 md:p-0 md:pl-8">
           <Card className="w-full max-w-md shadow-lg">
             <CardHeader className="text-center">
-              <div className="mx-auto h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-4">
+              <div className="mx-auto h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-4 dark:bg-emerald-900/40 dark:text-emerald-200">
                 <Lock className="h-6 w-6" />
               </div>
               <CardTitle>{t("reset_password_title") || "Reset Your Password"}</CardTitle>
@@ -194,7 +194,7 @@ const UserResetPassword = () => {
             <CardContent className="space-y-4">
               {resetSuccess ? (
                 <div className="text-center space-y-4">
-                  <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:bg-emerald-900/40 dark:text-emerald-100 dark:border dark:border-emerald-500/40">
                     <CheckCircle2 className="h-6 w-6" />
                   </div>
                   <div className="space-y-2">

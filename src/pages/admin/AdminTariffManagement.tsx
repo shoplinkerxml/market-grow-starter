@@ -323,12 +323,12 @@ const AdminTariffManagement = () => {
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-6 xs:py-8 sm:py-10 md:py-12">
                     <div className="flex flex-col items-center gap-4">
-                      <div className="h-10 w-10 xs:h-12 xs:w-12 sm:h-16 sm:w-16 rounded-full bg-gray-100 flex items-center justify-center">
+                      <div className="h-10 w-10 xs:h-12 xs:w-12 sm:h-16 sm:w-16 rounded-full bg-gray-100 flex items-center justify-center dark:bg-emerald-900/40">
                         <CreditCard className="h-5 w-5 xs:h-6 xs:w-6 sm:h-8 sm:w-8 text-muted-foreground" />
                       </div>
                       <div>
-                        <h3 className="font-medium text-base sm:text-lg md:text-xl text-gray-900">{t('no_tariffs_found')}</h3>
-                        <p className="text-xs sm:text-sm md:text-base text-gray-500 mt-1">
+                        <h3 className="font-medium text-base sm:text-lg md:text-xl text-gray-900 dark:text-emerald-100">{t('no_tariffs_found')}</h3>
+                        <p className="text-xs sm:text-sm md:text-base text-gray-500 mt-1 dark:text-emerald-200/80">
                           {t('manage_tariffs_and_pricing_options')}
                         </p>
                       </div>
@@ -438,7 +438,7 @@ const AdminTariffManagement = () => {
                     {t('confirm_delete_tariff')}
                   </span>
                 </AlertDialogTitle>
-                <AlertDialogDescription className="text-sm text-gray-600 mt-1">
+                <AlertDialogDescription className="text-sm text-gray-600 mt-1 dark:text-emerald-200/80">
                   {t('delete_tariff_warning')}
                 </AlertDialogDescription>
               </div>
@@ -446,12 +446,12 @@ const AdminTariffManagement = () => {
           </AlertDialogHeader>
           
           {tariffToDelete && (
-            <div className="my-4 p-4 bg-gray-50 rounded-lg border">
+            <div className="my-4 p-4 bg-gray-50 rounded-lg border dark:bg-neutral-900/60 dark:border-emerald-500/40">
               <div className="flex items-center gap-3">
                 {getTariffIcon(tariffToDelete)}
                 <div>
-                  <h4 className="font-medium text-gray-900">{tariffToDelete.name}</h4>
-                  <p className="text-sm text-gray-600">
+                  <h4 className="font-medium text-gray-900 dark:text-emerald-100">{tariffToDelete.name}</h4>
+                  <p className="text-sm text-gray-600 dark:text-emerald-200/80">
                     {tariffToDelete.description || t('no_description')}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
@@ -460,7 +460,7 @@ const AdminTariffManagement = () => {
                     ) : (
                       <div className="flex items-center gap-1">
                         {getCurrencySymbol(currencies.find(c => c.id === tariffToDelete.currency_id)?.code)}
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-emerald-200/70">
                           {tariffToDelete.new_price !== null ? (
                             formatPrice(tariffToDelete.new_price, currencies.find(c => c.id === tariffToDelete.currency_id)?.code)
                           ) : 'N/A'}
@@ -477,7 +477,7 @@ const AdminTariffManagement = () => {
           )}
           
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-300 text-gray-700 hover:bg-gray-50">
+            <AlertDialogCancel className="border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-emerald-500/50 dark:text-emerald-100 dark:hover:bg-emerald-900/30">
               {t('cancel_tariff')}
             </AlertDialogCancel>
             <AlertDialogAction 

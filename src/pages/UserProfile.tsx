@@ -90,7 +90,7 @@ const UserProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-neutral-950">
       {/* Main Content */}
       <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="space-y-6">
@@ -120,13 +120,13 @@ const UserProfile = () => {
               <div className="flex items-center space-x-4">
                 <Avatar className="h-20 w-20">
                   <AvatarImage src={avatarUrl} alt={name} />
-                  <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xl">
+                  <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xl dark:bg-emerald-900/40 dark:text-emerald-200">
                     {name ? getUserInitials(name) : "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
                       {user.role}
                     </Badge>
                     <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
@@ -172,7 +172,7 @@ const UserProfile = () => {
                     id="email"
                     value={user.email || ""}
                     disabled
-                    className="bg-gray-50"
+                    className="bg-gray-50 dark:bg-neutral-900/60 dark:border-emerald-500/40 dark:text-emerald-100"
                   />
                   <p className="text-xs text-gray-500">{t("profile_email_cannot_be_changed")}</p>
                 </div>
@@ -192,7 +192,7 @@ const UserProfile = () => {
                   <Input
                     value={user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                     disabled
-                    className="bg-gray-50"
+                    className="bg-gray-50 dark:bg-neutral-900/60 dark:border-emerald-500/40 dark:text-emerald-100"
                   />
                 </div>
               </div>

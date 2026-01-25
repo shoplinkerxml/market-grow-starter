@@ -26,7 +26,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({
 
   if (!structure || !structure.fields || structure.fields.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="text-center py-12 text-gray-500 dark:text-emerald-200/70">
         <p>Завантажте XML файл для перегляду структури</p>
       </div>
     );
@@ -51,20 +51,20 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({
     switch (type.toLowerCase()) {
       case 'string':
       case 'текст':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-emerald-900/30 dark:text-emerald-100 dark:border-emerald-500/40';
       case 'number':
       case 'число':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-100 text-green-800 border-green-200 dark:bg-emerald-900/30 dark:text-emerald-100 dark:border-emerald-500/40';
       case 'array':
       case 'масив':
-        return 'bg-success-light text-success border-success/30';
+        return 'bg-success-light text-success border-success/30 dark:bg-emerald-900/30 dark:text-emerald-100 dark:border-emerald-500/40';
       case 'object':
       case "об'єкт":
-        return 'bg-orange-100 text-orange-800 border-orange-200';
+        return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-emerald-900/30 dark:text-emerald-100 dark:border-emerald-500/40';
       case 'boolean':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-emerald-900/30 dark:text-emerald-100 dark:border-emerald-500/40';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-emerald-900/30 dark:text-emerald-100 dark:border-emerald-500/40';
     }
   };
 
@@ -132,7 +132,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({
     <div className="border rounded-lg overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow className="bg-gray-50">
+          <TableRow className="bg-gray-50 dark:bg-neutral-900/70">
             <TableHead className="w-12"></TableHead>
             <TableHead className="font-semibold">Назва параметра</TableHead>
             <TableHead className="font-semibold">Значення (приклад)</TableHead>
@@ -153,7 +153,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({
               className={`
                 ${hiddenFields.has(index) ? 'opacity-50' : ''}
                 ${draggedIndex === index ? 'opacity-30' : ''}
-                hover:bg-gray-50 transition-colors
+                hover:bg-gray-50 dark:hover:bg-emerald-900/30 transition-colors
               `}
             >
               <TableCell className="cursor-move">
@@ -165,14 +165,14 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({
               </TableCell>
               
               <TableCell>
-                <div className="text-gray-600 truncate max-w-xs" title={field.sample || ''}>
+                <div className="text-gray-600 truncate max-w-xs dark:text-emerald-200/70" title={field.sample || ''}>
                   {field.sample || '-'}
                 </div>
               </TableCell>
               
               <TableCell>
                 <div className="flex items-center gap-2">
-                  <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
+                  <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono dark:bg-neutral-900/60 dark:border dark:border-emerald-500/40 dark:text-emerald-100">
                     {field.path}
                   </code>
                   <Button
@@ -199,7 +199,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({
               <TableCell>
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{getCategoryIcon(field.path)}</span>
-                  <span className="text-sm text-gray-600">{getCategoryName(field.path)}</span>
+                  <span className="text-sm text-gray-600 dark:text-emerald-200/70">{getCategoryName(field.path)}</span>
                 </div>
               </TableCell>
               
@@ -222,7 +222,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({
                     size="sm"
                     variant="ghost"
                     onClick={() => deleteField(index)}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-200 dark:hover:text-red-100 dark:hover:bg-red-500/20"
                     title="Видалити"
                   >
                     <Trash2 className="h-4 w-4" />

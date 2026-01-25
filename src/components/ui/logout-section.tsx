@@ -35,17 +35,17 @@ export const LogoutSection: React.FC<LogoutSectionProps> = ({
     if (collapsed) return null;
     
     return (
-      <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-50 transition-colors group cursor-pointer border border-transparent hover:border-emerald-200/30" data-testid="user-profile-section">
+      <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-50 transition-colors group cursor-pointer border border-transparent hover:border-emerald-200/30 dark:hover:bg-transparent dark:hover:border-emerald-500/50" data-testid="user-profile-section">
         <Avatar className="h-8 w-8" data-testid="user-avatar">
-          <AvatarFallback className="bg-emerald-100 text-emerald-600 text-sm font-medium">
+          <AvatarFallback className="bg-emerald-100 text-emerald-600 text-sm font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
             {userInfo.name?.charAt(0) || "A"}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0" data-testid="user-info">
-          <p className="text-sm font-medium text-gray-900 group-hover:text-emerald-600 transition-colors" data-testid="user-name">
+          <p className="text-sm font-medium text-gray-900 group-hover:text-emerald-600 transition-colors dark:text-emerald-100 dark:group-hover:text-emerald-200" data-testid="user-name">
             {userInfo.name}
           </p>
-          <p className="text-xs text-gray-500 truncate group-hover:text-emerald-500 transition-colors" data-testid="user-role">
+          <p className="text-xs text-gray-500 truncate group-hover:text-emerald-500 transition-colors dark:text-emerald-200/70 dark:group-hover:text-emerald-200" data-testid="user-role">
             {userInfo.role}
           </p>
         </div>

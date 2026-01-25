@@ -164,7 +164,7 @@ const UserAuth = () => {
           type="button" 
           variant="ghost" 
           onClick={() => setLang(lang === "uk" ? "en" : "uk")}
-          className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-700"
+          className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-200 dark:hover:bg-transparent dark:hover:text-emerald-100"
         >
           {lang === "uk" ? "EN" : "UA"}
         </Button>
@@ -184,7 +184,7 @@ const UserAuth = () => {
             </div>
 
             {/* Hero Badge */}
-            <div className="inline-flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full text-sm mb-4">
+            <div className="inline-flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full text-sm mb-4 dark:bg-neutral-900/60 dark:border-emerald-500/60 dark:text-emerald-200">
               <span>↗</span>
               <span>{t("hero_badge")}</span>
             </div>
@@ -233,7 +233,7 @@ const UserAuth = () => {
         <div className="flex items-center md:items-start justify-center md:justify-start p-6 md:p-0 md:pl-8" data-testid="login-section">
           <Card className="w-full max-w-md shadow-lg" data-testid="login-card">
             <CardHeader className="text-center" data-testid="login-header">
-              <div className="mx-auto h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-4">
+              <div className="mx-auto h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 mb-4 dark:bg-emerald-900/40 dark:text-emerald-200">
                 <User className="h-6 w-6" />
               </div>
               <CardTitle data-testid="login-title">{t("login_title_user")}</CardTitle>

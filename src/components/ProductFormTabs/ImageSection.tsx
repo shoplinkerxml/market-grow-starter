@@ -123,7 +123,7 @@ export function ImageSection(props: Props) {
     const { src, onError } = useResolvedImageSrc({ url: original, objectKey: image.object_key, width: IMAGE_SIZES.THUMB, fallbackUrl: original })
     return (
       <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-        <div className={`aspect-square relative overflow-hidden rounded-md bg-white ${index === props.activeIndex ? 'border-2 border-emerald-500' : ''}`}>
+        <div className={`aspect-square relative overflow-hidden rounded-md bg-white dark:bg-neutral-900 dark:border dark:border-emerald-500/40 ${index === props.activeIndex ? 'border-2 border-emerald-500' : ''}`}>
           {isVid ? (
             <video
               src={getImageUrl(original)}
@@ -161,7 +161,7 @@ export function ImageSection(props: Props) {
     const { src, onError } = useResolvedImageSrc({ url: original, objectKey: image.object_key, width: IMAGE_SIZES.THUMB, fallbackUrl: original })
     return (
       <div>
-        <div className={`aspect-square relative overflow-hidden rounded-md bg-white ${index === props.activeIndex ? 'border-2 border-emerald-500' : ''}`}>
+        <div className={`aspect-square relative overflow-hidden rounded-md bg-white dark:bg-neutral-900 dark:border dark:border-emerald-500/40 ${index === props.activeIndex ? 'border-2 border-emerald-500' : ''}`}>
           {isVid ? (
             <video src={getImageUrl(original)} className="w-full h-full object-contain" preload="metadata" onLoadedMetadata={(e) => props.onGalleryVideoLoaded(e, index)} />
           ) : src ? (
@@ -301,7 +301,7 @@ export function ImageSection(props: Props) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors dark:bg-white/80 dark:border-black/50 dark:text-black dark:hover:border-black/70 dark:hover:text-black"
+                  className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors dark:bg-neutral-900 dark:border-emerald-500/60 dark:text-emerald-200 dark:hover:border-emerald-400/80 dark:hover:text-emerald-100"
                   style={{ left: 'min(1.75%, 0.5rem)' }}
                   onClick={props.onPrev}
                 >
@@ -310,7 +310,7 @@ export function ImageSection(props: Props) {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors dark:bg-white/80 dark:border-black/50 dark:text-black dark:hover:border-black/70 dark:hover:text-black"
+                  className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors dark:bg-neutral-900 dark:border-emerald-500/60 dark:text-emerald-200 dark:hover:border-emerald-400/80 dark:hover:text-emerald-100"
                   style={{ right: 'min(1.75%, 0.5rem)' }}
                   onClick={props.onNext}
                 >

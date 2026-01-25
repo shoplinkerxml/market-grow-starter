@@ -130,7 +130,7 @@ export default function ImagePreviewSection(props: Props) {
                         <div className="h-full flex items-center pl-2">
                           <Card className="relative group cursor-pointer transition-all border-0 shadow-none" onClick={() => props.onSelectIndex(index)}>
                             <CardContent className="p-2">
-                              <div className={`aspect-square relative overflow-hidden rounded-md bg-white ${index === props.activeIndex ? 'border-2 border-emerald-500' : ''}`}>
+                              <div className={`aspect-square relative overflow-hidden rounded-md bg-white dark:bg-neutral-900 dark:border dark:border-emerald-500/40 ${index === props.activeIndex ? 'border-2 border-emerald-500' : ''}`}>
                                 {(() => {
                                   const original = image.url || ''
                                   const isVid = isVideoUrl(original)
@@ -170,7 +170,7 @@ export default function ImagePreviewSection(props: Props) {
                     <CarouselItem key={index} className="pl-2" style={{ flex: `0 0 ${props.getThumbSizeRem(props.isLargeScreen)}rem` }}>
                       <Card className={`relative group cursor-pointer transition-all border-0 shadow-none`} onClick={() => props.onSelectIndex(index)}>
                         <CardContent className="p-2">
-                          <div className={`aspect-square relative overflow-hidden rounded-md bg-white ${index === props.activeIndex ? 'border-2 border-emerald-500' : ''}`}>
+                          <div className={`aspect-square relative overflow-hidden rounded-md bg-white dark:bg-neutral-900 dark:border dark:border-emerald-500/40 ${index === props.activeIndex ? 'border-2 border-emerald-500' : ''}`}>
                             {(() => {
                               const original = image.url || ''
                               const isVid = isVideoUrl(original)

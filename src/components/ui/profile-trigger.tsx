@@ -44,14 +44,14 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
       <div 
         ref={ref as React.RefObject<HTMLDivElement>}
         role="button" 
-        className="pl-2 pr-3 py-1 h-auto rounded-lg select-none cursor-pointer hover:bg-emerald-50 transition-colors"
+        className="pl-2 pr-3 py-1 h-auto rounded-lg select-none cursor-pointer hover:bg-emerald-50 transition-colors dark:hover:bg-transparent dark:hover:border-emerald-500/50 dark:border dark:border-transparent"
         onClick={onClick}
         data-testid="admin_profileTrigger_header"
       >
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
             <AvatarImage src={getAvatarUrl()} alt="Admin" />
-            <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium">
+            <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
               {getAvatarFallback()}
             </AvatarFallback>
           </Avatar>
@@ -74,12 +74,12 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
               variant="ghost"
               size="icon"
               onClick={onClick}
-              className="w-10 h-10 p-0 hover:bg-emerald-50 hover:border-emerald-200/30 border border-transparent transition-all duration-200"
+              className="w-10 h-10 p-0 hover:bg-emerald-50 hover:border-emerald-200/30 border border-transparent transition-all duration-200 dark:hover:bg-transparent dark:hover:border-emerald-500/60"
               aria-label="User Profile"
             >
               <Avatar className="h-6 w-6">
                 <AvatarImage src={getAvatarUrl()} alt="Admin" />
-                <AvatarFallback className="bg-emerald-100 text-emerald-600 text-xs font-medium">
+                <AvatarFallback className="bg-emerald-100 text-emerald-600 text-xs font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
                   {getAvatarFallback()}
                 </AvatarFallback>
               </Avatar>
@@ -98,11 +98,11 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
     <button
       ref={ref as React.RefObject<HTMLButtonElement>}
       onClick={onClick}
-      className="w-full flex items-center gap-2 pl-2 pr-3 py-1 h-auto rounded-lg transition-colors group cursor-pointer select-none hover:bg-emerald-50"
+      className="w-full flex items-center gap-2 pl-2 pr-3 py-1 h-auto rounded-lg transition-colors group cursor-pointer select-none hover:bg-emerald-50 dark:hover:bg-transparent dark:hover:border-emerald-500/50 border border-transparent"
     >
       <Avatar className="h-8 w-8">
         <AvatarImage src={getAvatarUrl()} alt="Admin" />
-        <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium">
+        <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
           {getAvatarFallback()}
         </AvatarFallback>
       </Avatar>

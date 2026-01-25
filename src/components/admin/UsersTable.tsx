@@ -70,47 +70,47 @@ const LoadingSkeleton = () => (
     {/* Customer Column */}
     <TableCell>
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse" />
+        <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse dark:bg-emerald-900/40" />
         <div className="min-w-0 flex-1">
-          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse dark:bg-emerald-900/40"></div>
         </div>
       </div>
     </TableCell>
 
     {/* Status Column */}
     <TableCell>
-      <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse"></div>
+      <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse dark:bg-emerald-900/40"></div>
     </TableCell>
 
     {/* Email Column */}
     <TableCell>
-      <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+      <div className="h-4 w-32 bg-gray-200 rounded animate-pulse dark:bg-emerald-900/40"></div>
     </TableCell>
 
     {/* Phone Column */}
     <TableCell className="hidden md:table-cell">
-      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse dark:bg-emerald-900/40"></div>
     </TableCell>
 
     {/* Tariff Column */}
     <TableCell className="hidden lg:table-cell">
-      <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+      <div className="h-4 w-20 bg-gray-200 rounded animate-pulse dark:bg-emerald-900/40"></div>
     </TableCell>
 
     {/* Subscription Status Column */}
     <TableCell className="hidden lg:table-cell">
-      <div className="h-5 w-5 bg-gray-200 rounded-full animate-pulse"></div>
+      <div className="h-5 w-5 bg-gray-200 rounded-full animate-pulse dark:bg-emerald-900/40"></div>
     </TableCell>
 
     {/* Created Date Column */}
     <TableCell>
-      <div className="h-4 w-20 bg-gray-200 rounded animate-pulse mb-1"></div>
-      <div className="h-3 w-16 bg-gray-200 rounded animate-pulse hidden sm:block"></div>
+      <div className="h-4 w-20 bg-gray-200 rounded animate-pulse mb-1 dark:bg-emerald-900/40"></div>
+      <div className="h-3 w-16 bg-gray-200 rounded animate-pulse hidden sm:block dark:bg-emerald-900/40"></div>
     </TableCell>
 
     {/* Actions Column */}
     <TableCell className="text-right">
-      <div className="h-8 w-8 bg-gray-200 rounded animate-pulse ml-auto"></div>
+      <div className="h-8 w-8 bg-gray-200 rounded animate-pulse ml-auto dark:bg-emerald-900/40"></div>
     </TableCell>
   </TableRow>
 );
@@ -163,7 +163,7 @@ const UserAvatar = ({ user }: { user: UserProfile }) => {
   return (
     <Avatar className="h-10 w-10">
       <AvatarImage src={user.avatar_url} alt={user.name} />
-      <AvatarFallback className="bg-emerald-100 text-emerald-700 font-medium">
+      <AvatarFallback className="bg-emerald-100 text-emerald-700 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
         {initials}
       </AvatarFallback>
     </Avatar>

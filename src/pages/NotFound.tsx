@@ -57,11 +57,11 @@ const NotFound = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-neutral-950">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <a href="/" className="text-primary hover:underline">
+        <h1 className="text-4xl font-bold mb-4 dark:text-emerald-100">404</h1>
+        <p className="text-xl text-gray-600 mb-4 dark:text-emerald-200/80">Oops! Page not found</p>
+        <a href="/" className="text-primary hover:underline dark:text-emerald-300">
           Return to Home
         </a>
       </div>
@@ -70,4 +70,3 @@ const NotFound = () => {
 };
 
 export default NotFound;
-

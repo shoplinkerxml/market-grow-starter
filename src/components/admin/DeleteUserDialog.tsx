@@ -86,7 +86,7 @@ export function DeleteUserDialog({
           <div className="flex items-center gap-3 rounded-lg border p-4">
             <Avatar className="h-12 w-12">
               <AvatarImage src={user.avatar_url} alt={user.name} />
-              <AvatarFallback className="bg-emerald-100 text-emerald-700 font-medium">
+              <AvatarFallback className="bg-emerald-100 text-emerald-700 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
                 {userInitials}
               </AvatarFallback>
             </Avatar>

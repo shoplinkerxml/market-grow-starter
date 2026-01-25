@@ -162,10 +162,10 @@ export function StructureTable({ structure, onStructureChange, onSave, onCancel,
           onSave={onStructureChange}
         />
       ) : (
-        <div className="rounded-md border bg-white">
+        <div className="rounded-md border bg-white dark:bg-neutral-900/60 dark:border-emerald-500/40">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50">
+              <TableRow className="bg-gray-50 dark:bg-neutral-900/70">
                 <TableHead className="w-[40px]"></TableHead>
                 <TableHead className="w-[250px]">Назва параметру</TableHead>
                 <TableHead className="w-[150px]">Значення</TableHead>
@@ -176,7 +176,7 @@ export function StructureTable({ structure, onStructureChange, onSave, onCancel,
             </TableHeader>
             <TableBody>
               {sortedFields.map((field, index) => (
-                <TableRow key={`${field.path}-${index}`} className="hover:bg-gray-50">
+                <TableRow key={`${field.path}-${index}`} className="hover:bg-gray-50 dark:hover:bg-emerald-900/30">
                   <TableCell className="py-3">
                     <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
                   </TableCell>
@@ -190,7 +190,7 @@ export function StructureTable({ structure, onStructureChange, onSave, onCancel,
                   </TableCell>
                   <TableCell className="py-3">
                     <div className="flex items-center gap-2">
-                      <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 truncate" title={field.path}>
+                      <code className="text-xs bg-gray-100 px-2 py-1 rounded flex-1 truncate dark:bg-neutral-900/60 dark:border dark:border-emerald-500/40 dark:text-emerald-100" title={field.path}>
                         {getShortenedPath(field.path)}
                       </code>
                       <Button

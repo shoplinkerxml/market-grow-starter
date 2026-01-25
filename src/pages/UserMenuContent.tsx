@@ -228,7 +228,7 @@ const UserMenuContent = () => {
                     <div className="rounded-md border">
                       <table className="w-full">
                         <thead>
-                          <tr className="bg-gray-50">
+                          <tr className="bg-gray-50 dark:bg-neutral-900/60">
                             {columns.map((column, index) => (
                               <th key={index} className="text-left p-4 font-medium">{column.label}</th>
                             ))}

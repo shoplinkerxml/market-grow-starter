@@ -43,9 +43,7 @@ function SortableColumnOption({
       ref={setNodeRef as any}
       style={style}
       data-testid={`user_products_columns_item_${id}`}
-      className={`w-full grid grid-cols-[auto,1fr,auto] items-center gap-2 rounded-sm px-2 py-1.5 text-sm ${
-        "bg-white"
-      } ${isDragging ? "ring-2 ring-emerald-400" : ""} ${disabled ? "opacity-50 pointer-events-none" : ""}`}
+      className={`w-full grid grid-cols-[auto,1fr,auto] items-center gap-2 rounded-sm px-2 py-1.5 text-sm border border-transparent bg-white text-slate-900 dark:bg-neutral-900/70 dark:text-emerald-100 dark:border-emerald-500/40 ${isDragging ? "ring-2 ring-emerald-400" : ""} ${disabled ? "opacity-50 pointer-events-none" : ""}`}
     >
         <Checkbox
           checked={checked}
@@ -174,7 +172,7 @@ export function ViewOptionsMenu<TData>({ table, disabled }: { table: import("@ta
         </Tooltip>
         <DropdownMenuContent
           align="end"
-          className="w-48 max-h-[70vh] bg-white text-slate-900 border-emerald-400 overflow-y-auto"
+          className="w-48 max-h-[70vh] bg-white text-slate-900 border-emerald-400 overflow-y-auto dark:bg-neutral-900 dark:text-emerald-100 dark:border-emerald-500/60"
           data-testid="user_products_columns_menu"
           onInteractOutside={(e) => {
             if (isDragging) e.preventDefault();

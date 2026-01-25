@@ -43,8 +43,8 @@ export const VisualMapper = ({
       )
     },
     style: {
-      background: '#f0fdf4',
-      border: '1px solid #86efac',
+      background: 'hsl(var(--card))',
+      border: '1px solid hsl(var(--primary) / 0.5)',
       borderRadius: '8px',
       padding: '10px'
     }
@@ -67,8 +67,8 @@ export const VisualMapper = ({
       )
     },
     style: {
-      background: '#eff6ff',
-      border: '1px solid #93c5fd',
+      background: 'hsl(var(--card))',
+      border: '1px solid hsl(var(--success) / 0.5)',
       borderRadius: '8px',
       padding: '10px'
     }
@@ -110,7 +110,7 @@ export const VisualMapper = ({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
-        className="bg-gray-50"
+        className="bg-gray-50 dark:bg-neutral-900/60"
       >
         <Controls />
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />

@@ -236,6 +236,9 @@ All colors MUST be HSL.
   .card-elevated-hover:hover {
     background-color: hsl(var(--primary-light));
   }
+  .dark .card-elevated-hover:hover {
+    background-color: hsl(var(--card));
+  }
 
   .bg-admin-page {
     background-color: hsl(var(--admin-page-bg));

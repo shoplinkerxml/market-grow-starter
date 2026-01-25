@@ -135,7 +135,7 @@ export const Products = () => {
           <div className="text-sm text-muted-foreground">
             <span>{t('deleting_product')}{deletingName ? `: ${deletingName}` : ''}</span>
           </div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
+          <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted dark:bg-neutral-900/60 dark:border dark:border-emerald-500/40">
             <div className="h-full w-2/3 bg-destructive/80 animate-pulse" />
           </div>
         </DialogNoOverlayContent>

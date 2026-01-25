@@ -166,7 +166,7 @@ export const SimpleMappingView: React.FC<SimpleMappingViewProps> = ({
       <div className="space-y-4">
         {sortedCategories.map(category => (
           <Card key={category}>
-            <CardHeader className="pb-3 bg-muted/50">
+            <CardHeader className="pb-3 bg-muted/50 dark:bg-neutral-900/60 dark:border-b dark:border-emerald-500/40">
               <CardTitle className="text-base flex items-center gap-2">
                 {category}
                 <Badge variant="secondary" className="text-xs">
@@ -279,21 +279,21 @@ export const SimpleMappingView: React.FC<SimpleMappingViewProps> = ({
                       const ratePath = field.path.replace('@id', '@rate');
                       const rateField = xmlFields.find(f => f.path === ratePath);
                       return (
-                        <div key={idx} className="p-3 bg-green-50 border-2 border-green-200 rounded-lg">
+                        <div key={idx} className="p-3 bg-green-50 border-2 border-green-200 rounded-lg dark:bg-neutral-900/60 dark:border-emerald-500/40">
                           <div className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5 dark:text-emerald-300" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <div className="font-medium text-sm text-green-900">
+                                <div className="font-medium text-sm text-green-900 dark:text-emerald-100">
                                   {field.sample || field.path.split('.').pop()}
                                 </div>
                                 {isManuallyAdded && (
-                                  <Badge variant="outline" className="text-xs bg-yellow-100 border-yellow-300 text-yellow-800">
+                                  <Badge variant="outline" className="text-xs bg-yellow-100 border-yellow-300 text-yellow-800 dark:bg-neutral-900/60 dark:border-emerald-500/40 dark:text-emerald-100">
                                     Додано вручну
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-xs text-green-700 mt-1 break-words">
+                              <div className="text-xs text-green-700 mt-1 break-words dark:text-emerald-200">
                                 <span className="font-medium">Курс:</span> {rateField?.sample || '-'}
                               </div>
                             </div>
@@ -304,21 +304,21 @@ export const SimpleMappingView: React.FC<SimpleMappingViewProps> = ({
                       const basePath = field.path.replace('.@id', '');
                       const nameField = xmlFields.find(f => f.path === basePath + '._text' || f.path === basePath);
                       return (
-                        <div key={idx} className="p-3 bg-green-50 border-2 border-green-200 rounded-lg">
+                        <div key={idx} className="p-3 bg-green-50 border-2 border-green-200 rounded-lg dark:bg-neutral-900/60 dark:border-emerald-500/40">
                           <div className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5 dark:text-emerald-300" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <div className="font-medium text-sm text-green-900">
+                                <div className="font-medium text-sm text-green-900 dark:text-emerald-100">
                                   {nameField?.sample || field.path.split('.').pop()}
                                 </div>
                                 {isManuallyAdded && (
-                                  <Badge variant="outline" className="text-xs bg-yellow-100 border-yellow-300 text-yellow-800">
+                                  <Badge variant="outline" className="text-xs bg-yellow-100 border-yellow-300 text-yellow-800 dark:bg-neutral-900/60 dark:border-emerald-500/40 dark:text-emerald-100">
                                     Додано вручну
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-xs text-green-700 mt-1 break-words">
+                              <div className="text-xs text-green-700 mt-1 break-words dark:text-emerald-200">
                                 <span className="font-medium">ID:</span> {field.sample || '-'}
                               </div>
                             </div>
@@ -329,21 +329,21 @@ export const SimpleMappingView: React.FC<SimpleMappingViewProps> = ({
                       const basePath = field.path.replace('.@name', '');
                       const textField = xmlFields.find(f => f.path === basePath + '._text' || f.path === basePath);
                       return (
-                        <div key={idx} className="p-3 bg-green-50 border-2 border-green-200 rounded-lg">
+                      <div key={idx} className="p-3 bg-green-50 border-2 border-green-200 rounded-lg dark:bg-neutral-900/60 dark:border-emerald-500/40">
                           <div className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5 dark:text-emerald-300" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <div className="font-medium text-sm text-green-900">
+                              <div className="font-medium text-sm text-green-900 dark:text-emerald-100">
                                   {field.sample || field.path.split('.').pop()}
                                 </div>
                                 {isManuallyAdded && (
-                                  <Badge variant="outline" className="text-xs bg-yellow-100 border-yellow-300 text-yellow-800">
+                                <Badge variant="outline" className="text-xs bg-yellow-100 border-yellow-300 text-yellow-800 dark:bg-neutral-900/60 dark:border-emerald-500/40 dark:text-emerald-100">
                                     Додано вручну
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-xs text-green-700 mt-1 break-words">
+                            <div className="text-xs text-green-700 mt-1 break-words dark:text-emerald-200">
                                 <span className="font-medium">Значення:</span> {textField?.sample || '-'}
                               </div>
                             </div>
@@ -359,22 +359,22 @@ export const SimpleMappingView: React.FC<SimpleMappingViewProps> = ({
                     }
                     
                     return (
-                      <div key={idx} className="p-3 bg-green-50 border-2 border-green-200 rounded-lg">
+                      <div key={idx} className="p-3 bg-green-50 border-2 border-green-200 rounded-lg dark:bg-neutral-900/60 dark:border-emerald-500/40">
                         <div className="flex items-start gap-2">
-                          <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                          <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5 dark:text-emerald-300" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <div className="font-medium text-sm text-green-900">
+                              <div className="font-medium text-sm text-green-900 dark:text-emerald-100">
                                 {field.path.split('.').pop()}
                               </div>
                               {isManuallyAdded && (
-                                <Badge variant="outline" className="text-xs bg-yellow-100 border-yellow-300 text-yellow-800">
+                                <Badge variant="outline" className="text-xs bg-yellow-100 border-yellow-300 text-yellow-800 dark:bg-neutral-900/60 dark:border-emerald-500/40 dark:text-emerald-100">
                                   Додано вручну
                                 </Badge>
                               )}
                             </div>
                             {field.sample && (
-                              <div className="text-xs text-green-700 mt-1 break-words">
+                              <div className="text-xs text-green-700 mt-1 break-words dark:text-emerald-200">
                                 <span className="font-medium">Приклад:</span> {field.sample}
                               </div>
                             )}

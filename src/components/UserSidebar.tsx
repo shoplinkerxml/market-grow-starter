@@ -150,10 +150,10 @@ export const UserSidebar = ({
       >
         <div
           className={cn(
-            "flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer",
+            "flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer border border-transparent",
             isActive(itemPath)
-              ? "bg-emerald-100 text-emerald-900"
-              : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+              ? "bg-emerald-100 text-emerald-900 dark:bg-transparent dark:text-emerald-200 dark:border-emerald-500/60"
+              : "text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-emerald-100/80 dark:hover:bg-transparent dark:hover:text-emerald-100 dark:hover:border-emerald-500/40"
           )}
         >
           <div 
@@ -211,6 +211,7 @@ export const UserSidebar = ({
         "relative flex flex-col border-r transition-all duration-300",
         "bg-gradient-to-r from-emerald-50/80 via-emerald-25/40 to-white",
         "shadow-[4px_0_16px_-4px_rgba(0,0,0,0.12)]",
+        "dark:bg-none dark:bg-neutral-950 dark:border-emerald-500/40 dark:shadow-none",
         collapsed ? "w-16" : "w-64"
       )}
     >
@@ -244,8 +245,8 @@ export const UserSidebar = ({
       {!collapsed && (
         <div className="p-4">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
-              <User className="h-4 w-4 text-emerald-600" />
+            <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center dark:bg-emerald-900/40">
+              <User className="h-4 w-4 text-emerald-600 dark:text-emerald-200" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium">{user.name}</p>

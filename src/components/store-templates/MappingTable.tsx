@@ -147,7 +147,7 @@ export const MappingTable: React.FC<MappingTableProps> = ({
   return (
     <div className="space-y-6">
       {/* Прогрес-бар */}
-      <div className="bg-muted/50 border rounded-lg p-4">
+      <div className="bg-muted/50 border rounded-lg p-4 dark:bg-neutral-900/60 dark:border-emerald-500/40">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold">
             Прогрес налаштування обов'язкових полів
@@ -191,7 +191,7 @@ export const MappingTable: React.FC<MappingTableProps> = ({
       <div className="border rounded-lg overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50">
+            <TableRow className="bg-gray-50 dark:bg-neutral-900/70">
               <TableHead className="font-semibold w-[25%]">XML поле</TableHead>
               <TableHead className="font-semibold w-[20%]">Значення</TableHead>
               <TableHead className="w-12"></TableHead>
@@ -203,7 +203,7 @@ export const MappingTable: React.FC<MappingTableProps> = ({
           <TableBody>
             {filteredFields.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={6} className="text-center py-8 text-gray-500 dark:text-emerald-200/70">
                   {searchQuery || showOnlyUnmapped 
                     ? 'Нічого не знайдено' 
                     : 'Завантажте XML файл'}
@@ -220,7 +220,7 @@ export const MappingTable: React.FC<MappingTableProps> = ({
                 const isMapped = !!currentMapping;
 
                 return (
-                  <TableRow key={index} className="hover:bg-gray-50">
+                  <TableRow key={index} className="hover:bg-gray-50 dark:hover:bg-emerald-900/30">
                     <TableCell>
                       <div className="space-y-1">
                         <div className="font-medium flex items-center gap-2">
@@ -231,7 +231,7 @@ export const MappingTable: React.FC<MappingTableProps> = ({
                             </Badge>
                           )}
                         </div>
-                        <code className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                        <code className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded dark:bg-neutral-900/60 dark:border dark:border-emerald-500/40 dark:text-emerald-100">
                           {field.path}
                         </code>
                       </div>
@@ -261,7 +261,7 @@ export const MappingTable: React.FC<MappingTableProps> = ({
                         <SelectContent>
                           {suggestedField && !isMapped && (
                             <>
-                              <SelectItem value={suggestedField} className="bg-accent/30">
+                              <SelectItem value={suggestedField} className="bg-accent/30 dark:bg-emerald-900/40 dark:text-emerald-100">
                                 <div className="flex items-center gap-2">
                                   <span>⭐</span>
                                   <span>{systemFields.find(f => f.id === suggestedField)?.label}</span>
@@ -327,7 +327,7 @@ export const MappingTable: React.FC<MappingTableProps> = ({
       </div>
 
       {/* Інформація про обов'язкові поля */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 dark:bg-neutral-900/60 dark:border-emerald-500/40">
         <h4 className="font-semibold mb-3 flex items-center gap-2">
           <AlertCircle className="h-4 w-4" />
           Обов'язкові поля
@@ -340,7 +340,7 @@ export const MappingTable: React.FC<MappingTableProps> = ({
                 key={field.id}
                 className={`flex items-center gap-2 text-sm p-2 rounded ${
                   isMapped ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive'
-                }`}
+                } dark:bg-neutral-900/60 dark:text-emerald-100 dark:border dark:border-emerald-500/40`}
               >
                 {isMapped ? (
                   <CheckCircle2 className="h-4 w-4" />

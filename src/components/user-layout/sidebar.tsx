@@ -82,7 +82,7 @@ export const UserSidebarNav = memo(
                 <div key={section.key}>
                   {sectionIndex > 0 ? (
                     <div className="py-2">
-                      <div className="border-t border-gray-200" />
+                      <div className="border-t border-gray-200 dark:border-emerald-500/30" />
                     </div>
                   ) : null}
                   <MenuSection
@@ -128,13 +128,13 @@ export const UserSidebarFooter = memo(
               <Button variant="ghost" size="icon" className="w-full" title={user.name}>
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={user.avatar_url} alt={user.name} />
-                  <AvatarFallback className="bg-emerald-100 text-emerald-600 font-semibold">
+                  <AvatarFallback className="bg-emerald-100 text-emerald-600 font-semibold dark:bg-emerald-900/40 dark:text-emerald-200">
                     {user.name?.charAt(0).toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48 dark:bg-neutral-900/90 dark:border-emerald-500/60 dark:text-emerald-100">
               <DropdownMenuItem onClick={onLogout} className="focus:text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
                 {t("logout")}
@@ -145,7 +145,7 @@ export const UserSidebarFooter = memo(
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10 shrink-0 ml-2">
               <AvatarImage src={user.avatar_url} alt={user.name} />
-              <AvatarFallback className="bg-emerald-100 text-emerald-600 font-semibold">
+              <AvatarFallback className="bg-emerald-100 text-emerald-600 font-semibold dark:bg-emerald-900/40 dark:text-emerald-200">
                 {user.name?.charAt(0).toUpperCase() || "U"}
               </AvatarFallback>
             </Avatar>
@@ -163,7 +163,7 @@ export const UserSidebarFooter = memo(
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-48 dark:bg-neutral-900/90 dark:border-emerald-500/60 dark:text-emerald-100">
                 <DropdownMenuItem onClick={onLogout} className="focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   {t("logout")}

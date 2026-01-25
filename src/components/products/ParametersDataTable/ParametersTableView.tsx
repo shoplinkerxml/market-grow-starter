@@ -17,7 +17,7 @@ export const ParametersTableView = React.memo(function ParametersTableView({
   return (
     <div className="overflow-hidden rounded-lg">
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-muted">
+        <TableHeader className="sticky top-0 z-10 bg-muted dark:bg-neutral-900/70">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (

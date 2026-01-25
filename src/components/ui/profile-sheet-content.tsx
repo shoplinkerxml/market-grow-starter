@@ -49,10 +49,10 @@ export const ProfileSheetContent: React.FC<ProfileSheetContentProps> = ({
   return (
     <div className="mt-4 space-y-6">
       {/* User Details Section */}
-      <div className="flex items-center gap-3 border-b pb-4">
+      <div className="flex items-center gap-3 border-b pb-4 dark:border-emerald-500/30">
         <Avatar className="h-12 w-12">
           <AvatarImage src={userInfo.avatarUrl || "/placeholder.svg"} alt="Admin" />
-          <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium">
+          <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
             {getAvatarFallback()}
           </AvatarFallback>
         </Avatar>
@@ -70,10 +70,10 @@ export const ProfileSheetContent: React.FC<ProfileSheetContentProps> = ({
       <div className="space-y-1">
         <Button 
           variant="ghost" 
-          className="w-full justify-start h-auto py-3 hover:bg-emerald-300/10 hover:text-emerald-600 flex items-start gap-3" 
+          className="w-full justify-start h-auto py-3 hover:bg-emerald-300/10 hover:text-emerald-600 flex items-start gap-3 dark:hover:bg-transparent dark:hover:text-emerald-200 dark:border dark:border-transparent dark:hover:border-emerald-500/50" 
           onClick={handleProfileClick}
         >
-          <div className="h-9 w-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center ring-1 ring-emerald-100">
+          <div className="h-9 w-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center ring-1 ring-emerald-100 dark:bg-neutral-900/60 dark:text-emerald-100 dark:ring-emerald-500/40">
             <User2 className="h-5 w-5" />
           </div>
           <div className="flex-1 text-left">

@@ -109,7 +109,7 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
           <MoreVertical className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="bg-white border border-emerald-300/40 dark:bg-neutral-900/80 dark:border-emerald-500/40">
         <DropdownMenuItem onClick={onEdit} className="cursor-pointer" data-testid="user_products_row_edit">
           <Edit className="mr-2 h-4 w-4" />
           {t("edit")}
@@ -139,7 +139,7 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
               <Store className="mr-2 h-4 w-4" />
               {t("menu_stores")}
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="p-1" data-testid={`user_products_row_stores_content_${product.id}`}>
+        <DropdownMenuSubContent className="p-1 bg-white border border-emerald-300/40 dark:bg-neutral-900/80 dark:border-emerald-500/40" data-testid={`user_products_row_stores_content_${product.id}`}>
               {((stores || []).length === 0 && loadingStores) ? (
                 <DropdownMenuItem disabled>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -156,7 +156,7 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
                         return (
                           <DropdownMenuItem
                             key={id}
-                            className="cursor-pointer pr-2 pl-2 hover:bg-muted/60 focus:bg-muted/60"
+                            className="cursor-pointer pr-2 pl-2 hover:bg-muted/60 focus:bg-muted/60 dark:hover:bg-emerald-900/40 dark:focus:bg-emerald-900/40"
                             onSelect={(e) => e.preventDefault()}
                             data-testid={`user_products_row_store_item_${product.id}_${id}`}
                           >

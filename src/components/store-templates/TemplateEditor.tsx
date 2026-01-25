@@ -50,12 +50,12 @@ export const TemplateEditor = ({ structure }: TemplateEditorProps) => {
 
   const getTypeBadgeColor = (type: string) => {
     switch (type) {
-      case 'string': return 'bg-primary/10 text-primary';
-      case 'number': return 'bg-primary/10 text-primary';
-      case 'array': return 'bg-secondary/50 text-secondary-foreground';
-      case 'object': return 'bg-orange-100 text-orange-800';
-      case 'boolean': return 'bg-accent/50 text-accent-foreground';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'string': return 'bg-primary/10 text-primary dark:bg-emerald-900/30 dark:text-emerald-100 dark:border dark:border-emerald-500/40';
+      case 'number': return 'bg-primary/10 text-primary dark:bg-emerald-900/30 dark:text-emerald-100 dark:border dark:border-emerald-500/40';
+      case 'array': return 'bg-secondary/50 text-secondary-foreground dark:bg-emerald-900/30 dark:text-emerald-100 dark:border dark:border-emerald-500/40';
+      case 'object': return 'bg-orange-100 text-orange-800 dark:bg-emerald-900/30 dark:text-emerald-100 dark:border dark:border-emerald-500/40';
+      case 'boolean': return 'bg-accent/50 text-accent-foreground dark:bg-emerald-900/30 dark:text-emerald-100 dark:border dark:border-emerald-500/40';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-emerald-900/30 dark:text-emerald-100 dark:border dark:border-emerald-500/40';
     }
   };
 
@@ -108,7 +108,7 @@ export const TemplateEditor = ({ structure }: TemplateEditorProps) => {
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       <div className="flex items-center gap-2">
-                        <code className="bg-gray-100 px-2 py-1 rounded">{field.path}</code>
+                        <code className="bg-gray-100 px-2 py-1 rounded dark:bg-neutral-900/60 dark:border dark:border-emerald-500/40 dark:text-emerald-100">{field.path}</code>
                         <Button
                           variant="ghost"
                           size="icon"

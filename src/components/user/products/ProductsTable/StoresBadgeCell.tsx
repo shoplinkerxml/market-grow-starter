@@ -146,7 +146,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
     return (
       <DropdownMenuContent
         align="start"
-        className="p-1 overflow-visible"
+        className="p-1 overflow-visible bg-white border border-emerald-300/40 dark:bg-neutral-900/80 dark:border-emerald-500/40"
         style={
           {
             width: `${storesMenuWidthPx}px`,
@@ -173,7 +173,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
               return (
                 <DropdownMenuItem
                   key={id}
-                  className="group relative flex w-full cursor-pointer items-center gap-2 pl-2 pr-2 hover:bg-muted/60 focus:bg-muted/60 hover:w-[calc(100%+var(--stores-menu-hover-extra))] focus:w-[calc(100%+var(--stores-menu-hover-extra))] hover:pr-8 focus:pr-8 transition-[width,padding] duration-150 ease-out"
+                  className="group relative flex w-full cursor-pointer items-center gap-2 pl-2 pr-2 hover:bg-muted/60 focus:bg-muted/60 dark:hover:bg-emerald-900/40 dark:focus:bg-emerald-900/40 hover:w-[calc(100%+var(--stores-menu-hover-extra))] focus:w-[calc(100%+var(--stores-menu-hover-extra))] hover:pr-8 focus:pr-8 transition-[width,padding] duration-150 ease-out"
                   onSelect={(e) => e.preventDefault()}
                   data-testid={`user_products_store_menu_item_${product.id}_${menuId}_${id}`}
                 >
@@ -228,7 +228,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
 
                   <button
                     type="button"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto hover:bg-muted hover:text-foreground"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto hover:bg-muted hover:text-foreground dark:hover:bg-emerald-900/40 dark:hover:text-emerald-100"
                     aria-label="close_menu"
                     data-testid={`user_products_store_menu_close_${product.id}_${menuId}_${id}`}
                     onClick={(e) => {
@@ -297,7 +297,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                 >
                   <Badge
                     variant="secondary"
-                    className="relative inline-flex items-center rounded-md px-2 py-0 text-[11px] h-5 max-w-[10rem] truncate"
+                    className="relative inline-flex items-center rounded-md px-2 py-0 text-[11px] h-5 max-w-[10rem] truncate dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"
                   >
                     <span className="min-w-0 select-none truncate" title={name} data-testid={`user_products_store_badge_${product.id}_${id}`}>
                       {label}
@@ -306,7 +306,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
 
                   <Badge
                     variant="secondary"
-                    className="absolute inset-y-0 left-0 z-20 inline-flex h-full w-[calc(100%+18px)] items-center rounded-md px-2 py-0 pr-6 text-[11px] opacity-0 pointer-events-none overflow-visible transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100"
+                    className="absolute inset-y-0 left-0 z-20 inline-flex h-full w-[calc(100%+18px)] items-center rounded-md px-2 py-0 pr-6 text-[11px] opacity-0 pointer-events-none overflow-visible transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"
                   >
                     <span className="min-w-0 flex-1 select-none truncate" title={name}>
                       {label}

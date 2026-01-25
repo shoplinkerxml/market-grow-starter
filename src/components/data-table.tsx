@@ -460,7 +460,7 @@ export function DataTable({
                 <ChevronDownIcon />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-56 bg-white border border-emerald-300/40 dark:bg-neutral-900/80 dark:border-emerald-500/40">
               {table
                 .getAllColumns()
                 .filter(
@@ -503,7 +503,7 @@ export function DataTable({
             id={sortableId}
           >
             <Table>
-              <TableHeader className="sticky top-0 z-10 bg-muted">
+              <TableHeader className="sticky top-0 z-10 bg-muted dark:bg-neutral-900/70">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
