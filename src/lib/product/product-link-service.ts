@@ -104,17 +104,22 @@ export class ProductLinkService {
     try {
       const deletedByStore = out.deletedByStore || {};
       const categoryNamesByStore = out.categoryNamesByStore || {};
-      // Используем deletedProductIds из ответа сервера (когда productIds не указаны)
       const actualProductIds = Array.isArray(out.deletedProductIds) && out.deletedProductIds.length > 0
         ? out.deletedProductIds.map(String)
         : productIds;
-      
-      await ShopProductSyncService.syncAfterBulkRemove(
-        deletedByStore,
-        categoryNamesByStore,
-        actualProductIds,
-        storeIds
-      );
+
+      Promise.resolve()
+        .then(async () => {
+          await ShopProductSyncService.syncAfterBulkRemove(
+            deletedByStore,
+            categoryNamesByStore,
+            actualProductIds,
+            storeIds
+          );
+        })
+        .catch((error) => {
+          console.error("ProductLinkService.bulkRemoveStoreProductLinks sync failed", error);
+        });
     } catch (error) {
       console.error("ProductLinkService.bulkRemoveStoreProductLinks sync failed", error);
     }

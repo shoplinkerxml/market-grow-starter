@@ -262,7 +262,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="h-6 w-6 p-0 mx-auto border border-neutral-300 text-neutral-500 bg-neutral-100 hover:bg-neutral-200"
+            className="h-6 w-6 p-0 mx-auto border border-neutral-300 text-neutral-500 bg-neutral-100 hover:bg-neutral-200 dark:border-emerald-500/60 dark:text-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40"
             aria-label={t("menu_stores")}
             data-testid={`user_products_store_add_trigger_${product.id}`}
             onClick={(e) => {
@@ -295,7 +295,10 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                   }}
                   data-testid={`user_products_store_badge_trigger_${product.id}_${id}`}
                 >
-                  <Badge variant="secondary" className="relative inline-flex items-center rounded-md px-2 py-0 text-[11px] h-5 max-w-[10rem] truncate">
+                  <Badge
+                    variant="secondary"
+                    className="relative inline-flex items-center rounded-md px-2 py-0 text-[11px] h-5 max-w-[10rem] truncate"
+                  >
                     <span className="min-w-0 select-none truncate" title={name} data-testid={`user_products_store_badge_${product.id}_${id}`}>
                       {label}
                     </span>
@@ -311,7 +314,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                     {onRemove ? (
                       <button
                         type="button"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-4 w-4 items-center justify-center rounded text-muted-foreground opacity-0 pointer-events-auto transition-[opacity,transform,color,background-color] duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 hover:scale-110 hover:bg-black/30 hover:text-white active:scale-95"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-4 w-4 items-center justify-center rounded text-muted-foreground opacity-0 pointer-events-auto transition-[opacity,transform,color,background-color] duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 hover:scale-110 hover:bg-black/30 hover:text-white active:scale-95 dark:hover:bg-emerald-900/70 dark:hover:text-emerald-100"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();

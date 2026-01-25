@@ -19,17 +19,17 @@ const LoaderCard = ({
 }) => {
   const GlowIcon = Icon;
   return (
-    <div className="relative w-full max-w-md rounded-2xl border bg-white/80 shadow-lg">
+    <div className="relative w-full max-w-md rounded-2xl border bg-white/80 shadow-lg dark:bg-neutral-900/90 dark:border-emerald-500/70 dark:shadow-none">
       <div className="absolute -top-20 left-1/2 -translate-x-1/2 blur-3xl opacity-30">
         <div className="h-40 w-40 rounded-full bg-emerald-300" />
       </div>
       <div className="relative p-8 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-200">
           {GlowIcon ? <GlowIcon className="h-6 w-6" /> : <div className="h-6 w-6 rounded-full bg-emerald-400" />}
         </div>
-        <div className="text-lg sm:text-xl font-semibold text-emerald-700">{title}</div>
+        <div className="text-lg sm:text-xl font-semibold text-emerald-700 dark:text-emerald-200">{title}</div>
         {subtitle ? (
-          <div className="mt-1 text-sm text-muted-foreground">{subtitle}</div>
+          <div className="mt-1 text-sm text-muted-foreground dark:text-emerald-200/80">{subtitle}</div>
         ) : null}
         <div className="mt-6 flex items-center justify-center gap-2">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.2s]" />

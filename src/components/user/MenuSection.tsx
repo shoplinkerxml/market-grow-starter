@@ -150,8 +150,8 @@ export const MenuSection: React.FC<MenuSectionProps> = ({
                     collapsed ? "w-10 h-10 p-0 mx-auto" : "px-3 py-2",
                     (!hasAccess && !isAlwaysAccessibleItem(item)) ? "opacity-50 cursor-not-allowed pointer-events-none" : (
                       isActiveItem(item)
-                        ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50 shadow-sm"
-                        : "hover:bg-emerald-50 border border-transparent"
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50 shadow-sm dark:bg-transparent dark:text-emerald-300 dark:border-emerald-400/70 dark:shadow-none"
+                        : "hover:bg-emerald-50 border border-transparent hover:border-emerald-200/30 hover:shadow-sm dark:hover:bg-transparent dark:hover:border-emerald-400/60 dark:hover:shadow-none"
                     )
                   )}
                   aria-label={`${translatedTitle} - ${isExpanded ? "Collapse" : "Expand"} submenu`}

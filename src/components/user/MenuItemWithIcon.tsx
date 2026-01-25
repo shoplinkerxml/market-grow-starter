@@ -81,8 +81,8 @@ export const MenuItemWithIcon: React.FC<MenuItemWithIconProps> = ({
   const stateClasses = disabled
     ? "opacity-50 cursor-not-allowed pointer-events-none"
     : (isActive
-    ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50 shadow-sm"
-    : "hover:bg-emerald-50 border border-transparent");
+    ? "bg-emerald-50 text-emerald-600 border border-emerald-200/50 shadow-sm dark:bg-transparent dark:text-emerald-300 dark:border-emerald-400/70 dark:shadow-none"
+    : "hover:bg-emerald-50 border border-transparent dark:hover:bg-transparent dark:hover:border-emerald-400/60");
 
   const iconSize = variant === 'dashboard' ? "w-6 h-6" : "w-5 h-5";
   const iconMargin = collapsed ? "" : "mr-3"; // 12px gap between icon and text

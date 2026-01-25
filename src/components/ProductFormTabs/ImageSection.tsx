@@ -298,10 +298,22 @@ export function ImageSection(props: Props) {
             </CardContent>
             {props.images.length > 1 && (
               <>
-                <Button variant="outline" size="icon" className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors" style={{ left: 'min(1.75%, 0.5rem)' }} onClick={props.onPrev}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors dark:bg-white/80 dark:border-black/50 dark:text-black dark:hover:border-black/70 dark:hover:text-black"
+                  style={{ left: 'min(1.75%, 0.5rem)' }}
+                  onClick={props.onPrev}
+                >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="icon" className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors" style={{ right: 'min(1.75%, 0.5rem)' }} onClick={props.onNext}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors dark:bg-white/80 dark:border-black/50 dark:text-black dark:hover:border-black/70 dark:hover:text-black"
+                  style={{ right: 'min(1.75%, 0.5rem)' }}
+                  onClick={props.onNext}
+                >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </>
@@ -418,7 +430,7 @@ export function ImageSection(props: Props) {
         <Card className="relative group w-full" data-testid="productFormTabs_dropZone">
           <CardContent className="p-1 md:p-2">
             <div
-              className={`relative overflow-hidden rounded-md flex flex-col items-center justify-center transition-all duration-200 cursor-pointer ${props.isDragOver ? 'bg-emerald-100 border-2 border-dashed border-emerald-300 shadow-sm' : 'bg-emerald-50 hover:bg-emerald-100 border-2 border-dashed border-emerald-200 hover:border-emerald-300 hover:shadow-md hover:shadow-emerald-100'} hover:scale-[1.01]`}
+              className={`relative overflow-hidden rounded-md flex flex-col items-center justify-center transition-all duration-200 cursor-pointer ${props.isDragOver ? 'bg-emerald-100 border-2 border-dashed border-emerald-300 shadow-sm dark:bg-neutral-900/70 dark:border-emerald-500/70 dark:shadow-none' : 'bg-emerald-50 hover:bg-emerald-100 border-2 border-dashed border-emerald-200 hover:border-emerald-300 hover:shadow-md hover:shadow-emerald-100 dark:bg-neutral-900/60 dark:hover:bg-neutral-900/70 dark:border-emerald-500/60 dark:hover:border-emerald-400/80 dark:hover:shadow-none'} hover:scale-[1.01]`}
               style={{ width: '100%', maxWidth: '100%', height: 'auto', minHeight: 'clamp(12rem, 30vh, 24rem)' }}
               onDragEnter={props.onDragEnter}
               onDragOver={props.onDragOver}
@@ -434,19 +446,19 @@ export function ImageSection(props: Props) {
                 }
               }}
             >
-              <ImageIcon className={`h-12 w-12 mb-2 md:mb-3 transition-colors ${props.isDragOver ? 'text-emerald-600' : 'text-emerald-500'}`} />
-              <p className={`text-sm text-center px-2 transition-colors ${props.isDragOver ? 'text-emerald-700 font-medium' : 'text-emerald-700'}`}>{props.isDragOver ? t('drop_image_here') : t('click_to_upload') || t('add_images_instruction')}</p>
-              <p className="text-xs text-center text-muted-foreground mt-1 md:mt-2 px-3" data-testid="productFormTabs_fileInfo">
+              <ImageIcon className={`h-12 w-12 mb-2 md:mb-3 transition-colors ${props.isDragOver ? 'text-emerald-600' : 'text-emerald-500'} dark:text-emerald-300`} />
+              <p className={`text-sm text-center px-2 transition-colors ${props.isDragOver ? 'text-emerald-700 font-medium' : 'text-emerald-700'} dark:text-emerald-200`}>{props.isDragOver ? t('drop_image_here') : t('click_to_upload') || t('add_images_instruction')}</p>
+              <p className="text-xs text-center text-muted-foreground mt-1 md:mt-2 px-3 dark:text-emerald-200/80" data-testid="productFormTabs_fileInfo">
                 {t('image_types_and_limit')}
               </p>
               {props.uploading ? (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-10">
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center z-10 dark:bg-neutral-950/70">
                   <div className="w-[min(22rem,90%)]">
                     <div className="flex items-center gap-2 justify-center">
-                      <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
-                      <span className="text-sm text-emerald-700">{t('uploading_image')}</span>
+                      <Loader2 className="h-5 w-5 animate-spin text-emerald-600 dark:text-emerald-300" />
+                      <span className="text-sm text-emerald-700 dark:text-emerald-200">{t('uploading_image')}</span>
                       {typeof props.uploadProgress === 'number' ? (
-                        <span className="text-sm text-emerald-700 tabular-nums">{props.uploadProgress}%</span>
+                        <span className="text-sm text-emerald-700 tabular-nums dark:text-emerald-200">{props.uploadProgress}%</span>
                       ) : null}
                     </div>
                     {typeof props.uploadProgress === 'number' ? (

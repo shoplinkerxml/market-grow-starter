@@ -130,12 +130,12 @@ function ProductCard({
             <img
               src={src}
               alt={name}
-              className="h-full w-full object-contain bg-white"
+              className="h-full w-full object-contain bg-white dark:bg-neutral-900"
               loading="lazy"
               onError={onError}
             />
           ) : (
-            <div className="h-full w-full flex items-center justify-center text-muted-foreground bg-white">
+            <div className="h-full w-full flex items-center justify-center text-muted-foreground bg-white dark:bg-neutral-900">
               <ImageIcon className="h-10 w-10 opacity-60" />
             </div>
           )}
@@ -165,7 +165,7 @@ function ProductCard({
             </Badge>
           ))}
           {storeLabels.length > 4 ? (
-            <Badge variant="outline" className="rounded-md px-2 py-0.5 text-[11px] h-5">
+            <Badge variant="outline" className="rounded-md px-2 py-0.5 text-[11px] h-5 dark:border-emerald-500/60 dark:text-emerald-200">
               +{storeLabels.length - 4}
             </Badge>
           ) : null}

@@ -202,6 +202,7 @@ export function AddToStoresMenu({
       toast.error(t('failed_remove_from_store'));
     } finally {
       setRemovingStores(false);
+      setRemovingStoreId(null);
       table.resetRowSelection();
       setSelectedStoreIds(prev => prev.filter(sid => !storeIds.includes(sid)));
     }
@@ -253,8 +254,7 @@ export function AddToStoresMenu({
     return sum + normalizeCount(s?.productsCount);
   }, 0);
 
-  const removingAnyStores = removingStores || !!removingStoreId;
-  const showProgressModal = addingStores || removingAnyStores;
+  const showProgressModal = addingStores || removingStores;
   const progressTitle = addingStores ? t("products_add_to_stores_title") : t("products_remove_from_stores_title");
   const progressDescription = addingStores ? t("products_add_to_stores_description") : t("products_remove_from_stores_description");
   const progressIcon = addingStores ? Store : Trash2;
