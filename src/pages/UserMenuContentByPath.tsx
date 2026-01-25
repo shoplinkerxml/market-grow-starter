@@ -136,16 +136,16 @@ const UserMenuContentByPath = () => {
   const directoriesConfig = useMemo(
     () => [
       {
-        key: "product-templates",
-        titleKey: "menu_product_templates",
-        icon: FileCode,
-        href: "/user/product-templates",
-      },
-      {
         key: "category-templates",
         titleKey: "menu_category_templates",
         icon: Layers,
         href: "/user/category-templates",
+      },
+      {
+        key: "product-templates",
+        titleKey: "menu_product_templates",
+        icon: FileCode,
+        href: "/user/product-templates",
       },
       {
         key: "product-colors",
