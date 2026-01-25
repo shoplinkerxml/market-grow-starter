@@ -285,7 +285,7 @@ const UserMenuContentByPath = () => {
   if (isDirectoriesPage) {
     return (
       <div className="p-6 space-y-6">
-        <PageHeader title={menuItem?.title || "Довідники"} breadcrumbItems={breadcrumbs} />
+        <PageHeader title={t("menu_directories")} breadcrumbItems={breadcrumbs} />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {directoriesConfig.map((item) => {
             const Icon = item.icon;
