@@ -44,6 +44,7 @@ const USER_ROUTE_MAPPING: Record<string, { labelKey: string; parentPath?: string
   "/user/reference": { labelKey: "menu_directories", parentPath: "/user" },
   "/user/product-templates": { labelKey: "menu_product_templates", parentPath: "/user/directory" },
   "/user/category-templates": { labelKey: "menu_category_templates", parentPath: "/user/directory" },
+  "/user/brand-templates": { labelKey: "menu_brand_templates", parentPath: "/user/directory" },
   "/user/product-colors": { labelKey: "menu_product_colors", parentPath: "/user/directory" },
 };
 
@@ -283,6 +284,11 @@ export function usePageInfo() {
       case "/user/category-templates":
         return {
           title: t("menu_category_templates"),
+          description: undefined,
+        };
+      case "/user/brand-templates":
+        return {
+          title: t("menu_brand_templates"),
           description: undefined,
         };
       case "/user/product-colors":

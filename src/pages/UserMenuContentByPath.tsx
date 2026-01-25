@@ -18,7 +18,7 @@ import { ShopService, type Shop, type ShopAggregated } from "@/lib/shop-service"
 import { ShopStructureEditor } from "@/components/user/shops";
 import { ExportDialog } from "@/components/user/shops/ExportDialog";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
-import { FileCode, Layers, Palette } from "lucide-react";
+import { Layers, Package, Palette, Tag } from "lucide-react";
 
 interface UserDashboardContextType {
   user: UserProfile;
@@ -144,8 +144,14 @@ const UserMenuContentByPath = () => {
       {
         key: "product-templates",
         titleKey: "menu_product_templates",
-        icon: FileCode,
+        icon: Package,
         href: "/user/product-templates",
+      },
+      {
+        key: "brand-templates",
+        titleKey: "menu_brand_templates",
+        icon: Tag,
+        href: "/user/brand-templates",
       },
       {
         key: "product-colors",

@@ -335,6 +335,7 @@ export const commonDictionary: Dictionary = {
   menu_directories: { uk: "Довідники", en: "Directory" },
   menu_product_templates: { uk: "Шаблони товарів", en: "Product templates" },
   menu_category_templates: { uk: "Шаблони категорій", en: "Category templates" },
+  menu_brand_templates: { uk: "Шаблони брендів", en: "Brand templates" },
   menu_product_colors: { uk: "Кольори товарів", en: "Product colors" },
   menu_pricing: { uk: "Тарифні плани", en: "Pricing Plans" },
   menu_currency: { uk: "Валюта", en: "Currency" },
