@@ -33,13 +33,35 @@ export function createParametersColumns(args: {
                   : false
             }
             onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onTouchStart={(event) => {
+              event.stopPropagation();
+            }}
             aria-label={args.t("select_all")}
           />
         </div>
       ),
       cell: ({ row }) => (
         <div className="flex items-center justify-start">
-          <Checkbox checked={row.getIsSelected()} onCheckedChange={(value) => row.toggleSelected(!!value)} aria-label={args.t("select_row")} />
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onTouchStart={(event) => {
+              event.stopPropagation();
+            }}
+            aria-label={args.t("select_row")}
+          />
         </div>
       ),
       enableSorting: false,
@@ -103,4 +125,3 @@ export function createParametersColumns(args: {
     },
   ];
 }
-

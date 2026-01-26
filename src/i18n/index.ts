@@ -1,13 +1,20 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import type { ReactNode } from "react";
 import { useI18nStore } from "./store";
 import type { Lang } from "./types";
 
 export const useI18n = () => {
   const lang = useI18nStore((state) => state.lang);
-  const t = useI18nStore((state) => state.t);
+  const rawT = useI18nStore((state) => state.t);
   const setLang = useI18nStore((state) => state.setLang);
   const loading = useI18nStore((state) => state.loading);
+  const t = useCallback(
+    (key: string) => {
+      const value = rawT(key);
+      return lang ? value : value;
+    },
+    [rawT, lang],
+  );
 
   return { lang, t, setLang, loading };
 };
