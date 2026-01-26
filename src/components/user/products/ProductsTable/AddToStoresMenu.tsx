@@ -182,6 +182,7 @@ export function AddToStoresMenu({
   const handleRemoveFromStores = async (storeIds: string[], productIds: string[]) => {
     if (storeIds.length === 0) return;
 
+    setOpen(false);
     setRemovingStores(true);
 
     try {
@@ -215,6 +216,7 @@ export function AddToStoresMenu({
 
     if (productsInStore.length === 0) return;
 
+    setOpen(false);
     const productIds = productsInStore.map(p => String(p.id));
     setRemovingStoreId(storeId);
 
