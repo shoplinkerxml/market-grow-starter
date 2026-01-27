@@ -27,15 +27,14 @@ import {
   Asterisk,
   Check,
   CheckCircle2,
-  Filter,
   Hash,
   Layers,
   List,
   Plus,
   Ruler,
-  Type,
   Eye,
   KeyRound,
+  Type,
   ArrowLeft,
   ArrowRight,
   Sparkles,
@@ -385,7 +384,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
         </CardContent>
       </Card>
       <Dialog open={attrDialogOpen} onOpenChange={setAttrDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("btn_add")}</DialogTitle>
             <DialogDescription className="sr-only">{t("btn_add")}</DialogDescription>
@@ -415,21 +414,6 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
             <FormField label={t("attribute_unit")} htmlFor="attr-unit" icon={Ruler}>
               <Input id="attr-unit" value={attrForm.unit || ""} onChange={(e) => setAttrForm((p) => ({ ...p, unit: e.target.value }))} />
             </FormField>
-            <FormField label={t("attribute_default")} htmlFor="attr-default" icon={Type}>
-              <Input id="attr-default" value={attrForm.default_value || ""} onChange={(e) => setAttrForm((p) => ({ ...p, default_value: e.target.value }))} />
-            </FormField>
-            <SwitchField
-              label={t("attribute_required")}
-              icon={Asterisk}
-              checked={attrForm.is_required}
-              onCheckedChange={(v) => setAttrForm((p) => ({ ...p, is_required: !!v }))}
-            />
-            <SwitchField
-              label={t("attribute_filterable")}
-              icon={Filter}
-              checked={attrForm.is_filterable}
-              onCheckedChange={(v) => setAttrForm((p) => ({ ...p, is_filterable: !!v }))}
-            />
             <SwitchField
               label={t("attribute_active")}
               icon={CheckCircle2}
@@ -446,7 +430,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
         </DialogContent>
       </Dialog>
       <Dialog open={valueDialogOpen} onOpenChange={setValueDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{valueForm.id ? t("edit_value") : t("add_value")}</DialogTitle>
             <DialogDescription className="sr-only">{t("add_value")}</DialogDescription>
@@ -477,7 +461,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
         </DialogContent>
       </Dialog>
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("bulk_add_value")}</DialogTitle>
             <DialogDescription className="sr-only">{t("bulk_add_value")}</DialogDescription>

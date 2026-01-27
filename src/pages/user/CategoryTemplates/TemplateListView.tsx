@@ -123,7 +123,7 @@ export function TemplateListView() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  disabled={selectedRowIds.length === 0}
+                  disabled={selectedRowIds.length !== 1}
                   onClick={() => {
                     const id = selectedRowIds[0];
                     const tpl = templates.find((r) => r.id === id);
@@ -135,7 +135,7 @@ export function TemplateListView() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  disabled={selectedRowIds.length === 0}
+                  disabled={selectedRowIds.length !== 1}
                   onClick={() => {
                     const id = selectedRowIds[0];
                     const tpl = templates.find((r) => r.id === id);
@@ -147,7 +147,7 @@ export function TemplateListView() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  disabled={selectedRowIds.length === 0}
+                  disabled={selectedRowIds.length !== 1}
                   onClick={() => {
                     const id = selectedRowIds[0];
                     const tpl = templates.find((r) => r.id === id);
@@ -234,15 +234,15 @@ export function TemplateListView() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => openEditor(tpl)} className="cursor-pointer">
+                                  <DropdownMenuItem onClick={() => openEditor(tpl)} className="cursor-pointer" disabled={selectedRowIds.length !== 1}>
                                     <Pencil className="mr-2 h-4 w-4" />
                                     {t("edit_template")}
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => openApply(tpl)} className="cursor-pointer">
+                                  <DropdownMenuItem onClick={() => openApply(tpl)} className="cursor-pointer" disabled={selectedRowIds.length !== 1}>
                                     <CircleCheckBig className="mr-2 h-4 w-4" />
                                     {t("apply_template")}
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => duplicateTemplate(tpl)} className="cursor-pointer">
+                                  <DropdownMenuItem onClick={() => duplicateTemplate(tpl)} className="cursor-pointer" disabled={selectedRowIds.length !== 1}>
                                     <Copy className="mr-2 h-4 w-4" />
                                     {t("duplicate")}
                                   </DropdownMenuItem>
@@ -266,7 +266,7 @@ export function TemplateListView() {
         </CardContent>
       </Card>
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("create_template")}</DialogTitle>
             <DialogDescription className="sr-only">{t("create_template")}</DialogDescription>

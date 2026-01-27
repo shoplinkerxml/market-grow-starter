@@ -103,7 +103,7 @@ export function SortableAttributeRow({
           </div>
         </div>
         <AccordionTrigger className="px-4">{t("attribute_details")}</AccordionTrigger>
-        <AccordionContent className="px-4">
+        <AccordionContent className="px-4 max-h-[60vh] overflow-y-auto">
           <div className="space-y-4">
             <FormField label={t("attribute_name")} htmlFor={`attr-name-${attribute.id}`} icon={Tag}>
               <Input
@@ -167,7 +167,7 @@ export function SortableAttributeRow({
                       <TableHead>{t("value_display")}</TableHead>
                       <TableHead>{t("value_id")}</TableHead>
                       <TableHead>{t("attribute_active")}</TableHead>
-                      <TableHead className="w-[120px]">{t("table_actions")}</TableHead>
+                      <TableHead className="w-[120px] text-center">{t("table_actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
