@@ -53,7 +53,7 @@ const ProductEdit = lazy(() => import("./pages/user/ProductEdit").then(m => ({ d
 const StoreProducts = lazy(() => import("./pages/user/StoreProducts").then(m => ({ default: m.StoreProducts })));
 const ShopSettings = lazy(() => import("./pages/user/ShopSettings"));
 const StoreProductEdit = lazy(() => import("./pages/user/StoreProductEdit").then(m => ({ default: m.StoreProductEdit })));
-const CategoryTemplates = lazy(() => import("./pages/user/CategoryTemplates"));
+const CategoryTemplates = lazy(() => import("./pages/user/CategoryTemplates/index"));
 const ErrorPage = lazy(() => import("./pages/ErrorPage"));
 
 const LegacyUserShopsRedirect = () => {
