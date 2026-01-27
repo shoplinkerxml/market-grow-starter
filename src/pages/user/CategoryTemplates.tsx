@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { format } from "date-fns";
 import { useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { useI18n } from "@/i18n";
@@ -42,7 +42,35 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Copy, GripVertical, Layers, Plus, Pencil, Trash2, Loader2, MoreVertical, CircleCheckBig } from "lucide-react";
+import {
+  Copy,
+  GripVertical,
+  Layers,
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  MoreVertical,
+  CircleCheckBig,
+  Check,
+  Tag,
+  Hash,
+  List,
+  Ruler,
+  Type,
+  Asterisk,
+  Filter,
+  CheckCircle2,
+  Eye,
+  KeyRound,
+  AlignLeft,
+  Folder,
+  FileText,
+  Power,
+  Sparkles,
+  ArrowLeft,
+  ArrowRight,
+} from "lucide-react";
 import type { CategoryTemplate, TemplateAttribute, AttributeValue } from "@/lib/template-service";
 
 type UserDashboardContextType = {
@@ -104,6 +132,52 @@ type TemplateAttributeWithValues = TemplateAttribute & {
   values: AttributeValue[];
 };
 
+type FieldIcon = ComponentType<{ className?: string }>;
+
+function FormField({
+  label,
+  htmlFor,
+  icon: Icon,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  icon?: FieldIcon;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={htmlFor} className="flex items-center gap-2 text-sm font-medium">
+        {Icon ? <Icon className="h-4 w-4 text-emerald-600" /> : null}
+        {label}
+      </Label>
+      {children}
+    </div>
+  );
+}
+
+function SwitchField({
+  label,
+  icon: Icon,
+  checked,
+  onCheckedChange,
+}: {
+  label: string;
+  icon?: FieldIcon;
+  checked: boolean;
+  onCheckedChange: (value: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-md border p-3">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        {Icon ? <Icon className="h-4 w-4 text-emerald-600" /> : null}
+        <span>{label}</span>
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  );
+}
+
 function SortableAttrRow({
   attribute,
   index,
@@ -111,6 +185,9 @@ function SortableAttrRow({
   onBulkAddValue,
   onEditValue,
   onDeleteValue,
+  onDuplicateValue,
+  onToggleValueActive,
+  onUpdateAttribute,
 }: {
   attribute: TemplateAttributeWithValues;
   index: number;
@@ -118,9 +195,26 @@ function SortableAttrRow({
   onBulkAddValue: (attr: TemplateAttribute) => void;
   onEditValue: (attr: TemplateAttribute, value: AttributeValue) => void;
   onDeleteValue: (attr: TemplateAttributeWithValues, value: AttributeValue) => void;
+  onDuplicateValue: (attr: TemplateAttributeWithValues, value: AttributeValue) => void;
+  onToggleValueActive: (attributeId: number, valueId: number, nextActive: boolean) => void;
+  onUpdateAttribute: (attrId: number, updates: Partial<TemplateAttribute>) => Promise<void>;
 }) {
   const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: attribute.id });
+  const [form, setForm] = useState({
+    name: attribute.name || "",
+    paramid: attribute.paramid || "",
+    attribute_type: attribute.attribute_type || "select",
+    unit: attribute.unit || "",
+  });
+  useEffect(() => {
+    setForm({
+      name: attribute.name || "",
+      paramid: attribute.paramid || "",
+      attribute_type: attribute.attribute_type || "select",
+      unit: attribute.unit || "",
+    });
+  }, [attribute]);
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -139,44 +233,81 @@ function SortableAttrRow({
               {index + 1}. {attribute.name}
             </div>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {attribute.attribute_type} • {attribute.is_required ? t("attribute_required_short") : t("attribute_optional_short")}
+          <div className="flex items-center gap-3">
+            <div className="text-xs text-muted-foreground">
+              {attribute.attribute_type} • {attribute.is_required ? t("attribute_required_short") : t("attribute_optional_short")}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{t("attribute_active")}</span>
+              <Switch
+                checked={attribute.is_active ?? true}
+                onCheckedChange={(v) =>
+                  onUpdateAttribute(attribute.id, {
+                    is_active: !!v,
+                  })
+                }
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={async () => {
+                await onUpdateAttribute(attribute.id, {
+                  name: form.name.trim(),
+                  paramid: form.paramid.trim() || null,
+                  attribute_type: form.attribute_type,
+                  unit: form.unit.trim() || null,
+                });
+              }}
+            >
+              <Check className="h-4 w-4" />
+            </Button>
           </div>
         </div>
         <AccordionTrigger className="px-4">{t("attribute_details")}</AccordionTrigger>
         <AccordionContent className="px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor={`attr-name-${attribute.id}`}>{t("attribute_name")}</Label>
-              <Input id={`attr-name-${attribute.id}`} value={attribute.name} readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`attr-paramid-${attribute.id}`}>{t("attribute_param_id")}</Label>
-              <Input id={`attr-paramid-${attribute.id}`} value={attribute.paramid || ""} readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`attr-type-${attribute.id}`}>{t("attribute_type")}</Label>
-              <Input id={`attr-type-${attribute.id}`} value={attribute.attribute_type} readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`attr-unit-${attribute.id}`}>{t("attribute_unit")}</Label>
-              <Input id={`attr-unit-${attribute.id}`} value={attribute.unit || ""} readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`attr-default-${attribute.id}`}>{t("attribute_default")}</Label>
-              <Input id={`attr-default-${attribute.id}`} value={attribute.default_value || ""} readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("attribute_status")}</Label>
-              <div className="flex items-center gap-2">
-                <Switch checked={!!attribute.is_active} disabled />
-              </div>
-            </div>
+          <div className="space-y-4">
+            <FormField label={t("attribute_name")} htmlFor={`attr-name-${attribute.id}`} icon={Tag}>
+              <Input
+                id={`attr-name-${attribute.id}`}
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              />
+            </FormField>
+            <FormField label={t("attribute_param_id")} htmlFor={`attr-paramid-${attribute.id}`} icon={Hash}>
+              <Input
+                id={`attr-paramid-${attribute.id}`}
+                value={form.paramid}
+                onChange={(e) => setForm((p) => ({ ...p, paramid: e.target.value }))}
+              />
+            </FormField>
+            <FormField label={t("attribute_type")} htmlFor={`attr-type-${attribute.id}`} icon={List}>
+              <Select value={form.attribute_type} onValueChange={(v) => setForm((p) => ({ ...p, attribute_type: v }))}>
+                <SelectTrigger id={`attr-type-${attribute.id}`}>
+                  <SelectValue placeholder={t("attribute_type_placeholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="select">{t("attribute_type_select")}</SelectItem>
+                  <SelectItem value="multiselect">{t("attribute_type_multiselect")}</SelectItem>
+                  <SelectItem value="text">{t("attribute_type_text")}</SelectItem>
+                  <SelectItem value="number">{t("attribute_type_number")}</SelectItem>
+                  <SelectItem value="boolean">{t("attribute_type_boolean")}</SelectItem>
+                  <SelectItem value="range">{t("attribute_type_range")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label={t("attribute_unit")} htmlFor={`attr-unit-${attribute.id}`} icon={Ruler}>
+              <Input
+                id={`attr-unit-${attribute.id}`}
+                value={form.unit}
+                onChange={(e) => setForm((p) => ({ ...p, unit: e.target.value }))}
+              />
+            </FormField>
           </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="space-y-4">
+            <div className="space-y-2">
               <div className="text-sm font-medium">{t("attribute_values")}</div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => onAddValue(attribute)}>
                   <Plus className="h-4 w-4 mr-2" />
                   {t("btn_add")}
@@ -196,7 +327,8 @@ function SortableAttrRow({
                     <TableRow>
                       <TableHead>{t("value")}</TableHead>
                       <TableHead>{t("value_display")}</TableHead>
-                      <TableHead>{t("value_id")}</TableHead>
+                  <TableHead>{t("value_id")}</TableHead>
+                  <TableHead>{t("attribute_active")}</TableHead>
                       <TableHead className="w-[120px]">{t("table_actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -206,19 +338,36 @@ function SortableAttrRow({
                         <TableCell className="font-medium">{value.value}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{value.display_value || "—"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{value.valueid || "—"}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => onEditValue(attribute, value)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-destructive border-destructive"
-                              onClick={() => onDeleteValue(attribute, value)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                    <TableCell>
+                      <Switch
+                        checked={value.is_active ?? true}
+                        onCheckedChange={(v) => onToggleValueActive(attribute.id, value.id, !!v)}
+                      />
+                    </TableCell>
+                        <TableCell className="w-[120px] p-0 align-middle">
+                          <div className="flex items-center justify-center">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => onEditValue(attribute, value)} className="cursor-pointer">
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  {t("edit_value")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => onDuplicateValue(attribute, value)} className="cursor-pointer">
+                                  <Copy className="mr-2 h-4 w-4" />
+                                  {t("duplicate")}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => onDeleteValue(attribute, value)} className="cursor-pointer focus:text-destructive">
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  {t("delete")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -236,7 +385,7 @@ function SortableAttrRow({
 
 export default function CategoryTemplates() {
   const { t } = useI18n();
-  const breadcrumbs = useBreadcrumbs();
+  const breadcrumbsBase = useBreadcrumbs();
   const { user } = useOutletContext<UserDashboardContextType>();
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -287,7 +436,24 @@ export default function CategoryTemplates() {
   const [bulkGenerateValueId, setBulkGenerateValueId] = useState(true);
   const [bulkPrefix, setBulkPrefix] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
+  const loadTemplatesRequestIdRef = useRef(0);
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+
+  const computedBreadcrumbs = useMemo(() => {
+    if (viewMode === "list") return breadcrumbsBase;
+    const catName =
+      categories.find((c) => String(c.id) === String(selectedTemplate?.category_id))?.name ||
+      (selectedTemplate ? String(selectedTemplate.category_id) : "");
+    const items = [
+      { label: t("breadcrumb_home"), href: "/user/dashboard" },
+      { label: t("menu_directories"), href: "/user/directory" },
+      { label: t("menu_category_templates"), href: "/user/category-templates" },
+    ] as Array<{ label: string; href?: string; current?: boolean }>;
+    if (catName) {
+      items.push({ label: catName, href: "/user/category-templates" });
+    }
+    return items;
+  }, [breadcrumbsBase, categories, selectedTemplate, t, viewMode]);
 
   const title = useMemo(() => t("menu_category_templates"), [t]);
   const params = useParams();
@@ -320,12 +486,16 @@ export default function CategoryTemplates() {
   }, []);
 
   const loadTemplates = useCallback(async () => {
+    loadTemplatesRequestIdRef.current += 1;
+    const requestId = loadTemplatesRequestIdRef.current;
     const { data, error } = await (supabase as any)
       .from("category_templates")
       .select("id,category_id,name,description,is_active,created_at,updated_at")
       .order("created_at", { ascending: false });
+    if (loadTemplatesRequestIdRef.current !== requestId) return;
     if (error) throw new Error(error.message);
     const rows = (data || []) as CategoryTemplateRow[];
+    if (loadTemplatesRequestIdRef.current !== requestId) return;
     setTemplates(rows);
     if (rows.length > 0) {
       const counts = await Promise.all(
@@ -334,12 +504,15 @@ export default function CategoryTemplates() {
             .from("template_attributes")
             .select("id", { count: "exact", head: true })
             .eq("template_id", tpl.id);
+          if (loadTemplatesRequestIdRef.current !== requestId) return [tpl.id, 0] as const;
           if (countError) return [tpl.id, 0] as const;
           return [tpl.id, count || 0] as const;
         }),
       );
+      if (loadTemplatesRequestIdRef.current !== requestId) return;
       setAttributeCounts(Object.fromEntries(counts));
     } else {
+      if (loadTemplatesRequestIdRef.current !== requestId) return;
       setAttributeCounts({});
     }
   }, []);
@@ -391,10 +564,21 @@ export default function CategoryTemplates() {
   }, [refreshAll]);
 
   useEffect(() => {
+    return () => {
+      loadTemplatesRequestIdRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    const mode: ViewMode = location.pathname.endsWith("/apply") ? "apply" : location.pathname.endsWith("/edit") ? "edit" : "list";
+    if (mode === "list") {
+      setViewMode("list");
+      setSelectedTemplate(null);
+      setApplyCategoryId(null);
+      return;
+    }
     const id = params.id ? Number(params.id) : null;
     if (!id) return;
-    const mode: ViewMode = location.pathname.endsWith("/apply") ? "apply" : location.pathname.endsWith("/edit") ? "edit" : "list";
-    if (mode === "list") return;
     (async () => {
       try {
         const found = templates.find((t) => Number(t.id) === id);
@@ -474,6 +658,15 @@ export default function CategoryTemplates() {
     return () => window.clearInterval(interval);
   }, [applying]);
 
+  useEffect(() => {
+    if (viewMode !== "edit" || !selectedTemplate) return;
+    setEditForm({
+      category_id: String((selectedTemplate as any).category_id || ""),
+      name: String((selectedTemplate as any).name || ""),
+      description: String((selectedTemplate as any).description || ""),
+    });
+  }, [viewMode, selectedTemplate]);
+
   const handleCreateTemplate = useCallback(async () => {
     if (!createForm.category_id || !createForm.name.trim()) {
       toast.error(t("failed_save"));
@@ -515,11 +708,9 @@ export default function CategoryTemplates() {
 
   const openEditor = useCallback(
     async (tpl: CategoryTemplate) => {
-      setSelectedTemplate(tpl);
-      setViewMode("edit");
-      await loadTemplateDetails(tpl);
+      navigate(`/user/category-templates/${tpl.id}/edit`);
     },
-    [loadTemplateDetails],
+    [navigate],
   );
 
   const handleAddAttribute = useCallback(async () => {
@@ -721,6 +912,57 @@ export default function CategoryTemplates() {
         toast.success(t("value_deleted"));
       } catch (error: any) {
         toast.error(error?.message || t("failed_delete_template"));
+      }
+    },
+    [t],
+  );
+
+  const handleDuplicateValue = useCallback(
+    async (attribute: TemplateAttributeWithValues, value: AttributeValue) => {
+      try {
+        const displayOrder = (attribute.values || []).length;
+        const { data, error } = await (supabase as any)
+          .from("attribute_values")
+          .insert({
+            attribute_id: attribute.id,
+            value: value.value,
+            valueid: value.valueid ? `${value.valueid}-copy` : null,
+            display_value: value.display_value || null,
+            display_order: displayOrder,
+            value_lang: (value as any).value_lang || null,
+            metadata: (value as any).metadata || null,
+            is_active: value.is_active ?? true,
+          })
+          .select()
+          .single();
+        if (error) throw new Error(error.message);
+        const row = data as AttributeValue;
+        setAttributes((prev) =>
+          prev.map((attr) => (attr.id === attribute.id ? { ...attr, values: [...attr.values, row] } : attr)),
+        );
+        toast.success(t("value_saved"));
+      } catch (error: any) {
+        toast.error(error?.message || t("failed_save"));
+      }
+    },
+    [t],
+  );
+
+  const handleToggleValueActive = useCallback(
+    async (attributeId: number, valueId: number, nextActive: boolean) => {
+      try {
+        const { error } = await (supabase as any).from("attribute_values").update({ is_active: nextActive }).eq("id", valueId);
+        if (error) throw new Error(error.message);
+        setAttributes((prev) =>
+          prev.map((attr) =>
+            attr.id === attributeId
+              ? { ...attr, values: attr.values.map((v) => (v.id === valueId ? { ...v, is_active: nextActive } : v)) }
+              : attr,
+          ),
+        );
+        toast.success(t("feature_saved_successfully"));
+      } catch (error: any) {
+        toast.error(error?.message || t("failed_save"));
       }
     },
     [t],
@@ -954,7 +1196,7 @@ export default function CategoryTemplates() {
       <div className="p-6 space-y-6">
         <PageHeader
           title={title}
-          breadcrumbItems={breadcrumbs}
+          breadcrumbItems={computedBreadcrumbs}
           actions={
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setViewMode("list")}>
@@ -1010,8 +1252,8 @@ export default function CategoryTemplates() {
                   onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
                 />
               </div>
-              <div className="md:col-span-3">
-                <div className="flex items-center gap-2">
+              <div className="md:col-span-1 md:col-start-3">
+                <div className="flex justify-end">
                   <Button
                     onClick={async () => {
                       try {
@@ -1038,6 +1280,7 @@ export default function CategoryTemplates() {
                       }
                     }}
                   >
+                    <Check className="h-4 w-4" />
                     {t("save")}
                   </Button>
                 </div>
@@ -1060,6 +1303,30 @@ export default function CategoryTemplates() {
                           onBulkAddValue={openBulkAddValueDialog}
                           onEditValue={openEditValueDialog}
                           onDeleteValue={handleDeleteValue}
+                          onDuplicateValue={handleDuplicateValue}
+                          onToggleValueActive={handleToggleValueActive}
+                          onUpdateAttribute={async (attrId, updates) => {
+                            try {
+                              const { error } = await (supabase as any)
+                                .from("template_attributes")
+                                .update({
+                                  name: (updates.name || a.name || "").trim(),
+                                  paramid: (updates.paramid || a.paramid || "") ? String(updates.paramid || a.paramid).trim() : null,
+                                  attribute_type: updates.attribute_type || a.attribute_type,
+                                  unit: (updates.unit || a.unit || "") ? String(updates.unit || a.unit).trim() : null,
+                                  default_value: (updates.default_value || a.default_value || "") ? String(updates.default_value || a.default_value).trim() : null,
+                                  is_active: updates.is_active ?? a.is_active ?? true,
+                                })
+                                .eq("id", attrId);
+                              if (error) throw new Error(error.message);
+                              setAttributes((prev) =>
+                                prev.map((row) => (row.id === attrId ? { ...row, ...updates } : row)),
+                              );
+                              toast.success(t("feature_saved_successfully"));
+                            } catch (e: any) {
+                              toast.error(e?.message || t("failed_save"));
+                            }
+                          }}
                         />
                       ))}
                     </Accordion>
@@ -1075,17 +1342,14 @@ export default function CategoryTemplates() {
               <DialogTitle>{t("btn_add")}</DialogTitle>
               <DialogDescription className="sr-only">{t("btn_add")}</DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="attr-name">{t("characteristic_name")}</Label>
+            <div className="space-y-4">
+              <FormField label={t("characteristic_name")} htmlFor="attr-name" icon={Tag}>
                 <Input id="attr-name" value={attrForm.name} onChange={(e) => setAttrForm((p) => ({ ...p, name: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="attr-paramid">{t("attribute_param_id")}</Label>
+              </FormField>
+              <FormField label={t("attribute_param_id")} htmlFor="attr-paramid" icon={Hash}>
                 <Input id="attr-paramid" value={attrForm.paramid || ""} onChange={(e) => setAttrForm((p) => ({ ...p, paramid: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("attribute_type")}</Label>
+              </FormField>
+              <FormField label={t("attribute_type")} icon={List}>
                 <Select value={attrForm.attribute_type} onValueChange={(v) => setAttrForm((p) => ({ ...p, attribute_type: v }))}>
                   <SelectTrigger>
                     <SelectValue placeholder={t("attribute_type_placeholder")} />
@@ -1099,27 +1363,31 @@ export default function CategoryTemplates() {
                     <SelectItem value="range">{t("attribute_type_range")}</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="attr-unit">{t("attribute_unit")}</Label>
+              </FormField>
+              <FormField label={t("attribute_unit")} htmlFor="attr-unit" icon={Ruler}>
                 <Input id="attr-unit" value={attrForm.unit || ""} onChange={(e) => setAttrForm((p) => ({ ...p, unit: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="attr-default">{t("attribute_default")}</Label>
+              </FormField>
+              <FormField label={t("attribute_default")} htmlFor="attr-default" icon={Type}>
                 <Input id="attr-default" value={attrForm.default_value || ""} onChange={(e) => setAttrForm((p) => ({ ...p, default_value: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("attribute_required")}</Label>
-                <Switch checked={attrForm.is_required} onCheckedChange={(v) => setAttrForm((p) => ({ ...p, is_required: !!v }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("attribute_filterable")}</Label>
-                <Switch checked={attrForm.is_filterable} onCheckedChange={(v) => setAttrForm((p) => ({ ...p, is_filterable: !!v }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("attribute_active")}</Label>
-                <Switch checked={attrForm.is_active} onCheckedChange={(v) => setAttrForm((p) => ({ ...p, is_active: !!v }))} />
-              </div>
+              </FormField>
+              <SwitchField
+                label={t("attribute_required")}
+                icon={Asterisk}
+                checked={attrForm.is_required}
+                onCheckedChange={(v) => setAttrForm((p) => ({ ...p, is_required: !!v }))}
+              />
+              <SwitchField
+                label={t("attribute_filterable")}
+                icon={Filter}
+                checked={attrForm.is_filterable}
+                onCheckedChange={(v) => setAttrForm((p) => ({ ...p, is_filterable: !!v }))}
+              />
+              <SwitchField
+                label={t("attribute_active")}
+                icon={CheckCircle2}
+                checked={attrForm.is_active}
+                onCheckedChange={(v) => setAttrForm((p) => ({ ...p, is_active: !!v }))}
+              />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setAttrDialogOpen(false)}>
@@ -1135,27 +1403,20 @@ export default function CategoryTemplates() {
               <DialogTitle>{valueForm.id ? t("edit_value") : t("add_value")}</DialogTitle>
               <DialogDescription className="sr-only">{t("add_value")}</DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="value-name">{t("value")}</Label>
+            <div className="space-y-4">
+              <FormField label={t("value")} htmlFor="value-name" icon={Type}>
                 <Input id="value-name" value={valueForm.value} onChange={(e) => setValueForm((p) => ({ ...p, value: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="value-display">{t("value_display")}</Label>
+              </FormField>
+              <FormField label={t("value_display")} htmlFor="value-display" icon={Eye}>
                 <Input
                   id="value-display"
                   value={valueForm.display_value || ""}
                   onChange={(e) => setValueForm((p) => ({ ...p, display_value: e.target.value }))}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="value-id">{t("value_id_optional")}</Label>
+              </FormField>
+              <FormField label={t("value_id_optional")} htmlFor="value-id" icon={KeyRound}>
                 <Input id="value-id" value={valueForm.valueid || ""} onChange={(e) => setValueForm((p) => ({ ...p, valueid: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("attribute_active")}</Label>
-                <Switch checked={valueForm.is_active} onCheckedChange={(v) => setValueForm((p) => ({ ...p, is_active: !!v }))} />
-              </div>
+              </FormField>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setValueDialogOpen(false)}>
@@ -1174,29 +1435,26 @@ export default function CategoryTemplates() {
               <DialogDescription className="sr-only">{t("bulk_add_value")}</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>{t("value")}</Label>
+              <FormField label={t("value")} icon={List}>
                 <Textarea
                   value={bulkValuesText}
                   onChange={(e) => setBulkValuesText(e.target.value)}
                   placeholder="Значення з нового рядка"
                   rows={6}
                 />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Префікс</Label>
-                  <Input value={bulkPrefix} onChange={(e) => setBulkPrefix(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Суфікс</Label>
-                  <Input value={bulkSuffix} onChange={(e) => setBulkSuffix(e.target.value)} />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={bulkGenerateValueId} onCheckedChange={(v) => setBulkGenerateValueId(!!v)} />
-                <span className="text-sm">Згенерувати value_id</span>
-              </div>
+              </FormField>
+              <FormField label={t("prefix")} icon={ArrowLeft}>
+                <Input value={bulkPrefix} onChange={(e) => setBulkPrefix(e.target.value)} />
+              </FormField>
+              <FormField label={t("suffix")} icon={ArrowRight}>
+                <Input value={bulkSuffix} onChange={(e) => setBulkSuffix(e.target.value)} />
+              </FormField>
+              <SwitchField
+                label="Згенерувати value_id"
+                icon={Sparkles}
+                checked={bulkGenerateValueId}
+                onCheckedChange={(v) => setBulkGenerateValueId(!!v)}
+              />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setBulkDialogOpen(false)}>
@@ -1221,7 +1479,7 @@ export default function CategoryTemplates() {
       <div className="p-6 space-y-6">
         <PageHeader
           title={t("apply_template")}
-          breadcrumbItems={breadcrumbs}
+          breadcrumbItems={computedBreadcrumbs}
           actions={
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => navigate("/user/category-templates")}>{t("back")}</Button>
@@ -1304,7 +1562,7 @@ export default function CategoryTemplates() {
     <div className="p-6 space-y-6">
       <PageHeader
         title={title}
-        breadcrumbItems={breadcrumbs}
+        breadcrumbItems={computedBreadcrumbs}
         actions={
           <Button onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
@@ -1341,8 +1599,8 @@ export default function CategoryTemplates() {
               </Empty>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <div className="flex items-center justify-end gap-2 p-2">
+            <div>
+              <div className="flex items-center justify-end gap-2 mb-2">
                 <Button variant="ghost" size="icon" onClick={() => setCreateDialogOpen(true)}>
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -1397,6 +1655,7 @@ export default function CategoryTemplates() {
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
+              <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1485,6 +1744,7 @@ export default function CategoryTemplates() {
                   })}
                 </TableBody>
               </Table>
+              </div>
             </div>
           )}
         </CardContent>
@@ -1495,9 +1755,8 @@ export default function CategoryTemplates() {
             <DialogTitle>{t("create_template")}</DialogTitle>
             <DialogDescription className="sr-only">{t("create_template")}</DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="ct-category">{t("menu_categories")}</Label>
+          <div className="space-y-4">
+            <FormField label={t("menu_categories")} htmlFor="ct-category" icon={Folder}>
               <Select value={createForm.category_id} onValueChange={(v) => setCreateForm((p) => ({ ...p, category_id: v }))}>
                 <SelectTrigger id="ct-category">
                   <SelectValue placeholder={t("menu_categories")} />
@@ -1510,19 +1769,19 @@ export default function CategoryTemplates() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ct-name">{t("template_name")}</Label>
+            </FormField>
+            <FormField label={t("template_name")} htmlFor="ct-name" icon={FileText}>
               <Input id="ct-name" value={createForm.name} onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))} />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="ct-desc">{t("description")}</Label>
+            </FormField>
+            <FormField label={t("description")} htmlFor="ct-desc" icon={AlignLeft}>
               <Input id="ct-desc" value={createForm.description} onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t("status")}</Label>
-              <Switch checked={createForm.is_active} onCheckedChange={(v) => setCreateForm((p) => ({ ...p, is_active: !!v }))} />
-            </div>
+            </FormField>
+            <SwitchField
+              label={t("status")}
+              icon={Power}
+              checked={createForm.is_active}
+              onCheckedChange={(v) => setCreateForm((p) => ({ ...p, is_active: !!v }))}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
