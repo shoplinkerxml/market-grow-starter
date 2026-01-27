@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import ParametersDataTable from '@/components/products/ParametersDataTable'
 import { Settings } from 'lucide-react'
 import type { ProductParam } from './types'
@@ -13,6 +14,9 @@ type ParamForm = {
   value: string
   paramid?: string
   valueid?: string
+  template_attribute_id?: number
+  attribute_type?: string
+  value_options?: ProductParam["value_options"]
 }
 
 type Props = {
@@ -20,12 +24,19 @@ type Props = {
   readOnly?: boolean
   forceParamsEditable?: boolean
   parameters: ProductParam[]
+  templates: Array<{ id: number; name: string }>
+  templatesLoading: boolean
+  selectedTemplateId: string
+  onTemplateChange: (id: string) => void
+  onApplyTemplate: () => void
+  applyingTemplate: boolean
   onEditRow: (index: number) => void
   onDeleteRow: (index: number) => void
   onDeleteSelected: (indexes: number[]) => void
   onSelectionChange: (rows: number[]) => void
   onAddParam: () => void
   onReplaceData: (rows: ProductParam[]) => void
+  onValueChange: (rowIndex: number, value: string, valueid?: string | null) => void
   isParamModalOpen: boolean
   setIsParamModalOpen: (open: boolean) => void
   paramForm: ParamForm
@@ -35,6 +46,11 @@ type Props = {
 }
 
 export default function ParamsSection(props: Props) {
+  const valueOptions = props.paramForm.value_options || []
+  const hasValueOptions = valueOptions.length > 0
+  const currentValue = hasValueOptions
+    ? (valueOptions.find((o) => o.value === props.paramForm.value)?.value || valueOptions[0]?.value || '')
+    : props.paramForm.value
   return (
     <Card>
       <CardHeader>
@@ -43,6 +59,44 @@ export default function ParamsSection(props: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {props.readOnly && !props.forceParamsEditable ? null : (
+          <div className="flex flex-col gap-3 mb-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex-1 min-w-0 space-y-2">
+                <Label>{props.t('template_select_label')}</Label>
+                <Select
+                  value={props.selectedTemplateId}
+                  onValueChange={props.onTemplateChange}
+                  disabled={props.templatesLoading || props.templates.length === 0}
+                >
+                  <SelectTrigger data-testid="productForm_params_templateSelect">
+                    <SelectValue placeholder={props.t('template_select_placeholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {props.templates.map((tpl) => (
+                      <SelectItem key={tpl.id} value={String(tpl.id)}>
+                        {tpl.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={props.onApplyTemplate}
+                disabled={!props.selectedTemplateId || props.templatesLoading || props.templates.length === 0 || props.applyingTemplate}
+                aria-disabled={!props.selectedTemplateId || props.templatesLoading || props.templates.length === 0 || props.applyingTemplate}
+                data-testid="productForm_params_applyTemplate"
+              >
+                {props.applyingTemplate ? props.t('applying_template') : props.t('apply_template')}
+              </Button>
+            </div>
+            {props.templates.length === 0 && !props.templatesLoading ? (
+              <div className="text-xs text-muted-foreground">{props.t('template_empty_for_category')}</div>
+            ) : null}
+          </div>
+        )}
         {props.readOnly && !props.forceParamsEditable ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {props.parameters.map((p) => (
@@ -61,6 +115,7 @@ export default function ParamsSection(props: Props) {
             onSelectionChange={props.onSelectionChange}
             onAddParam={props.onAddParam}
             onReplaceData={props.onReplaceData}
+            onValueChange={props.onValueChange}
           />
         )}
 
@@ -83,7 +138,38 @@ export default function ParamsSection(props: Props) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="param-value-modal">{props.t('value')}</Label>
-                  <Input id="param-value-modal" value={props.paramForm.value} onChange={(e) => props.setParamForm((prev) => ({ ...prev, value: e.target.value }))} placeholder={props.t('characteristic_value_placeholder')} data-testid="productForm_modal_paramValue" />
+                  {hasValueOptions ? (
+                    <Select
+                      value={currentValue}
+                      onValueChange={(value) => {
+                        const option = valueOptions.find((o) => o.value === value)
+                        props.setParamForm((prev) => ({
+                          ...prev,
+                          value: option?.value || value,
+                          valueid: option?.valueid || prev.valueid || '',
+                        }))
+                      }}
+                    >
+                      <SelectTrigger id="param-value-modal" data-testid="productForm_modal_paramValueSelect">
+                        <SelectValue placeholder={props.t('characteristic_value_placeholder')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {valueOptions.map((opt) => (
+                          <SelectItem key={opt.id} value={opt.value}>
+                            {opt.display_value || opt.value}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="param-value-modal"
+                      value={props.paramForm.value}
+                      onChange={(e) => props.setParamForm((prev) => ({ ...prev, value: e.target.value }))}
+                      placeholder={props.t('characteristic_value_placeholder')}
+                      data-testid="productForm_modal_paramValue"
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="param-paramid-modal">{props.t('param_id_optional')}</Label>

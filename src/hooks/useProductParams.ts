@@ -12,7 +12,8 @@ function makeParamsKey(params: ProductParam[]): string {
       const value = (p as any)?.value != null ? String((p as any).value) : '';
       const paramid = (p as any)?.paramid != null ? String((p as any).paramid) : '';
       const valueid = (p as any)?.valueid != null ? String((p as any).valueid) : '';
-      return `${id}\u241f${order}\u241f${name}\u241f${value}\u241f${paramid}\u241f${valueid}`;
+      const templateId = (p as any)?.template_attribute_id != null ? String((p as any).template_attribute_id) : '';
+      return `${id}\u241f${order}\u241f${name}\u241f${value}\u241f${paramid}\u241f${valueid}\u241f${templateId}`;
     })
     .join('\u241e');
 }
@@ -24,11 +25,22 @@ export function useProductParams(preloadedParams?: ProductParam[], onChange?: (p
   const [parameters, setParametersState] = useState<ProductParam[]>(() => (Array.isArray(preloadedParams) ? preloadedParams : []));
   const [isParamModalOpen, setIsParamModalOpen] = useState(false);
   const [editingParamIndex, setEditingParamIndex] = useState<number | null>(null);
-  const [paramForm, setParamForm] = useState<{ name: string; value: string; paramid?: string; valueid?: string }>({
+  const [paramForm, setParamForm] = useState<{
+    name: string;
+    value: string;
+    paramid?: string;
+    valueid?: string;
+    template_attribute_id?: number;
+    attribute_type?: string;
+    value_options?: ProductParam["value_options"];
+  }>({
     name: '',
     value: '',
     paramid: '',
-    valueid: ''
+    valueid: '',
+    template_attribute_id: undefined,
+    attribute_type: undefined,
+    value_options: [],
   });
   const [selectedParamRows, setSelectedParamRows] = useState<number[]>([]);
 
@@ -57,14 +69,30 @@ export function useProductParams(preloadedParams?: ProductParam[], onChange?: (p
 
   const openAddParamModal = useCallback(() => {
     setEditingParamIndex(null);
-    setParamForm({ name: '', value: '', paramid: '', valueid: '' });
+    setParamForm({
+      name: '',
+      value: '',
+      paramid: '',
+      valueid: '',
+      template_attribute_id: undefined,
+      attribute_type: undefined,
+      value_options: [],
+    });
     setIsParamModalOpen(true);
   }, []);
 
   const openEditParamModal = useCallback((index: number) => {
     const p = parameters[index];
     setEditingParamIndex(index);
-    setParamForm({ name: p.name, value: p.value, paramid: p.paramid || '', valueid: p.valueid || '' });
+    setParamForm({
+      name: p.name,
+      value: p.value,
+      paramid: p.paramid || '',
+      valueid: p.valueid || '',
+      template_attribute_id: p.template_attribute_id,
+      attribute_type: p.attribute_type,
+      value_options: p.value_options || [],
+    });
     setIsParamModalOpen(true);
   }, [parameters]);
 
@@ -75,13 +103,31 @@ export function useProductParams(preloadedParams?: ProductParam[], onChange?: (p
     const valueid = (paramForm.valueid || '').trim();
     if (!name || !value) return;
     if (editingParamIndex === null) {
-      const newParams = [...parameters, { name, value, paramid, valueid, order_index: parameters.length }];
+      const newParams = [
+        ...parameters,
+        {
+          name,
+          value,
+          paramid,
+          valueid,
+          order_index: parameters.length,
+          template_attribute_id: paramForm.template_attribute_id,
+          attribute_type: paramForm.attribute_type,
+          value_options: paramForm.value_options || [],
+        },
+      ];
       dirtyRef.current = true;
       setParametersState(newParams);
       onChange?.(newParams);
     } else {
       const updated = [...parameters];
-      updated[editingParamIndex] = { ...updated[editingParamIndex], name, value, paramid, valueid };
+      updated[editingParamIndex] = {
+        ...updated[editingParamIndex],
+        name,
+        value,
+        paramid,
+        valueid,
+      };
       dirtyRef.current = true;
       setParametersState(updated);
       onChange?.(updated);

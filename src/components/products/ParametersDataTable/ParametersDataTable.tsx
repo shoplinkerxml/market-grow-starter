@@ -22,6 +22,15 @@ export interface ProductParam {
   order_index: number;
   paramid?: string;
   valueid?: string;
+  template_attribute_id?: number;
+  attribute_type?: string;
+  value_options?: Array<{
+    id: number;
+    value: string;
+    valueid?: string | null;
+    display_value?: string | null;
+    value_lang?: Record<string, string> | null;
+  }>;
 }
 
 type Props = {
@@ -32,6 +41,7 @@ type Props = {
   onSelectionChange?: (rowIndexes: number[]) => void;
   onAddParam?: () => void;
   onReplaceData?: (rows: ProductParam[]) => void;
+  onValueChange?: (rowIndex: number, value: string, valueid?: string | null) => void;
 };
 
 export function ParametersDataTable({
@@ -42,6 +52,7 @@ export function ParametersDataTable({
   onSelectionChange,
   onAddParam,
   onReplaceData,
+  onValueChange,
 }: Props) {
   const { t } = useI18n();
 
@@ -66,8 +77,8 @@ export function ParametersDataTable({
   const [previewFilename, setPreviewFilename] = React.useState<string>("");
 
   const columns = React.useMemo(() => {
-    return createParametersColumns({ t, onEditRow, onDeleteRow });
-  }, [t, onEditRow, onDeleteRow]);
+    return createParametersColumns({ t, onEditRow, onDeleteRow, onValueChange });
+  }, [t, onEditRow, onDeleteRow, onValueChange]);
 
   const table = useReactTable({
     data,

@@ -3,6 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ export function createParametersColumns(args: {
   t: (k: string) => string;
   onEditRow: (rowIndex: number) => void;
   onDeleteRow: (rowIndex: number) => void;
+  onValueChange?: (rowIndex: number, value: string, valueid?: string | null) => void;
 }): ColumnDef<ProductParam>[] {
   return [
     {
@@ -33,15 +35,6 @@ export function createParametersColumns(args: {
                   : false
             }
             onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
-            onPointerDown={(event) => {
-              event.stopPropagation();
-            }}
-            onTouchStart={(event) => {
-              event.stopPropagation();
-            }}
             aria-label={args.t("select_all")}
           />
         </div>
@@ -51,15 +44,6 @@ export function createParametersColumns(args: {
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
-            onPointerDown={(event) => {
-              event.stopPropagation();
-            }}
-            onTouchStart={(event) => {
-              event.stopPropagation();
-            }}
             aria-label={args.t("select_row")}
           />
         </div>
@@ -76,7 +60,35 @@ export function createParametersColumns(args: {
     {
       accessorKey: "value",
       header: args.t("value"),
-      cell: ({ row }) => <span className="text-sm font-medium">{row.original.value}</span>,
+      cell: ({ row }) => {
+        const options = row.original.value_options || [];
+        if (options.length === 0) {
+          return <span className="text-sm font-medium">{row.original.value}</span>;
+        }
+        const currentValue = options.some((o) => o.value === row.original.value)
+          ? row.original.value
+          : options[0]?.value || "";
+        return (
+          <Select
+            value={currentValue}
+            onValueChange={(value) => {
+              const selected = options.find((o) => o.value === value);
+              args.onValueChange?.(row.index, value, selected?.valueid ?? null);
+            }}
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((opt) => (
+                <SelectItem key={opt.id} value={opt.value}>
+                  {opt.display_value || opt.value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      },
     },
     {
       accessorKey: "paramid",

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, Suspense, lazy, useRef } from 'react';
+import React, { useState, useCallback, useMemo, Suspense, lazy, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -24,6 +24,7 @@ import { useImageActions } from '@/hooks/useImageActions';
 import { mapImageErrorToToast } from '@/utils/imageErrorHelpers';
 import type { SupplierOption, CategoryOption, CurrencyOption, ProductImage, ProductParam, FormData } from './ProductFormTabs/types';
 import { ProductImageDeleteProgressDialog, ProductSaveProgressDialog } from '@/components/user/products/ProductsTable/Dialogs';
+import { CategoryTemplateService } from '@/lib/template-service';
 
 const InfoTab = lazy(async () => {
   const mod = await import('./ProductFormTabs/tabs/InfoTab');
@@ -82,9 +83,7 @@ export function ProductFormTabs({
   
   const { tabsScrollRef, hasOverflow: tabsOverflow } = useTabsScroll();
   const navigate = useNavigate();
-  const {
-    t
-  } = useI18n();
+  const { t, lang } = useI18n();
   const [activeTab, setActiveTab] = useState('info');
   const [loading, setLoading] = useState(false);
   const [saveProgress, setSaveProgress] = useState<{ open: boolean; title: string; productName: string | null }>({
@@ -163,6 +162,133 @@ export function ProductFormTabs({
     setParameters,
   } = useProductParams(preloadedParams, onParamsChange);
 
+  const [templates, setTemplates] = useState<Array<{ id: number; name: string }>>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
+
+  const categoryId = useMemo(() => {
+    const raw = basicData.category_id;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [basicData.category_id]);
+
+  useEffect(() => {
+    let active = true;
+    if (!categoryId) {
+      setTemplates([]);
+      setSelectedTemplateId('');
+      return;
+    }
+    setTemplatesLoading(true);
+    CategoryTemplateService.listByCategory(categoryId)
+      .then((items) => {
+        if (!active) return;
+        const list = Array.isArray(items) ? items : [];
+        setTemplates(list.map((i) => ({ id: i.id, name: i.name })));
+        setSelectedTemplateId((prev) => {
+          const exists = list.some((i) => String(i.id) === String(prev));
+          return exists ? prev : list[0] ? String(list[0].id) : '';
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setTemplates([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setTemplatesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [categoryId]);
+
+  const handleTemplateChange = useCallback((id: string) => {
+    setSelectedTemplateId(id);
+  }, []);
+
+  const mapOptionLabel = useCallback(
+    (opt: { value: string; display_value?: string | null; value_lang?: Record<string, string> | null }) => {
+      const localized = opt.value_lang?.[lang || ''] || opt.display_value;
+      return localized || opt.value;
+    },
+    [lang],
+  );
+
+  const handleApplyTemplate = useCallback(async () => {
+    if (!selectedTemplateId) return;
+    setApplyingTemplate(true);
+    try {
+      const attrs = await CategoryTemplateService.getTemplateAttributes(selectedTemplateId);
+      const next = [...parameters];
+      for (const attr of attrs) {
+        const options = (attr.values || []).map((v) => ({
+          ...v,
+          display_value: mapOptionLabel(v),
+        }));
+        const defaultOption = attr.default_value
+          ? options.find((o) => o.value === attr.default_value)
+          : options[0];
+        const resolvedValue = defaultOption?.value || attr.default_value || '';
+        const resolvedValueId = defaultOption?.valueid ?? null;
+        const index = next.findIndex((p) => {
+          if (attr.paramid && p.paramid) return String(p.paramid) === String(attr.paramid);
+          return p.name === attr.name;
+        });
+        if (index === -1) {
+          next.push({
+            name: attr.name,
+            value: resolvedValue,
+            paramid: attr.paramid || '',
+            valueid: resolvedValueId || '',
+            order_index: next.length,
+            template_attribute_id: attr.id,
+            attribute_type: attr.attribute_type,
+            unit: attr.unit || null,
+            is_required: !!attr.is_required,
+            value_options: options,
+          });
+        } else {
+          const prev = next[index];
+          const current = prev.value ? prev.value : resolvedValue;
+          const hasCurrent = options.some((o) => o.value === current);
+          const finalValue = hasCurrent ? current : resolvedValue;
+          const finalValueId = options.find((o) => o.value === finalValue)?.valueid ?? resolvedValueId ?? prev.valueid ?? '';
+          next[index] = {
+            ...prev,
+            name: attr.name,
+            paramid: attr.paramid || prev.paramid || '',
+            value: finalValue,
+            valueid: finalValueId || '',
+            template_attribute_id: attr.id,
+            attribute_type: attr.attribute_type,
+            unit: attr.unit || prev.unit || null,
+            is_required: !!attr.is_required,
+            value_options: options,
+          };
+        }
+      }
+      const normalized = next.map((p, i) => ({ ...p, order_index: i }));
+      setParameters(normalized);
+      onParamsChange?.(normalized);
+    } finally {
+      setApplyingTemplate(false);
+    }
+  }, [mapOptionLabel, onParamsChange, parameters, selectedTemplateId, setParameters]);
+
+  const handleValueChange = useCallback(
+    (rowIndex: number, value: string, valueid?: string | null) => {
+      const next = parameters.map((p, i) =>
+        i === rowIndex ? { ...p, value, valueid: valueid ?? p.valueid ?? '' } : p,
+      );
+      const normalized = next.map((p, i) => ({ ...p, order_index: i }));
+      setParameters(normalized);
+      onParamsChange?.(normalized);
+    },
+    [onParamsChange, parameters, setParameters],
+  );
+
   const lookups = useProductLookups(
     product?.store_id || '',
     basicData,
@@ -185,7 +311,7 @@ export function ProductFormTabs({
   
   const { markSaved } = useImageCleanup(isNewProduct, images);
   const handleSubmit = useCallback(async () => {
-    if (!basicData.name_ua.trim()) {
+    if (!basicData.name_ua.trim() && !basicData.name.trim()) {
       toast.error(t('product_name_required'));
       return;
     }
@@ -438,12 +564,19 @@ export function ProductFormTabs({
                   readOnly={readOnly}
                   forceParamsEditable={forceParamsEditable}
                   parameters={parameters}
+                  templates={templates}
+                  templatesLoading={templatesLoading}
+                  selectedTemplateId={selectedTemplateId}
+                  onTemplateChange={handleTemplateChange}
+                  onApplyTemplate={handleApplyTemplate}
+                  applyingTemplate={applyingTemplate}
                   onEditRow={handleEditRow}
                   onDeleteRow={handleDeleteRow}
                   onDeleteSelected={deleteSelectedParams}
                   onSelectionChange={setSelectedParamRows}
                   onAddParam={openAddParamModal}
                   onReplaceData={handleReplaceParams}
+                  onValueChange={handleValueChange}
                   isParamModalOpen={isParamModalOpen}
                   setIsParamModalOpen={setIsParamModalOpen as any}
                   paramForm={paramForm}
@@ -455,7 +588,7 @@ export function ProductFormTabs({
             </TabsContent>
           </Tabs>
           
-          <FormActions t={t} readOnly={readOnly} loading={loading} product={product} onCancel={handleCancel} onSubmit={handleSubmit} disabledSubmit={loading || !basicData.name_ua.trim()} />
+          <FormActions t={t} readOnly={readOnly} loading={loading} product={product} onCancel={handleCancel} onSubmit={handleSubmit} disabledSubmit={loading || (!basicData.name_ua.trim() && !basicData.name.trim())} />
         </CardContent>
       </Card>
     </div>;

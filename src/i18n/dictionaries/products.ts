@@ -188,6 +188,26 @@ export const productsDictionary: Dictionary = {
     uk: "Характеристики товару",
     en: "Product Characteristics",
   },
+  template_select_label: {
+    uk: "Шаблон категорії",
+    en: "Category template",
+  },
+  template_select_placeholder: {
+    uk: "Оберіть шаблон",
+    en: "Select template",
+  },
+  apply_template: {
+    uk: "Застосувати шаблон",
+    en: "Apply template",
+  },
+  applying_template: {
+    uk: "Застосування…",
+    en: "Applying…",
+  },
+  template_empty_for_category: {
+    uk: "Для цієї категорії немає активних шаблонів",
+    en: "No active templates for this category",
+  },
   add_characteristic: {
     uk: "Додати характеристику",
     en: "Add Characteristic",
