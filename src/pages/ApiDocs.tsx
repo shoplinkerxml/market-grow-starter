@@ -102,7 +102,7 @@ export default function ApiDocs() {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [serverUrl, setServerUrl] = useState(SUPABASE_URL);
   const { toast } = useToast();
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
 
   // Загружаем сохранённые скрипты и API ключ из localStorage
   useEffect(() => {
@@ -250,41 +250,41 @@ export default function ApiDocs() {
 
   const handleSaveBearerAuth = useCallback(() => {
     toast({
-      title: "Authorization сохранена",
-      description: "Bearer token применён в примерах",
+      title: t("api_docs_auth_saved_title"),
+      description: t("api_docs_auth_saved_bearer_desc"),
       duration: 2000,
     });
-  }, [toast]);
+  }, [t, toast]);
 
   const handleSaveSupabaseApiKey = useCallback(() => {
     toast({
-      title: "Authorization сохранена",
-      description: "API key применён в примерах",
+      title: t("api_docs_auth_saved_title"),
+      description: t("api_docs_auth_saved_apikey_desc"),
       duration: 2000,
     });
-  }, [toast]);
+  }, [t, toast]);
 
   const handleSaveAdminCredentials = useCallback(() => {
     toast({
-      title: "Authorization сохранена",
-      description: "Данные админа применены в примерах",
+      title: t("api_docs_auth_saved_title"),
+      description: t("api_docs_auth_saved_admin_desc"),
       duration: 2000,
     });
-  }, [toast]);
+  }, [t, toast]);
 
   const apiSections: { admin: ApiSection; user: ApiSection } = useMemo(() => ({
     admin: {
-      name: 'Кабинет админа',
+      name: t("api_docs_section_admin_name"),
       pages: [
         {
-          name: 'Аутентификация',
-          description: 'Получение токена администратора для работы с админ-API',
+          name: t("api_docs_page_auth_name"),
+          description: t("api_docs_page_auth_desc"),
           endpoints: [
             {
               name: 'Get Auth Token',
               method: 'POST',
               endpoint: '/auth/v1/token?grant_type=password',
-              description: 'Получить JWT токен для аутентификации',
+              description: t("api_docs_desc_get_auth_token"),
               body: {
                 email: 'user@example.com',
                 password: 'your_password',
@@ -304,7 +304,7 @@ if (responseData.access_token) { pm.collectionVariables.set("access_token", resp
               name: 'Register User',
               method: 'POST',
               endpoint: '/auth/v1/signup',
-              description: 'Регистрация нового пользователя',
+              description: t("api_docs_desc_register_user"),
               body: {
                 email: 'manager@testmail.com',
                 password: 'ManagerPass123',
@@ -321,14 +321,14 @@ if (responseData.id) { pm.collectionVariables.set("manager_id", responseData.id)
           ],
         },
         {
-          name: 'Пользователи',
-          description: 'Список и управление пользователями',
+          name: t("api_docs_page_users_name"),
+          description: t("api_docs_page_users_desc"),
           endpoints: [
             {
               name: 'Get Users',
               method: 'GET',
               endpoint: '/functions/v1/users',
-              description: 'Получить список всех пользователей',
+              description: t("api_docs_desc_get_users"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               response: {
                 users: [
@@ -353,7 +353,7 @@ if (responseData.users && responseData.users.length > 0) { pm.collectionVariable
               name: 'Create User',
               method: 'POST',
               endpoint: '/functions/v1/users',
-              description: 'Создать нового пользователя',
+              description: t("api_docs_desc_create_user"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: {
                 email: 'new.user@example.com',
@@ -382,7 +382,7 @@ if (r.user && r.user.id) { pm.collectionVariables.set("first_user_id", r.user.id
               name: 'Update User',
               method: 'PATCH',
               endpoint: '/functions/v1/users/{id}',
-              description: 'Обновить данные пользователя',
+              description: t("api_docs_desc_update_user"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: {
                 name: 'Новое имя',
@@ -411,7 +411,7 @@ if (responseData.user && responseData.user.id) { pm.collectionVariables.set("edi
               name: 'Delete User',
               method: 'DELETE',
               endpoint: '/functions/v1/users/{id}',
-              description: 'Деактивировать пользователя',
+              description: t("api_docs_desc_delete_user"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               response: {
                 user: {
@@ -430,14 +430,14 @@ if (responseData.user && responseData.user.id) { pm.collectionVariables.set("edi
           ],
         },
         {
-          name: 'Права доступа',
-          description: 'Управление правами доступа пользователей',
+          name: t("api_docs_page_admin_permissions_name"),
+          description: t("api_docs_page_admin_permissions_desc"),
           endpoints: [
             {
               name: 'Get User Permissions',
               method: 'GET',
               endpoint: '/functions/v1/permissions?user_id={{current_user_id}}',
-              description: 'Получить права доступа пользователя',
+              description: t("api_docs_desc_get_user_permissions"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               response: {
                 permissions: [
@@ -458,7 +458,7 @@ if (responseData.user && responseData.user.id) { pm.collectionVariables.set("edi
               name: 'Update User Permissions',
               method: 'POST',
               endpoint: '/functions/v1/permissions',
-              description: 'Обновить права доступа пользователя к пунктам меню',
+              description: t("api_docs_desc_update_user_permissions"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: {
                 user_id: '{{current_user_id}}',
@@ -475,17 +475,17 @@ if (responseData.user && responseData.user.id) { pm.collectionVariables.set("edi
       ],
     },
     user: {
-      name: 'Кабинет пользователя',
+      name: t("api_docs_section_user_name"),
       pages: [
         {
-          name: 'Профиль',
-          description: 'Данные текущего пользователя и их обновление',
+          name: t("api_docs_page_profile_name"),
+          description: t("api_docs_page_profile_desc"),
           endpoints: [
             {
               name: 'Get Current User',
               method: 'GET',
               endpoint: '/functions/v1/auth-me',
-              description: 'Получить информацию о текущем пользователе',
+              description: t("api_docs_desc_get_current_user"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               response: {
                 user: {
@@ -508,7 +508,7 @@ if (responseData.user && responseData.user.id) { pm.collectionVariables.set("cur
               name: 'Update Profile',
               method: 'PATCH',
               endpoint: '/rest/v1/profiles?id=eq.{{manager_id}}',
-              description: 'Обновить профиль пользователя после регистрации',
+              description: t("api_docs_desc_update_profile"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { name: 'Manager Name', phone: '+380991112233' },
               response: {
@@ -526,14 +526,14 @@ if (responseData.user && responseData.user.id) { pm.collectionVariables.set("cur
           ],
         },
         {
-          name: 'Меню',
-          description: 'Структурированное меню доступных разделов',
+          name: t("api_docs_page_menu_name"),
+          description: t("api_docs_page_menu_desc"),
           endpoints: [
             {
               name: 'Get Menu',
               method: 'GET',
               endpoint: '/functions/v1/menu',
-              description: 'Получить структурированное меню для текущего пользователя',
+              description: t("api_docs_desc_get_menu"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               response: {
                 menu: [
@@ -559,14 +559,14 @@ if (responseData.menu && responseData.menu.length > 0) { pm.collectionVariables.
           ],
         },
         {
-          name: 'Права доступа',
-          description: 'Просмотр прав доступа текущего пользователя',
+          name: t("api_docs_page_user_permissions_name"),
+          description: t("api_docs_page_user_permissions_desc"),
           endpoints: [
             {
               name: 'Get User Permissions',
               method: 'GET',
               endpoint: '/functions/v1/permissions?user_id={{current_user_id}}',
-              description: 'Получить права доступа пользователя',
+              description: t("api_docs_desc_get_user_permissions"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               response: {
                 permissions: [
@@ -578,14 +578,14 @@ if (responseData.menu && responseData.menu.length > 0) { pm.collectionVariables.
           ],
         },
         {
-          name: 'Магазины',
-          description: 'CRUD магазинов и связанные данные',
+          name: t("api_docs_page_shops_name"),
+          description: t("api_docs_page_shops_desc"),
           endpoints: [
             {
               name: 'List User Shops',
               method: 'POST',
               endpoint: '/functions/v1/user-shops-list',
-              description: 'Получить список магазинов текущего пользователя',
+              description: t("api_docs_desc_list_user_shops"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: {},
               response: {
@@ -611,7 +611,7 @@ if (Array.isArray(r.shops) && r.shops.length > 0) { pm.collectionVariables.set("
               name: 'Create Shop',
               method: 'POST',
               endpoint: '/functions/v1/create-shop',
-              description: 'Создать новый магазин',
+              description: t("api_docs_desc_create_shop"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: {
                 store_name: 'Demo Shop',
@@ -631,7 +631,7 @@ if (r.shop && r.shop.id) { pm.collectionVariables.set("store_id", r.shop.id); }`
               name: 'Update Shop',
               method: 'POST',
               endpoint: '/functions/v1/update-shop',
-              description: 'Обновить магазин',
+              description: t("api_docs_desc_update_shop"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { id: '{{store_id}}', patch: { store_name: 'Demo Shop Updated', is_active: true } },
               response: { shop: { id: '{{store_id}}', store_name: 'Demo Shop Updated', is_active: true } },
@@ -641,7 +641,7 @@ if (r.shop && r.shop.id) { pm.collectionVariables.set("store_id", r.shop.id); }`
               name: 'Delete Shop',
               method: 'POST',
               endpoint: '/functions/v1/delete-shop',
-              description: 'Удалить магазин',
+              description: t("api_docs_desc_delete_shop"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { id: '{{store_id}}' },
               response: { ok: true },
@@ -651,7 +651,7 @@ if (r.shop && r.shop.id) { pm.collectionVariables.set("store_id", r.shop.id); }`
               name: 'Store Categories List',
               method: 'POST',
               endpoint: '/functions/v1/store-categories-list',
-              description: 'Категории магазина',
+              description: t("api_docs_desc_store_categories_list"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}' },
               response: {
@@ -668,7 +668,7 @@ if (Array.isArray(r.rows) && r.rows.length > 0) { pm.collectionVariables.set("st
               name: 'Ensure Store Category',
               method: 'POST',
               endpoint: '/functions/v1/ensure-store-category',
-              description: 'Гарантировать привязку категории к магазину (апсерт)',
+              description: t("api_docs_desc_ensure_store_category"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}', category_id: 12, external_id: 'cat-12', custom_name: 'Мужская одежда' },
               response: { id: 101 },
@@ -680,7 +680,7 @@ if (r.id) { pm.collectionVariables.set("store_category_id", r.id.toString()); }`
               name: 'Update Store Category',
               method: 'POST',
               endpoint: '/functions/v1/update-store-category',
-              description: 'Обновить поля категории магазина',
+              description: t("api_docs_desc_update_store_category"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { id: '{{store_category_id}}', custom_name: 'Новое имя', is_active: true },
               response: { ok: true },
@@ -690,7 +690,7 @@ if (r.id) { pm.collectionVariables.set("store_category_id", r.id.toString()); }`
               name: 'Delete Store Category With Products',
               method: 'POST',
               endpoint: '/functions/v1/delete-store-category-with-products',
-              description: 'Удалить категорию магазина и её товары',
+              description: t("api_docs_desc_delete_store_category_with_products"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}', category_id: '{{category_id}}' },
               response: { ok: true },
@@ -700,7 +700,7 @@ if (r.id) { pm.collectionVariables.set("store_category_id", r.id.toString()); }`
               name: 'Delete Store Categories With Products',
               method: 'POST',
               endpoint: '/functions/v1/delete-store-categories-with-products',
-              description: 'Массовое удаление категорий магазина и их товаров',
+              description: t("api_docs_desc_delete_store_categories_with_products"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}', category_ids: [ '{{category_id}}' ] },
               response: { ok: true },
@@ -710,7 +710,7 @@ if (r.id) { pm.collectionVariables.set("store_category_id", r.id.toString()); }`
               name: 'Get Store Products Count',
               method: 'POST',
               endpoint: '/functions/v1/get-store-products-count',
-              description: 'Количество товаров в магазине',
+              description: t("api_docs_desc_get_store_products_count"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}' },
               response: { count: 42 },
@@ -719,14 +719,14 @@ if (r.id) { pm.collectionVariables.set("store_category_id", r.id.toString()); }`
           ]
         },
         {
-          name: 'Валюты магазина',
-          description: 'Операции с валютами магазина',
+          name: t("api_docs_page_store_currencies_name"),
+          description: t("api_docs_page_store_currencies_desc"),
           endpoints: [
             { 
               name: 'Store Currencies List',
               method: 'POST',
               endpoint: '/functions/v1/store-currencies-list',
-              description: 'Список валют магазина',
+              description: t("api_docs_desc_store_currencies_list"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}' },
               response: { rows: [ { code: 'USD', rate: 1, is_base: true }, { code: 'EUR', rate: 40.5, is_base: false } ] },
@@ -738,7 +738,7 @@ if (Array.isArray(r.rows) && r.rows.length > 0) { pm.collectionVariables.set("cu
               name: 'Add Store Currency',
               method: 'POST',
               endpoint: '/functions/v1/add-store-currency',
-              description: 'Добавить валюту в магазин',
+              description: t("api_docs_desc_add_store_currency"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}', code: 'EUR', rate: 40.5 },
               response: { ok: true },
@@ -748,7 +748,7 @@ if (Array.isArray(r.rows) && r.rows.length > 0) { pm.collectionVariables.set("cu
               name: 'Update Store Currency Rate',
               method: 'POST',
               endpoint: '/functions/v1/update-store-currency-rate',
-              description: 'Обновить курс валюты',
+              description: t("api_docs_desc_update_store_currency_rate"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}', code: '{{currency_code}}', rate: 41.2 },
               response: { ok: true },
@@ -758,7 +758,7 @@ if (Array.isArray(r.rows) && r.rows.length > 0) { pm.collectionVariables.set("cu
               name: 'Set Base Store Currency',
               method: 'POST',
               endpoint: '/functions/v1/set-base-store-currency',
-              description: 'Установить базовую валюту',
+              description: t("api_docs_desc_set_base_store_currency"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}', code: '{{currency_code}}' },
               response: { ok: true },
@@ -768,7 +768,7 @@ if (Array.isArray(r.rows) && r.rows.length > 0) { pm.collectionVariables.set("cu
               name: 'Delete Store Currency',
               method: 'POST',
               endpoint: '/functions/v1/delete-store-currency',
-              description: 'Удалить валюту из магазина',
+              description: t("api_docs_desc_delete_store_currency"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}', code: '{{currency_code}}' },
               response: { ok: true },
@@ -778,7 +778,7 @@ if (Array.isArray(r.rows) && r.rows.length > 0) { pm.collectionVariables.set("cu
               name: 'Get Available Currencies',
               method: 'POST',
               endpoint: '/functions/v1/get-available-currencies',
-              description: 'Справочник доступных валют',
+              description: t("api_docs_desc_get_available_currencies"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: {},
               response: { rows: [ { code: 'USD' }, { code: 'EUR' }, { code: 'UAH' } ] },
@@ -787,14 +787,14 @@ if (Array.isArray(r.rows) && r.rows.length > 0) { pm.collectionVariables.set("cu
           ]
         },
         {
-          name: 'Поставщики',
-          description: 'CRUD поставщиков',
+          name: t("api_docs_page_suppliers_name"),
+          description: t("api_docs_page_suppliers_desc"),
           endpoints: [
             {
               name: 'Suppliers List',
               method: 'POST',
               endpoint: '/functions/v1/suppliers-list',
-              description: 'Список поставщиков текущего пользователя',
+              description: t("api_docs_desc_suppliers_list"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: {},
               response: { suppliers: [ { id: 1, supplier_name: 'Supplier A', website_url: 'https://sup.example.com', xml_feed_url: null, phone: '+380...', created_at: '...', updated_at: '...' } ] },
@@ -806,7 +806,7 @@ if (Array.isArray(r.suppliers) && r.suppliers.length > 0) { pm.collectionVariabl
               name: 'Suppliers Limit',
               method: 'POST',
               endpoint: '/functions/v1/suppliers-limit',
-              description: 'Максимально доступное количество поставщиков',
+              description: t("api_docs_desc_suppliers_limit"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: {},
               response: { value: 5 },
@@ -818,7 +818,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("suppliers_limit",
               name: 'Create Supplier',
               method: 'POST',
               endpoint: '/functions/v1/suppliers-create',
-              description: 'Создать поставщика',
+              description: t("api_docs_desc_create_supplier"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { supplier_name: 'Supplier Demo', website_url: 'https://sup.demo', xml_feed_url: null, phone: '+3800000000' },
               response: { supplier: { id: 2, supplier_name: 'Supplier Demo', website_url: 'https://sup.demo' } },
@@ -830,7 +830,7 @@ if (r.supplier && r.supplier.id) { pm.collectionVariables.set("supplier_id", Str
               name: 'Update Supplier',
               method: 'POST',
               endpoint: '/functions/v1/suppliers-update',
-              description: 'Обновить поставщика',
+              description: t("api_docs_desc_update_supplier"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { id: '{{supplier_id}}', supplier_name: 'Supplier Demo Updated', xml_feed_url: null, phone: '+3800000001' },
               response: { supplier: { id: '{{supplier_id}}', supplier_name: 'Supplier Demo Updated' } },
@@ -840,7 +840,7 @@ if (r.supplier && r.supplier.id) { pm.collectionVariables.set("supplier_id", Str
               name: 'Delete Supplier',
               method: 'POST',
               endpoint: '/functions/v1/suppliers-delete',
-              description: 'Удалить поставщика',
+              description: t("api_docs_desc_delete_supplier"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { id: '{{supplier_id}}' },
               response: { ok: true },
@@ -849,14 +849,14 @@ if (r.supplier && r.supplier.id) { pm.collectionVariables.set("supplier_id", Str
           ]
         },
         {
-          name: 'Товары',
-          description: 'Полный набор операций с товарами',
+          name: t("api_docs_page_products_name"),
+          description: t("api_docs_page_products_desc"),
           endpoints: [
             {
               name: 'User Products List',
               method: 'POST',
               endpoint: '/functions/v1/user-products-list',
-              description: 'Общий список товаров пользователя (страница /user/products) с пагинацией',
+              description: t("api_docs_desc_user_products_list"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { limit: 20, offset: 0 },
               response: { products: [ { id: 'uuid', store_id: 'store', name: 'Product', price: 100, stock_quantity: 10, available: true } ], page: { limit: 20, offset: 0, hasMore: true, nextOffset: 20, total: 100 } },
@@ -868,7 +868,7 @@ if (Array.isArray(r.products) && r.products.length > 0) { pm.collectionVariables
               name: 'Store Products List',
               method: 'POST',
               endpoint: '/functions/v1/store-products-list',
-              description: 'Список товаров конкретного магазина (страница /user/shops/:id) с пагинацией',
+              description: t("api_docs_desc_store_products_list"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}', limit: 20, offset: 0 },
               response: { products: [ { id: 'uuid', store_id: 'store', name: 'Product', price: 100, stock_quantity: 10, available: true } ], page: { limit: 20, offset: 0, hasMore: true, nextOffset: 20, total: 100 } },
@@ -880,7 +880,7 @@ if (Array.isArray(r.products) && r.products.length > 0) { pm.collectionVariables
               name: 'Product Edit Data',
               method: 'POST',
               endpoint: '/functions/v1/product-edit-data',
-              description: 'Агрегированные данные для редактирования товара',
+              description: t("api_docs_desc_product_edit_data"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { product_id: '{{product_id}}', store_id: '{{store_id}}' },
               response: {
@@ -895,7 +895,7 @@ if (Array.isArray(r.products) && r.products.length > 0) { pm.collectionVariables
               name: 'Create Product',
               method: 'POST',
               endpoint: '/functions/v1/create-product',
-              description: 'Создать новый товар',
+              description: t("api_docs_desc_create_product"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: {
                 store_id: '{{store_id}}',
@@ -949,7 +949,7 @@ if (r.product_id) { pm.collectionVariables.set("product_id", r.product_id); }`
               name: 'Update Product',
               method: 'POST',
               endpoint: '/functions/v1/update-product',
-              description: 'Обновить товар',
+              description: t("api_docs_desc_update_product"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { product_id: '{{product_id}}', price: 120, stock_quantity: 12, description: 'Обновлённое описание' },
               response: { product_id: '{{product_id}}' },
@@ -959,7 +959,7 @@ if (r.product_id) { pm.collectionVariables.set("product_id", r.product_id); }`
               name: 'Delete Product',
               method: 'POST',
               endpoint: '/functions/v1/delete-product',
-              description: 'Удалить товар',
+              description: t("api_docs_desc_delete_product"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { product_ids: [ '{{product_id}}' ] },
               response: { success: true },
@@ -969,7 +969,7 @@ if (r.product_id) { pm.collectionVariables.set("product_id", r.product_id); }`
               name: 'Duplicate Product',
               method: 'POST',
               endpoint: '/functions/v1/duplicate-product',
-              description: 'Дублировать товар',
+              description: t("api_docs_desc_duplicate_product"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { productId: '{{product_id}}' },
               response: { product: { id: 'uuid-copy', name: 'Demo Product (Copy)' } },
@@ -981,7 +981,7 @@ if (r.product && r.product.id) { pm.collectionVariables.set("product_copy_id", r
               name: 'Save Store Product Edit',
               method: 'POST',
               endpoint: '/functions/v1/save-store-product-edit',
-              description: 'Сохранить изменения товара для магазина',
+              description: t("api_docs_desc_save_store_product_edit"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { product_id: '{{product_id}}', store_id: '{{store_id}}', name: 'Edited', price: 95, linkPatch: { custom_price: 95 } },
               response: { product_id: '{{product_id}}', link: { custom_price: 95 } },
@@ -993,7 +993,7 @@ if (r.link && typeof r.link.custom_price !== 'undefined') { pm.collectionVariabl
               name: 'Update Store Product Link',
               method: 'POST',
               endpoint: '/functions/v1/update-store-product-link',
-              description: 'Обновить переопределения товара в магазине',
+              description: t("api_docs_desc_update_store_product_link"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { product_id: '{{product_id}}', store_id: '{{store_id}}', patch: { custom_price: 88, custom_available: true } },
               response: { link: { custom_price: 88, custom_available: true } },
@@ -1003,7 +1003,7 @@ if (r.link && typeof r.link.custom_price !== 'undefined') { pm.collectionVariabl
               name: 'Get Store Links For Product',
               method: 'POST',
               endpoint: '/functions/v1/get-store-links-for-product',
-              description: 'Список магазинов, к которым привязан товар',
+              description: t("api_docs_desc_get_store_links_for_product"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { product_id: '{{product_id}}' },
               response: { store_ids: [ '{{store_id}}' ] },
@@ -1013,7 +1013,7 @@ if (r.link && typeof r.link.custom_price !== 'undefined') { pm.collectionVariabl
               name: 'Bulk Add Store Product Links',
               method: 'POST',
               endpoint: '/functions/v1/bulk-add-store-product-links',
-              description: 'Массово привязать товар к магазинам',
+              description: t("api_docs_desc_bulk_add_store_product_links"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { links: [ { product_id: '{{product_id}}', store_id: '{{store_id}}', is_active: true } ] },
               response: { inserted: 1, addedByStore: { '{{store_id}}': 1 } },
@@ -1025,7 +1025,7 @@ if (typeof r.inserted === 'number') { pm.collectionVariables.set("added_links_co
               name: 'Bulk Remove Store Product Links',
               method: 'POST',
               endpoint: '/functions/v1/bulk-remove-store-product-links',
-              description: 'Массово отвязать товар от магазинов',
+              description: t("api_docs_desc_bulk_remove_store_product_links"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { product_ids: [ '{{product_id}}' ], store_ids: [ '{{store_id}}' ] },
               response: { deleted: 1, deletedByStore: { '{{store_id}}': 1 } },
@@ -1037,7 +1037,7 @@ if (typeof r.deleted === 'number') { pm.collectionVariables.set("deleted_links_c
               name: 'Store Category Filter Options',
               method: 'POST',
               endpoint: '/functions/v1/store-category-filter-options',
-              description: 'Названия категорий для фильтрации товаров магазина',
+              description: t("api_docs_desc_store_category_filter_options"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { store_id: '{{store_id}}' },
               response: { names: [ 'Одежда', 'Обувь', 'Аксессуары' ] },
@@ -1047,7 +1047,7 @@ if (typeof r.deleted === 'number') { pm.collectionVariables.set("deleted_links_c
               name: 'Get Product Limit Only',
               method: 'POST',
               endpoint: '/functions/v1/get-product-limit-only',
-              description: 'Максимально доступное количество товаров',
+              description: t("api_docs_desc_get_product_limit_only"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: {},
               response: { value: 1000 },
@@ -1058,14 +1058,14 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
           ]
         },
         {
-          name: 'Категории',
-          description: 'Работа с категориями поставщиков (user функции)',
+          name: t("api_docs_page_categories_name"),
+          description: t("api_docs_page_categories_desc"),
           endpoints: [
             {
               name: 'Supplier Categories List',
               method: 'POST',
               endpoint: '/functions/v1/categories',
-              description: 'Список категорий по поставщику',
+              description: t("api_docs_desc_supplier_categories_list"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { action: 'list', supplier_id: '{{supplier_id}}' },
               response: { rows: [ { id: '1001', name: 'Обувь', external_id: 'footwear', supplier_id: '{{supplier_id}}', parent_external_id: null } ] },
@@ -1075,7 +1075,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
               name: 'Get Supplier Categories (Full)',
               method: 'POST',
               endpoint: '/functions/v1/categories',
-              description: 'Полный список категорий с id/parent для поставщика',
+              description: t("api_docs_desc_supplier_categories_full"),
               headers: { Authorization: 'Bearer {{access_token}}' },
               body: { action: 'get_supplier_categories', supplier_id: '{{supplier_id}}' },
               response: { rows: [ { id: '1002', external_id: 'men', name: 'Мужское', parent_external_id: null, supplier_id: '{{supplier_id}}' } ] },
@@ -1085,7 +1085,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
         },
       ],
     },
-  }), []);
+  }), [t]);
 
   const visiblePageGroupsBySection = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -1162,8 +1162,8 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
     
     const collection = {
       info: {
-        name: "API Documentation Collection",
-        description: "Postman коллекция для тестирования API",
+        name: t("api_docs_postman_collection_name"),
+        description: t("api_docs_postman_collection_desc"),
         schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
       },
       variable: [
@@ -1259,10 +1259,10 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
     const spec: any = {
       openapi: "3.0.3",
       info: {
-        title: "MarketGrow API",
+        title: t("api_docs_title"),
         version: "1.0.0",
         description:
-          "OpenAPI спецификация, собранная из встроенной документации проекта.",
+          t("api_docs_openapi_description"),
       },
       servers: [{ url: serverUrl }],
       components: {
@@ -1365,7 +1365,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
     });
 
     return spec;
-  }, [apiSections, serverUrl]);
+  }, [apiSections, serverUrl, t]);
 
   const downloadJson = useCallback(
     (filename: string, obj: unknown) => {
@@ -1386,11 +1386,11 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
     const spec = generateOpenApiSpec();
     downloadJson("openapi.json", spec);
     toast({
-      title: "Swagger экспорт готов",
-      description: "Файл openapi.json скачан",
+      title: t("api_docs_openapi_export_ready"),
+      description: t("api_docs_openapi_export_downloaded"),
       duration: 3000,
     });
-  }, [downloadJson, generateOpenApiSpec, toast]);
+  }, [downloadJson, generateOpenApiSpec, t, toast]);
 
   const handleExportPostman = useCallback(() => {
     generatePostmanCollection();
@@ -1444,12 +1444,23 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-5xl px-4 py-8 relative">
+        <div className="absolute right-4 top-4">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setLang(lang === "uk" ? "en" : "uk")}
+            aria-label={t("toggle_language")}
+            className="text-emerald-700 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-200 dark:hover:bg-transparent dark:hover:text-emerald-100"
+          >
+            {lang === "uk" ? "EN" : "UA"}
+          </Button>
+        </div>
         <div className="space-y-8">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-5xl font-semibold tracking-tight text-foreground">
-                MarketGrow API
+                {t("api_docs_title")}
               </h1>
               <span className="inline-flex items-center rounded bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40 dark:text-emerald-100">
                 1.0
@@ -1459,14 +1470,14 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
               </span>
             </div>
             <p className="text-muted-foreground">
-              REST API для системы управления пользователями и ролевым доступом
+              {t("api_docs_subtitle")}
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
             <div className="grid gap-2">
               <div className="text-sm font-semibold text-muted-foreground">
-                Servers
+                {t("api_docs_servers_label")}
               </div>
               <div className="max-w-xl">
                 <Select value={serverUrl} onValueChange={setServerUrl}>
@@ -1488,17 +1499,17 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                     className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/20"
                   >
                     <Lock className="h-4 w-4 mr-2" />
-                    Authorize
+                    {t("api_docs_authorize")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <Lock className="h-4 w-4 text-muted-foreground" />
-                      Available authorizations
+                      {t("api_docs_available_authorizations")}
                     </DialogTitle>
                     <DialogDescription>
-                      Значения сохраняются локально в браузере
+                      {t("api_docs_values_saved")}
                     </DialogDescription>
                   </DialogHeader>
 
@@ -1512,13 +1523,13 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                           (http, Bearer)
                         </span>
                       </div>
-                      <Label htmlFor="auth-bearer">Value</Label>
+                      <Label htmlFor="auth-bearer">{t("api_docs_value_label")}</Label>
                       <Input
                         id="auth-bearer"
                         type="text"
                         value={settings.accessToken}
                         onChange={(e) => handleAccessTokenChange(e.target.value)}
-                        placeholder="JWT token"
+                        placeholder={t("api_docs_jwt_placeholder")}
                         className="font-mono text-sm"
                       />
                       <div className="flex gap-2">
@@ -1527,10 +1538,10 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                           variant="outline"
                           onClick={handleSaveBearerAuth}
                         >
-                          Authorize
+                          {t("api_docs_authorize")}
                         </Button>
                         <Button variant="outline" onClick={closeAuthDialog}>
-                          Close
+                          {t("api_docs_close")}
                         </Button>
                       </div>
                     </div>
@@ -1544,13 +1555,13 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                           (apiKey)
                         </span>
                       </div>
-                      <Label htmlFor="auth-apikey">Value</Label>
+                      <Label htmlFor="auth-apikey">{t("api_docs_value_label")}</Label>
                       <Input
                         id="auth-apikey"
                         type="text"
                         value={settings.apiKey}
                         onChange={(e) => handleApiKeyChange(e.target.value)}
-                        placeholder="Supabase anon key"
+                        placeholder={t("api_docs_apikey_placeholder")}
                         className="font-mono text-sm"
                       />
                       <div className="flex gap-2">
@@ -1559,10 +1570,10 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                           variant="outline"
                           onClick={handleSaveSupabaseApiKey}
                         >
-                          Authorize
+                          {t("api_docs_authorize")}
                         </Button>
                         <Button variant="outline" onClick={closeAuthDialog}>
-                          Close
+                          {t("api_docs_close")}
                         </Button>
                       </div>
                     </div>
@@ -1578,24 +1589,24 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="space-y-1">
-                          <Label htmlFor="auth-admin-email">Username</Label>
+                          <Label htmlFor="auth-admin-email">{t("api_docs_username_label")}</Label>
                           <Input
                             id="auth-admin-email"
                             type="email"
                             value={settings.adminEmail}
                             onChange={(e) => handleAdminEmailChange(e.target.value)}
-                            placeholder="admin@example.com"
+                            placeholder={t("api_docs_admin_email_placeholder")}
                             className="text-sm"
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label htmlFor="auth-admin-password">Password</Label>
+                          <Label htmlFor="auth-admin-password">{t("api_docs_password_label")}</Label>
                           <Input
                             id="auth-admin-password"
                             type="password"
                             value={settings.adminPassword}
                             onChange={(e) => handleAdminPasswordChange(e.target.value)}
-                            placeholder="password"
+                            placeholder={t("api_docs_admin_password_placeholder")}
                             className="text-sm"
                           />
                         </div>
@@ -1606,10 +1617,10 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                           variant="outline"
                           onClick={handleSaveAdminCredentials}
                         >
-                          Authorize
+                          {t("api_docs_authorize")}
                         </Button>
                         <Button variant="outline" onClick={closeAuthDialog}>
-                          Close
+                          {t("api_docs_close")}
                         </Button>
                       </div>
                     </div>
@@ -1621,17 +1632,17 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                 <DialogTrigger asChild>
                   <Button variant="outline" className="gap-2">
                     <Download className="w-4 h-4" />
-                    Экспорт
+                    {t("api_docs_export")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <Download className="h-4 w-4 text-muted-foreground" />
-                      Экспорт
+                      {t("api_docs_export")}
                     </DialogTitle>
                     <DialogDescription>
-                      Скачайте Swagger/OpenAPI или Postman коллекцию
+                      {t("api_docs_export_desc")}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-3">
@@ -1642,9 +1653,9 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                     >
                       <Send className="h-5 w-5" />
                       <div className="text-left">
-                        <div className="font-medium">Postman</div>
+                        <div className="font-medium">{t("api_docs_postman_label")}</div>
                         <div className="text-xs text-muted-foreground">
-                          Коллекция v2.1 (JSON)
+                          {t("api_docs_postman_desc")}
                         </div>
                       </div>
                     </Button>
@@ -1655,9 +1666,9 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                     >
                       <FileJson className="h-5 w-5" />
                       <div className="text-left">
-                        <div className="font-medium">Swagger (OpenAPI)</div>
+                        <div className="font-medium">{t("api_docs_swagger_label")}</div>
                         <div className="text-xs text-muted-foreground">
-                          Спецификация OpenAPI 3.0 (JSON)
+                          {t("api_docs_swagger_desc")}
                         </div>
                       </div>
                     </Button>
@@ -1669,12 +1680,12 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
             <div className="text-sm font-semibold text-muted-foreground">
-              Filter
+              {t("api_docs_filter_label")}
             </div>
             <Input
               value={searchQuery}
               onChange={handleSearchChange}
-              placeholder="Filter"
+              placeholder={t("api_docs_filter_placeholder")}
               className="max-w-xl"
             />
           </div>
@@ -1739,7 +1750,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                               <div className="rounded-md border bg-background p-4 space-y-4">
                                 <div className="space-y-1">
                                   <div className="text-sm font-semibold text-foreground">
-                                    Description
+                                    {t("api_docs_description_label")}
                                   </div>
                                   <div className="text-sm text-muted-foreground">
                                     {endpoint.description}
@@ -1751,13 +1762,13 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                 <div className="grid gap-4 md:grid-cols-2">
                                   <div className="space-y-2">
                                     <div className="text-sm font-semibold text-foreground">
-                                      Request
+                                      {t("api_docs_request_label")}
                                     </div>
                                     <div className="space-y-3">
                                       {endpoint.headers ? (
                                         <div className="space-y-1">
                                           <div className="text-xs font-semibold text-muted-foreground">
-                                            Headers
+                                            {t("api_docs_headers_label")}
                                           </div>
                                           <pre className="bg-muted p-3 rounded overflow-x-auto text-xs dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40">
                                             <code>
@@ -1769,7 +1780,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                       {endpoint.body ? (
                                         <div className="space-y-1">
                                           <div className="text-xs font-semibold text-muted-foreground">
-                                            Body
+                                            {t("api_docs_body_label")}
                                           </div>
                                           <pre className="bg-muted p-3 rounded overflow-x-auto text-xs dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40">
                                             <code>
@@ -1783,7 +1794,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
 
                                   <div className="space-y-2">
                                     <div className="text-sm font-semibold text-foreground">
-                                      Responses
+                                      {t("api_docs_responses_label")}
                                     </div>
                                     <div className="relative">
                                       <pre className="bg-muted rounded overflow-x-auto text-xs px-3 pb-3 pt-12 dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40">
@@ -1805,7 +1816,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                             </Button>
                                           </TooltipTrigger>
                                           <TooltipContent>
-                                            <p>Копировать ответ</p>
+                                            <p>{t("api_docs_copy_response")}</p>
                                           </TooltipContent>
                                         </Tooltip>
                                       </TooltipProvider>
@@ -1815,7 +1826,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
 
                                 <div className="space-y-2">
                                   <div className="text-sm font-semibold text-foreground">
-                                    cURL
+                                    {t("api_docs_curl_label")}
                                   </div>
                                   <div className="relative">
                                     <pre className="bg-muted rounded overflow-x-auto text-xs px-3 pb-3 pt-12 dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40">
@@ -1835,7 +1846,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                           </Button>
                                         </TooltipTrigger>
                                         <TooltipContent>
-                                          <p>Копировать cURL</p>
+                                          <p>{t("api_docs_copy_curl")}</p>
                                         </TooltipContent>
                                       </Tooltip>
                                     </TooltipProvider>
@@ -1845,7 +1856,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                 <div className="space-y-2">
                                   <div className="flex items-center justify-between gap-3">
                                     <div className="text-sm font-semibold text-foreground">
-                                      Postman Test Script
+                                      {t("api_docs_postman_script_label")}
                                     </div>
                                     <Button
                                       variant="outline"
@@ -1856,12 +1867,12 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                       {isEditing ? (
                                         <>
                                           <Save className="w-4 h-4 mr-2" />
-                                          Готово
+                                          {t("api_docs_done")}
                                         </>
                                       ) : (
                                         <>
                                           <Edit className="w-4 h-4 mr-2" />
-                                          Редактировать
+                                          {t("api_docs_edit")}
                                         </>
                                       )}
                                     </Button>
@@ -1872,13 +1883,13 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                       value={script}
                                       data-endpoint-key={endpointKey}
                                       onChange={handleScriptChange}
-                                      placeholder="Введите Postman тест скрипт..."
+                                      placeholder={t("api_docs_postman_script_placeholder")}
                                       className="min-h-[180px] font-mono text-sm"
                                     />
                                   ) : (
                                     <div className="relative">
                                       <pre className="bg-muted rounded overflow-x-auto text-xs min-h-[120px] px-3 pb-3 pt-12 dark:bg-neutral-900/70 dark:border dark:border-emerald-500/40">
-                                        <code>{script || "// Postman скрипт не задан"}</code>
+                                        <code>{script || t("api_docs_postman_script_empty")}</code>
                                       </pre>
                                       <TooltipProvider>
                                         <Tooltip>
@@ -1895,7 +1906,7 @@ if (typeof r.value === 'number') { pm.collectionVariables.set("product_limit", S
                                             </Button>
                                           </TooltipTrigger>
                                           <TooltipContent>
-                                            <p>Копировать скрипт</p>
+                                            <p>{t("api_docs_copy_script")}</p>
                                           </TooltipContent>
                                         </Tooltip>
                                       </TooltipProvider>
