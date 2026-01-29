@@ -27,6 +27,7 @@ export function createParametersColumns(args: {
       header: ({ table }) => (
         <div className="flex items-center justify-start">
           <Checkbox
+            type="button"
             checked={
               table.getIsAllPageRowsSelected()
                 ? true
@@ -34,7 +35,7 @@ export function createParametersColumns(args: {
                   ? "indeterminate"
                   : false
             }
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(value === true)}
             aria-label={args.t("select_all")}
           />
         </div>
@@ -42,8 +43,9 @@ export function createParametersColumns(args: {
       cell: ({ row }) => (
         <div className="flex items-center justify-start">
           <Checkbox
+            type="button"
             checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            onCheckedChange={(value) => row.toggleSelected(value === true)}
             aria-label={args.t("select_row")}
           />
         </div>
@@ -118,7 +120,7 @@ export function createParametersColumns(args: {
         <div className="flex justify-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent" data-testid="parametersDataTable_rowActions">
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 hover:bg-transparent" data-testid="parametersDataTable_rowActions">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

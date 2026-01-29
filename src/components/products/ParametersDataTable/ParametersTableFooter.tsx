@@ -8,7 +8,7 @@ import { ChevronDown } from "lucide-react";
 
 import type { ProductParam } from "./ParametersDataTable";
 
-export const ParametersTableFooter = React.memo(function ParametersTableFooter({
+export function ParametersTableFooter({
   table,
   t,
 }: {
@@ -55,4 +55,4 @@ export const ParametersTableFooter = React.memo(function ParametersTableFooter({
       </div>
     </div>
   );
-});
+}

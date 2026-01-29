@@ -299,10 +299,7 @@ export const StoreProductEdit = () => {
 
     try {
       const productPayload: { params?: ProductParam[]; category_id?: number } = {};
-
-      if (productData.params && productData.params.length > 0) {
-        productPayload.params = sanitizeParams(productData.params);
-      }
+      productPayload.params = sanitizeParams(productData.params || []);
 
       const patch = buildPatchData();
 

@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import type { ProductParam } from "./ParametersDataTable";
 
-export const ParametersTableView = React.memo(function ParametersTableView({
+export function ParametersTableView({
   table,
   visibleColumnsCount,
   t,
@@ -41,7 +41,11 @@ export const ParametersTableView = React.memo(function ParametersTableView({
         <TableBody>
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} data-testid={`parametersDataTable_row_${row.index}`}>
+              <TableRow
+                key={row.id}
+                data-testid={`parametersDataTable_row_${row.index}`}
+                data-state={row.getIsSelected() ? "selected" : undefined}
+              >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
@@ -69,4 +73,4 @@ export const ParametersTableView = React.memo(function ParametersTableView({
       </Table>
     </div>
   );
-});
+}

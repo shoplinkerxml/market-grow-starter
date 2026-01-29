@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { DialogNoOverlay, DialogNoOverlayContent, DialogNoOverlayDescription, DialogNoOverlayHeader, DialogNoOverlayTitle } from "@/components/ui/dialog-no-overlay";
 import { Loader2, Settings as SettingsIcon } from "lucide-react";
-import { Columns as ColumnsIcon, ChevronDown, Plus, Trash2, MoreHorizontal, Pencil, Tag, Hash, Link, CheckCircle, Search } from "lucide-react";
+import { Columns as ColumnsIcon, ChevronDown, Plus, Trash2, MoreHorizontal, Pencil, Tag, Hash, Link, CheckCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ShopSettingsAggregated } from "@/lib/shop-service";
@@ -56,7 +56,6 @@ export default function ShopSettings() {
   const [selectedMarketplace, setSelectedMarketplace] = useState<string>('');
   const { templatesMap } = useMarketplaces(true);
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState<string>("");
   const [pageSize, setPageSize] = useState<number>(10);
   const [pageIndex, setPageIndex] = useState<number>(0);
   const [selectedRowIds, setSelectedRowIds] = useState<number[]>([]);
@@ -118,9 +117,8 @@ export default function ShopSettings() {
     }));
   }, [aggData]);
   
-  const filtered = useMemo(() => rows.filter(r => r.name.toLowerCase().includes(search.toLowerCase())), [rows, search]);
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const pageRows = filtered.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const pageRows = rows.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize);
   const [showNameCol, setShowNameCol] = useState(true);
   const [showCodeCol, setShowCodeCol] = useState(true);
   const [showRozetkaCol, setShowRozetkaCol] = useState(true);
@@ -377,19 +375,7 @@ export default function ShopSettings() {
             <TabsContent value="categories" className="space-y-4">
             
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="relative w-[clamp(12rem,40vw,22rem)]">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={e => {
-                      setSearch(e.target.value);
-                      setPageIndex(0);
-                    }}
-                    className="pl-9 h-8 py-1"
-                    data-testid="shop_settings_filter"
-                  />
-                </div>
+              <div className="flex items-center justify-end">
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" size="icon" className="h-8 w-8" disabled={selectedRowIds.length !== 1} onClick={() => {
                     const cat = rows.find(r => r.store_category_id === selectedRowIds[0]);
@@ -599,7 +585,7 @@ export default function ShopSettings() {
             <div className="text-xs text-muted-foreground" data-testid="shop_settings_selectionStatus">
               {(() => {
                     const selected = selectedRowIds.length;
-                    const total = filtered.length || 0;
+                    const total = rows.length || 0;
                     return t('rows_selected') === 'Вибрано' ? `Вибрано ${selected} з ${total} рядків.` : `${selected} of ${total} row(s) selected.`;
                   })()}
             </div>

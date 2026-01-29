@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import ParametersDataTable from '@/components/products/ParametersDataTable'
-import { Settings } from 'lucide-react'
+import { Settings, Wand2 } from 'lucide-react'
 import type { ProductParam } from './types'
 
 type ParamForm = {
@@ -60,42 +60,11 @@ export default function ParamsSection(props: Props) {
       </CardHeader>
       <CardContent>
         {props.readOnly && !props.forceParamsEditable ? null : (
-          <div className="flex flex-col gap-3 mb-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div className="flex-1 min-w-0 space-y-2">
-                <Label>{props.t('template_select_label')}</Label>
-                <Select
-                  value={props.selectedTemplateId}
-                  onValueChange={props.onTemplateChange}
-                  disabled={props.templatesLoading || props.templates.length === 0}
-                >
-                  <SelectTrigger data-testid="productForm_params_templateSelect">
-                    <SelectValue placeholder={props.t('template_select_placeholder')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {props.templates.map((tpl) => (
-                      <SelectItem key={tpl.id} value={String(tpl.id)}>
-                        {tpl.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={props.onApplyTemplate}
-                disabled={!props.selectedTemplateId || props.templatesLoading || props.templates.length === 0 || props.applyingTemplate}
-                aria-disabled={!props.selectedTemplateId || props.templatesLoading || props.templates.length === 0 || props.applyingTemplate}
-                data-testid="productForm_params_applyTemplate"
-              >
-                {props.applyingTemplate ? props.t('applying_template') : props.t('apply_template')}
-              </Button>
-            </div>
+          <>
             {props.templates.length === 0 && !props.templatesLoading ? (
-              <div className="text-xs text-muted-foreground">{props.t('template_empty_for_category')}</div>
+              <div className="text-xs text-muted-foreground mb-2">{props.t('template_empty_for_category')}</div>
             ) : null}
-          </div>
+          </>
         )}
         {props.readOnly && !props.forceParamsEditable ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -114,6 +83,40 @@ export default function ParamsSection(props: Props) {
             onDeleteSelected={props.onDeleteSelected}
             onSelectionChange={props.onSelectionChange}
             onAddParam={props.onAddParam}
+            toolbarLeft={
+              props.readOnly && !props.forceParamsEditable ? null : (
+                <>
+                  <Label className="sr-only">{props.t('template_select_label')}</Label>
+                  <Select
+                    value={props.selectedTemplateId}
+                    onValueChange={props.onTemplateChange}
+                    disabled={props.templatesLoading || props.templates.length === 0}
+                  >
+                    <SelectTrigger className="w-[clamp(11.2rem,22.4vw,18.2rem)] max-w-full" data-testid="productForm_params_templateSelect">
+                      <SelectValue placeholder={props.t('template_select_placeholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {props.templates.map((tpl) => (
+                        <SelectItem key={tpl.id} value={String(tpl.id)}>
+                          {tpl.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={props.onApplyTemplate}
+                    disabled={!props.selectedTemplateId || props.templatesLoading || props.templates.length === 0 || props.applyingTemplate}
+                    aria-disabled={!props.selectedTemplateId || props.templatesLoading || props.templates.length === 0 || props.applyingTemplate}
+                    data-testid="productForm_params_applyTemplate"
+                  >
+                    <Wand2 className="h-4 w-4" />
+                    {props.applyingTemplate ? props.t('applying_template') : props.t('apply_template')}
+                  </Button>
+                </>
+              )
+            }
             onReplaceData={props.onReplaceData}
             onValueChange={props.onValueChange}
           />

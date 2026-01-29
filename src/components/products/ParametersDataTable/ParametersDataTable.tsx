@@ -40,6 +40,7 @@ type Props = {
   onDeleteSelected?: (rowIndexes: number[]) => void;
   onSelectionChange?: (rowIndexes: number[]) => void;
   onAddParam?: () => void;
+  toolbarLeft?: React.ReactNode;
   onReplaceData?: (rows: ProductParam[]) => void;
   onValueChange?: (rowIndex: number, value: string, valueid?: string | null) => void;
 };
@@ -51,6 +52,7 @@ export function ParametersDataTable({
   onDeleteSelected,
   onSelectionChange,
   onAddParam,
+  toolbarLeft,
   onReplaceData,
   onValueChange,
 }: Props) {
@@ -94,18 +96,13 @@ export function ParametersDataTable({
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
+    autoResetPageIndex: false,
   });
 
-  const selectedIndices = React.useMemo(() => {
-    const byId = table.getRowModel().rowsById;
-    const out: number[] = [];
-    for (const [id, selected] of Object.entries(rowSelection)) {
-      if (!selected) continue;
-      const idx = byId[id]?.index;
-      if (typeof idx === "number") out.push(idx);
-    }
-    return out;
-  }, [rowSelection, table]);
+  const selectedIndices = table
+    .getSelectedRowModel()
+    .rows.map((row) => row.index)
+    .filter((idx) => Number.isFinite(idx));
 
   React.useEffect(() => {
     onSelectionChange?.(selectedIndices);
@@ -114,7 +111,12 @@ export function ParametersDataTable({
   const dataLength = data.length;
   React.useEffect(() => {
     setRowSelection({});
+    setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
   }, [dataLength]);
+
+  React.useEffect(() => {
+    setPagination((prev) => (prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 }));
+  }, [columnFilters, sorting]);
 
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 520px)");
@@ -237,13 +239,6 @@ export function ParametersDataTable({
     table.resetRowSelection();
   }, [onDeleteSelected, selectedIndices, table]);
 
-  const handleFilterChange = React.useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      table.getColumn("name")?.setFilterValue(event.target.value);
-    },
-    [table],
-  );
-
   const triggerImportXlsx = React.useCallback(() => triggerImport(".xlsx"), [triggerImport]);
   const triggerImportCsv = React.useCallback(() => triggerImport(".csv"), [triggerImport]);
   const triggerImportJson = React.useCallback(() => triggerImport(".json,.jsonl,.ndjson"), [triggerImport]);
@@ -260,9 +255,9 @@ export function ParametersDataTable({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        leftContent={toolbarLeft}
         canDeleteSelected={canDeleteSelected}
         onDeleteSelected={handleDeleteSelected}
-        onFilterChange={handleFilterChange}
         onAddParam={onAddParam}
         onTriggerImportXlsx={onReplaceData ? triggerImportXlsx : undefined}
         onTriggerImportCsv={onReplaceData ? triggerImportCsv : undefined}

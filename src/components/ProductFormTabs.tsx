@@ -488,8 +488,22 @@ export function ProductFormTabs({
   const handleEditRow = useCallback((index: number) => openEditParamModal(index), [openEditParamModal]);
   const handleDeleteRow = useCallback((index: number) => deleteParam(index), [deleteParam]);
   const handleReplaceParams = useCallback((rows: ProductParam[]) => {
-    setParameters(rows);
-    onParamsChange?.(rows);
+    const withOrder = (rows || []).map((p, index) => ({
+      ...p,
+      order_index: typeof p.order_index === "number" ? p.order_index : index,
+    }));
+    const normalized = withOrder
+      .map((p, index) => ({ ...p, order_index: p.order_index, __index: index }))
+      .sort((a, b) => {
+        const diff = Number(a.order_index) - Number(b.order_index);
+        return diff !== 0 ? diff : a.__index - b.__index;
+      })
+      .map((p, index) => {
+        const { __index, ...rest } = p;
+        return { ...rest, order_index: index };
+      });
+    setParameters(normalized);
+    onParamsChange?.(normalized);
   }, [onParamsChange, setParameters]);
 
   return <div className="container mx-auto px-2 sm:px-6 py-3 sm:py-6 max-w-7xl" data-testid="productFormTabs_container">

@@ -142,6 +142,13 @@ export const ProductEdit = () => {
   };
   const handleFormSubmit = async ({ formData, images, parameters }: { formData: FormDataInput; images: Array<{ url: string; order_index: number; is_main: boolean; object_key?: string }>; parameters: ProductParam[] }) => {
     if (!id) return;
+    const normalizedParams = (parameters || []).map((p, index) => ({
+      name: p.name,
+      value: p.value,
+      order_index: typeof p.order_index === "number" ? p.order_index : index,
+      paramid: p.paramid != null && String(p.paramid).trim() !== "" ? String(p.paramid).trim() : null,
+      valueid: p.valueid != null && String(p.valueid).trim() !== "" ? String(p.valueid).trim() : null,
+    }));
     const payload: any = {
       external_id: formData.external_id,
       category_id: formData.category_id || null,
@@ -162,7 +169,7 @@ export const ProductEdit = () => {
       description: formData.description || null,
       description_ua: formData.description_ua || null,
       state: formData.state || 'new',
-      params: parameters || [],
+      params: normalizedParams,
     };
     const mappedImages = (images || []).map((img, index: number) => ({
       url: img.url,
