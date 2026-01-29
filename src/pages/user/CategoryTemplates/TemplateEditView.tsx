@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion } from "@/components/ui/accordion";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Form as RHFForm,
   FormControl as RHFFormControl,
@@ -390,7 +391,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
         title={t("menu_category_templates")}
         breadcrumbItems={computedBreadcrumbs}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 justify-end flex-nowrap">
             <Button variant="outline" onClick={() => navigate("/user/category-templates")}>
               {t("back")}
             </Button>
