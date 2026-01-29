@@ -48,6 +48,8 @@ import {
   ArrowRight,
   Sparkles,
   Tag,
+  Save,
+  X,
 } from "lucide-react";
 import type { AttributeValue, CategoryTemplate, TemplateAttribute } from "@/lib/template-service";
 import { FormField, SwitchField } from "./components/Fields";
@@ -101,6 +103,8 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
     loadTemplateDetails,
     addAttribute,
     updateAttribute,
+    deleteAttribute,
+    duplicateAttribute,
     saveValue,
     deleteValue,
     duplicateValue,
@@ -406,13 +410,16 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
         </CardHeader>
         <CardContent>
           <RHFForm {...editForm}>
-            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <form
+              onSubmit={editForm.handleSubmit(onEditSubmit)}
+              className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 mb-6 items-end"
+            >
               <RHFFormField
                 control={editForm.control}
                 name="category_id"
                 render={({ field }) => (
                   <RHFFormItem>
-                    <RHFFormLabel>{t("menu_categories")}</RHFFormLabel>
+                    <RHFFormLabel>{t("menu_categories")} *</RHFFormLabel>
                     <RHFFormControl>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger id="tpl-category">
@@ -436,9 +443,9 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                 name="name"
                 render={({ field }) => (
                   <RHFFormItem>
-                    <RHFFormLabel>{t("menu_product_templates")}</RHFFormLabel>
+                    <RHFFormLabel>{t("menu_product_templates")} *</RHFFormLabel>
                     <RHFFormControl>
-                      <Input id="tpl-name" {...field} />
+                      <Input id="tpl-name" placeholder="Напр.: Шаблон смартфонів" {...field} />
                     </RHFFormControl>
                     <RHFFormMessage />
                   </RHFFormItem>
@@ -451,25 +458,28 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                   <RHFFormItem>
                     <RHFFormLabel>{t("description")}</RHFFormLabel>
                     <RHFFormControl>
-                      <Input id="tpl-desc" {...field} />
+                      <Input id="tpl-desc" placeholder="Напр.: Атрибути для категорії" {...field} />
                     </RHFFormControl>
                     <RHFFormMessage />
                   </RHFFormItem>
                 )}
               />
-              <div className="md:col-span-1 md:col-start-3">
-                <div className="flex justify-end">
-                  <Button type="submit">
-                    <Check className="h-4 w-4" />
-                    {t("save")}
-                  </Button>
-                </div>
+              <div className="md:col-span-1 md:col-start-4 flex justify-end">
+                <Button type="submit">
+                  <Save className="h-4 w-4 mr-2" />
+                  {t("save")}
+                </Button>
               </div>
             </form>
           </RHFForm>
           <Tabs defaultValue="attributes">
-            <TabsList>
-              <TabsTrigger value="attributes">{t("attributes")}</TabsTrigger>
+            <TabsList className="bg-transparent p-0 h-auto">
+              <TabsTrigger
+                value="attributes"
+                className="px-0 py-0 text-sm font-medium text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none shadow-none"
+              >
+                Характеристики
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="attributes" className="space-y-4">
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAttrsDragEnd}>
@@ -485,6 +495,8 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                         onEditValue={openEditValueDialog}
                         onDeleteValue={deleteValue}
                         onDuplicateValue={duplicateValue}
+                        onDeleteAttribute={deleteAttribute}
+                        onDuplicateAttribute={duplicateAttribute}
                         onToggleValueActive={toggleValueActive}
                         onUpdateAttribute={async (attrId, updates) => {
                           const nextUpdates = {
@@ -507,19 +519,29 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
         </CardContent>
       </Card>
       <Dialog open={attrDialogOpen} onOpenChange={setAttrDialogOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] overflow-y-auto w-[calc(100%-1rem)] max-w-xl">
           <DialogHeader>
             <DialogTitle>{t("btn_add")}</DialogTitle>
             <DialogDescription className="sr-only">{t("btn_add")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <FormField label={t("characteristic_name")} htmlFor="attr-name" icon={Tag}>
-              <Input id="attr-name" value={attrForm.name} onChange={(e) => setAttrForm((p) => ({ ...p, name: e.target.value }))} />
+            <FormField label={`${t("characteristic_name")} *`} htmlFor="attr-name" icon={Tag}>
+              <Input
+                id="attr-name"
+                placeholder="Напр.: Вбудована пам’ять"
+                value={attrForm.name}
+                onChange={(e) => setAttrForm((p) => ({ ...p, name: e.target.value }))}
+              />
             </FormField>
             <FormField label={t("attribute_param_id")} htmlFor="attr-paramid" icon={Hash}>
-              <Input id="attr-paramid" value={attrForm.paramid || ""} onChange={(e) => setAttrForm((p) => ({ ...p, paramid: e.target.value }))} />
+              <Input
+                id="attr-paramid"
+                placeholder="Напр.: memory"
+                value={attrForm.paramid || ""}
+                onChange={(e) => setAttrForm((p) => ({ ...p, paramid: e.target.value }))}
+              />
             </FormField>
-            <FormField label={t("attribute_type")} icon={List}>
+            <FormField label={`${t("attribute_type")} *`} icon={List}>
               <Select value={attrForm.attribute_type} onValueChange={(v) => setAttrForm((p) => ({ ...p, attribute_type: v }))}>
                 <SelectTrigger>
                   <SelectValue placeholder={t("attribute_type_placeholder")} />
@@ -535,7 +557,12 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
               </Select>
             </FormField>
             <FormField label={t("attribute_unit")} htmlFor="attr-unit" icon={Ruler}>
-              <Input id="attr-unit" value={attrForm.unit || ""} onChange={(e) => setAttrForm((p) => ({ ...p, unit: e.target.value }))} />
+              <Input
+                id="attr-unit"
+                placeholder="Напр.: ГБ"
+                value={attrForm.unit || ""}
+                onChange={(e) => setAttrForm((p) => ({ ...p, unit: e.target.value }))}
+              />
             </FormField>
             <SwitchField
               label={t("attribute_active")}
@@ -546,14 +573,18 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAttrDialogOpen(false)}>
+              <X className="h-4 w-4 mr-2" />
               {t("cancel")}
             </Button>
-            <Button onClick={handleAddAttribute}>{t("save")}</Button>
+            <Button onClick={handleAddAttribute}>
+              <Save className="h-4 w-4 mr-2" />
+              {t("save")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog open={valueDialogOpen} onOpenChange={setValueDialogOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] overflow-y-auto w-[calc(100%-1rem)] max-w-xl">
           <DialogHeader>
             <DialogTitle>{valueForm.getValues("id") ? t("edit_value") : t("add_value")}</DialogTitle>
             <DialogDescription className="sr-only">{t("add_value")}</DialogDescription>
@@ -565,12 +596,12 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                 name="value"
                 render={({ field }) => (
                   <RHFFormItem>
-                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                  <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
                       <Type className="h-4 w-4 text-emerald-600" />
-                      {t("value")}
+                    {t("value")} *
                     </RHFFormLabel>
                     <RHFFormControl>
-                      <Input id="value-name" {...field} />
+                      <Input id="value-name" placeholder="Напр.: 128 ГБ" {...field} />
                     </RHFFormControl>
                     <RHFFormMessage />
                   </RHFFormItem>
@@ -586,7 +617,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                       {t("value_display")}
                     </RHFFormLabel>
                     <RHFFormControl>
-                      <Input id="value-display" {...field} />
+                      <Input id="value-display" placeholder="Напр.: 128 GB" {...field} />
                     </RHFFormControl>
                     <RHFFormMessage />
                   </RHFFormItem>
@@ -602,7 +633,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                       {t("value_id_optional")}
                     </RHFFormLabel>
                     <RHFFormControl>
-                      <Input id="value-id" {...field} />
+                      <Input id="value-id" placeholder="Напр.: mem_128" {...field} />
                     </RHFFormControl>
                     <RHFFormMessage />
                   </RHFFormItem>
@@ -610,9 +641,11 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
               />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setValueDialogOpen(false)}>
+                  <X className="h-4 w-4 mr-2" />
                   {t("cancel")}
                 </Button>
                 <Button type="submit" disabled={valueSaving}>
+                  <Save className="h-4 w-4 mr-2" />
                   {valueSaving ? t("please_wait") : t("save")}
                 </Button>
               </DialogFooter>
@@ -621,7 +654,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
         </DialogContent>
       </Dialog>
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] overflow-y-auto w-[calc(100%-1rem)] max-w-xl">
           <DialogHeader>
             <DialogTitle>{t("bulk_add_value")}</DialogTitle>
             <DialogDescription className="sr-only">{t("bulk_add_value")}</DialogDescription>
@@ -633,12 +666,12 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                 name="valuesText"
                 render={({ field }) => (
                   <RHFFormItem>
-                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                  <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
                       <List className="h-4 w-4 text-emerald-600" />
-                      {t("value")}
+                    {t("value")} *
                     </RHFFormLabel>
                     <RHFFormControl>
-                      <Textarea {...field} placeholder="Значення з нового рядка" rows={6} />
+                      <Textarea {...field} placeholder={"Напр.: 64 ГБ\n128 ГБ\n256 ГБ"} rows={6} />
                     </RHFFormControl>
                     <RHFFormMessage />
                   </RHFFormItem>
@@ -654,7 +687,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                       {t("prefix")}
                     </RHFFormLabel>
                     <RHFFormControl>
-                      <Input {...field} />
+                      <Input placeholder="Напр.: mem_" {...field} />
                     </RHFFormControl>
                     <RHFFormMessage />
                   </RHFFormItem>
@@ -670,7 +703,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                       {t("suffix")}
                     </RHFFormLabel>
                     <RHFFormControl>
-                      <Input {...field} />
+                      <Input placeholder="Напр.: _gb" {...field} />
                     </RHFFormControl>
                     <RHFFormMessage />
                   </RHFFormItem>
@@ -697,9 +730,11 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
               />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setBulkDialogOpen(false)}>
+                  <X className="h-4 w-4 mr-2" />
                   {t("cancel")}
                 </Button>
                 <Button type="submit" disabled={bulkSaving}>
+                  <Save className="h-4 w-4 mr-2" />
                   {bulkSaving ? t("please_wait") : t("save")}
                 </Button>
               </DialogFooter>

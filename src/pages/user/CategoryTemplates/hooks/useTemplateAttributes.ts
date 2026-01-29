@@ -78,6 +78,67 @@ export function useTemplateAttributes(t: Translator) {
     [t],
   );
 
+  const deleteAttribute = useCallback(
+    async (attribute: TemplateAttributeWithValues) => {
+      try {
+        const next = attributes
+          .filter((attr) => attr.id !== attribute.id)
+          .map((attr, idx) => ({ ...attr, display_order: idx }));
+        await TemplateAttributeService.deleteAttribute(attribute.id);
+        setAttributes(next);
+        await TemplateAttributeService.reorderAttributes(next.map((row) => ({ id: row.id, display_order: row.display_order ?? 0 })));
+        toast.success(t("attribute_deleted"));
+        return true;
+      } catch (error: any) {
+        toast.error(error?.message || t("failed_delete_template"));
+        return false;
+      }
+    },
+    [attributes, t],
+  );
+
+  const duplicateAttribute = useCallback(
+    async (attribute: TemplateAttributeWithValues) => {
+      try {
+        const newAttr = await TemplateAttributeService.createAttribute(
+          attribute.template_id,
+          {
+            name: `${attribute.name} (копія)`,
+            paramid: attribute.paramid || undefined,
+            attribute_type: attribute.attribute_type,
+            is_required: attribute.is_required ?? false,
+            unit: attribute.unit || undefined,
+            default_value: attribute.default_value || undefined,
+            is_filterable: attribute.is_filterable ?? true,
+            is_active: attribute.is_active ?? true,
+          },
+          attributes.length,
+        );
+        let newValues: AttributeValue[] = [];
+        if (attribute.values.length > 0) {
+          const rows = attribute.values.map((value, idx) => ({
+            attribute_id: newAttr.id,
+            value: value.value,
+            valueid: value.valueid ? `${value.valueid}-copy` : null,
+            display_value: value.display_value || null,
+            display_order: idx,
+            value_lang: (value as any).value_lang || null,
+            metadata: (value as any).metadata || null,
+            is_active: value.is_active ?? true,
+          }));
+          newValues = await AttributeValueService.bulkCreateValues(rows);
+        }
+        setAttributes((prev) => [...prev, { ...newAttr, values: newValues }]);
+        toast.success(t("attribute_duplicated"));
+        return true;
+      } catch (error: any) {
+        toast.error(error?.message || t("failed_save"));
+        return false;
+      }
+    },
+    [attributes.length, t],
+  );
+
   const saveValue = useCallback(
     async (form: ValueForm) => {
       const attributeId = form.attribute_id;
@@ -290,6 +351,8 @@ export function useTemplateAttributes(t: Translator) {
     loadTemplateDetails,
     addAttribute,
     updateAttribute,
+    deleteAttribute,
+    duplicateAttribute,
     saveValue,
     deleteValue,
     duplicateValue,

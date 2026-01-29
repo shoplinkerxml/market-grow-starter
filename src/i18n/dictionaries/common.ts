@@ -58,6 +58,8 @@ export const commonDictionary: Dictionary = {
   attribute_type_boolean: { uk: "Так/Ні", en: "Boolean" },
   attribute_type_range: { uk: "Діапазон", en: "Range" },
   attributes_order_updated: { uk: "Порядок атрибутів оновлено", en: "Attributes order updated" },
+  attribute_deleted: { uk: "Характеристику видалено", en: "Attribute deleted" },
+  attribute_duplicated: { uk: "Характеристику дубльовано", en: "Attribute duplicated" },
   attribute_values: { uk: "Значення", en: "Values" },
   no_attribute_values: { uk: "Значення не додані", en: "No values added" },
   value_display: { uk: "Відображення", en: "Display" },

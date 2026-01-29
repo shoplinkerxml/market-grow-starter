@@ -423,6 +423,17 @@ export class TemplateAttributeService {
       throw new TemplateServiceError("delete_failed", error.message || "Failed to update attribute order", { code: error.code });
     }
   }
+
+  static async deleteAttribute(id: number): Promise<void> {
+    const { error: valuesError } = await (supabase as any).from("attribute_values").delete().eq("attribute_id", id);
+    if (valuesError) {
+      throw new TemplateServiceError("delete_failed", valuesError.message || "Failed to delete attribute values", { code: valuesError.code });
+    }
+    const { error } = await (supabase as any).from("template_attributes").delete().eq("id", id);
+    if (error) {
+      throw new TemplateServiceError("delete_failed", error.message || "Failed to delete attribute", { code: error.code });
+    }
+  }
 }
 
 export class AttributeValueService {

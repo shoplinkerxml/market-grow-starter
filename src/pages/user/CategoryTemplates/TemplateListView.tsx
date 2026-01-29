@@ -25,7 +25,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
-import { Loader2, Plus, Pencil, Trash2, Copy, CircleCheckBig, MoreVertical, Layers, Folder, FileText, AlignLeft, Power } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Copy, CircleCheckBig, MoreVertical, Layers, Folder, FileText, AlignLeft, Power, Save, X } from "lucide-react";
 import type { CategoryTemplateRow } from "./types";
 import { useCategories } from "./hooks/useCategories";
 import { useTemplates } from "./hooks/useTemplates";
@@ -299,7 +299,7 @@ export function TemplateListView() {
         </CardContent>
       </Card>
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] overflow-y-auto w-[calc(100%-1rem)] max-w-xl">
           <DialogHeader>
             <DialogTitle>{t("create_template")}</DialogTitle>
             <DialogDescription className="sr-only">{t("create_template")}</DialogDescription>
@@ -313,7 +313,7 @@ export function TemplateListView() {
                   <RHFFormItem>
                     <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
                       <Folder className="h-4 w-4 text-emerald-600" />
-                      {t("menu_categories")}
+                      {t("menu_categories")} *
                     </RHFFormLabel>
                     <RHFFormControl>
                       <Select value={field.value} onValueChange={field.onChange}>
@@ -340,10 +340,10 @@ export function TemplateListView() {
                   <RHFFormItem>
                     <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
                       <FileText className="h-4 w-4 text-emerald-600" />
-                      {t("template_name")}
+                      {t("template_name")} *
                     </RHFFormLabel>
                     <RHFFormControl>
-                      <Input id="ct-name" {...field} />
+                      <Input id="ct-name" placeholder="Напр.: Шаблон смартфонів" {...field} />
                     </RHFFormControl>
                     <RHFFormMessage />
                   </RHFFormItem>
@@ -359,7 +359,7 @@ export function TemplateListView() {
                       {t("description")}
                     </RHFFormLabel>
                     <RHFFormControl>
-                      <Input id="ct-desc" {...field} />
+                      <Input id="ct-desc" placeholder="Напр.: Атрибути для категорії" {...field} />
                     </RHFFormControl>
                     <RHFFormMessage />
                   </RHFFormItem>
@@ -386,9 +386,11 @@ export function TemplateListView() {
               />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                  <X className="h-4 w-4 mr-2" />
                   {t("cancel")}
                 </Button>
                 <Button type="submit" disabled={creating}>
+                  <Save className="h-4 w-4 mr-2" />
                   {creating ? t("please_wait") : t("save")}
                 </Button>
               </DialogFooter>
