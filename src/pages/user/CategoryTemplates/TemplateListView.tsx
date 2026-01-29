@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -11,15 +14,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Form as RHFForm,
+  FormControl as RHFFormControl,
+  FormField as RHFFormField,
+  FormItem as RHFFormItem,
+  FormLabel as RHFFormLabel,
+  FormMessage as RHFFormMessage,
+} from "@/components/ui/form";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
 import { Loader2, Plus, Pencil, Trash2, Copy, CircleCheckBig, MoreVertical, Layers, Folder, FileText, AlignLeft, Power } from "lucide-react";
 import type { CategoryTemplateRow } from "./types";
 import { useCategories } from "./hooks/useCategories";
-import { useTemplateForms } from "./hooks/useTemplateForms";
 import { useTemplates } from "./hooks/useTemplates";
-import { FormField, SwitchField } from "./components/Fields";
 
 export function TemplateListView() {
   const { t } = useI18n();
@@ -27,11 +36,27 @@ export function TemplateListView() {
   const navigate = useNavigate();
   const { categories, loadCategories } = useCategories();
   const { templates, attributeCounts, loadTemplates, createTemplate, deleteTemplate, duplicateTemplate, toggleTemplateActive } = useTemplates(t);
-  const { createForm, setCreateForm } = useTemplateForms();
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedRowIds, setSelectedRowIds] = useState<number[]>([]);
+
+  const createTemplateSchema = z.object({
+    category_id: z.string().min(1),
+    name: z.string().min(2),
+    description: z.string().optional(),
+    is_active: z.boolean().default(true),
+  });
+
+  const createTemplateForm = useForm<z.infer<typeof createTemplateSchema>>({
+    resolver: zodResolver(createTemplateSchema),
+    defaultValues: {
+      category_id: "",
+      name: "",
+      description: "",
+      is_active: true,
+    },
+  });
 
   const title = useMemo(() => t("menu_category_templates"), [t]);
 
@@ -50,15 +75,23 @@ export function TemplateListView() {
     void refreshAll();
   }, [refreshAll]);
 
-  const handleCreateTemplate = useCallback(async () => {
-    setCreating(true);
-    const ok = await createTemplate(createForm);
-    if (ok) {
-      setCreateDialogOpen(false);
-      setCreateForm({ category_id: "", name: "", description: "", is_active: true });
-    }
-    setCreating(false);
-  }, [createForm, createTemplate, setCreateForm]);
+  const onCreateSubmit = useCallback(
+    async (data: z.infer<typeof createTemplateSchema>) => {
+      setCreating(true);
+      const ok = await createTemplate({
+        category_id: data.category_id,
+        name: data.name,
+        description: data.description || "",
+        is_active: data.is_active,
+      });
+      if (ok) {
+        setCreateDialogOpen(false);
+        createTemplateForm.reset({ category_id: "", name: "", description: "", is_active: true });
+      }
+      setCreating(false);
+    },
+    [createTemplate, createTemplateForm],
+  );
 
   const openEditor = useCallback(
     (tpl: CategoryTemplateRow) => {
@@ -271,42 +304,96 @@ export function TemplateListView() {
             <DialogTitle>{t("create_template")}</DialogTitle>
             <DialogDescription className="sr-only">{t("create_template")}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <FormField label={t("menu_categories")} htmlFor="ct-category" icon={Folder}>
-              <Select value={createForm.category_id} onValueChange={(v) => setCreateForm((p) => ({ ...p, category_id: v }))}>
-                <SelectTrigger id="ct-category">
-                  <SelectValue placeholder={t("menu_categories")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name || c.external_id || String(c.id)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-            <FormField label={t("template_name")} htmlFor="ct-name" icon={FileText}>
-              <Input id="ct-name" value={createForm.name} onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))} />
-            </FormField>
-            <FormField label={t("description")} htmlFor="ct-desc" icon={AlignLeft}>
-              <Input id="ct-desc" value={createForm.description} onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))} />
-            </FormField>
-            <SwitchField
-              label={t("status")}
-              icon={Power}
-              checked={createForm.is_active}
-              onCheckedChange={(v) => setCreateForm((p) => ({ ...p, is_active: !!v }))}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button onClick={handleCreateTemplate} disabled={creating}>
-              {creating ? t("please_wait") : t("save")}
-            </Button>
-          </DialogFooter>
+          <RHFForm {...createTemplateForm}>
+            <form onSubmit={createTemplateForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+              <RHFFormField
+                control={createTemplateForm.control}
+                name="category_id"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <Folder className="h-4 w-4 text-emerald-600" />
+                      {t("menu_categories")}
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="ct-category">
+                          <SelectValue placeholder={t("menu_categories")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>
+                              {c.name || c.external_id || String(c.id)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <RHFFormField
+                control={createTemplateForm.control}
+                name="name"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <FileText className="h-4 w-4 text-emerald-600" />
+                      {t("template_name")}
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <Input id="ct-name" {...field} />
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <RHFFormField
+                control={createTemplateForm.control}
+                name="description"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <AlignLeft className="h-4 w-4 text-emerald-600" />
+                      {t("description")}
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <Input id="ct-desc" {...field} />
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <RHFFormField
+                control={createTemplateForm.control}
+                name="is_active"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <Power className="h-4 w-4 text-emerald-600" />
+                      {t("status")}
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <div className="flex items-center justify-between rounded-md border p-3">
+                        <span className="text-sm font-medium">{t("status")}</span>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </div>
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                  {t("cancel")}
+                </Button>
+                <Button type="submit" disabled={creating}>
+                  {creating ? t("please_wait") : t("save")}
+                </Button>
+              </DialogFooter>
+            </form>
+          </RHFForm>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -7,12 +10,19 @@ import { useI18n } from "@/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion } from "@/components/ui/accordion";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Form as RHFForm,
+  FormControl as RHFFormControl,
+  FormField as RHFFormField,
+  FormItem as RHFFormItem,
+  FormLabel as RHFFormLabel,
+  FormMessage as RHFFormMessage,
+} from "@/components/ui/form";
 import {
   DndContext,
   closestCenter,
@@ -24,7 +34,6 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import {
-  Asterisk,
   Check,
   CheckCircle2,
   Hash,
@@ -45,12 +54,39 @@ import { FormField, SwitchField } from "./components/Fields";
 import { SortableAttributeRow } from "./components/SortableAttributeRow";
 import { useCategories } from "./hooks/useCategories";
 import { useTemplateAttributes } from "./hooks/useTemplateAttributes";
-import { useTemplateForms } from "./hooks/useTemplateForms";
 import { useTemplates } from "./hooks/useTemplates";
+import type { AttributeForm } from "./types";
 
 type TemplateEditViewProps = {
   templateId: number;
 };
+
+const editTemplateSchema = z.object({
+  category_id: z.string().min(1),
+  name: z.string().min(2),
+  description: z.string().optional(),
+});
+
+const valueSchema = z.object({
+  id: z.number().optional(),
+  attribute_id: z.number().optional(),
+  value: z.string().min(1),
+  valueid: z.string().optional(),
+  display_value: z.string().optional(),
+  display_order: z.string().optional(),
+  value_lang_uk: z.string().optional(),
+  value_lang_en: z.string().optional(),
+  value_lang_ru: z.string().optional(),
+  metadata: z.string().optional(),
+  is_active: z.boolean().default(true),
+});
+
+const bulkValuesSchema = z.object({
+  valuesText: z.string().min(1),
+  prefix: z.string().optional(),
+  suffix: z.string().optional(),
+  generateValueId: z.boolean().default(true),
+});
 
 export function TemplateEditView({ templateId }: TemplateEditViewProps) {
   const { t } = useI18n();
@@ -72,30 +108,68 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
     bulkSaveValues,
     reorderAttributes,
   } = useTemplateAttributes(t);
-  const {
-    editForm,
-    setEditForm,
-    attrForm,
-    setAttrForm,
-    valueForm,
-    setValueForm,
-    bulkAttribute,
-    setBulkAttribute,
-    bulkValuesText,
-    setBulkValuesText,
-    bulkSuffix,
-    setBulkSuffix,
-    bulkGenerateValueId,
-    setBulkGenerateValueId,
-    bulkPrefix,
-    setBulkPrefix,
-  } = useTemplateForms();
+  const [attrForm, setAttrForm] = useState<AttributeForm>({
+    name: "",
+    paramid: "",
+    attribute_type: "select",
+    is_required: false,
+    unit: "",
+    default_value: "",
+    is_filterable: true,
+    is_active: true,
+  });
+  const [bulkAttribute, setBulkAttribute] = useState<TemplateAttribute | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<CategoryTemplate | null>(null);
   const [loading, setLoading] = useState(true);
   const [attrDialogOpen, setAttrDialogOpen] = useState(false);
   const [valueDialogOpen, setValueDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+
+  const editForm = useForm<z.infer<typeof editTemplateSchema>>({
+    resolver: zodResolver(editTemplateSchema),
+    defaultValues: {
+      category_id: "",
+      name: "",
+      description: "",
+    },
+  });
+
+  const valueForm = useForm<z.infer<typeof valueSchema>>({
+    resolver: zodResolver(valueSchema),
+    defaultValues: {
+      value: "",
+      valueid: "",
+      display_value: "",
+      display_order: "",
+      value_lang_uk: "",
+      value_lang_en: "",
+      value_lang_ru: "",
+      metadata: "",
+      is_active: true,
+    },
+  });
+
+  const bulkForm = useForm<z.infer<typeof bulkValuesSchema>>({
+    resolver: zodResolver(bulkValuesSchema),
+    defaultValues: {
+      valuesText: "",
+      prefix: "",
+      suffix: "",
+      generateValueId: true,
+    },
+  });
+
+  useEffect(() => {
+    valueForm.register("id");
+    valueForm.register("attribute_id");
+    valueForm.register("display_order");
+    valueForm.register("value_lang_uk");
+    valueForm.register("value_lang_en");
+    valueForm.register("value_lang_ru");
+    valueForm.register("metadata");
+    valueForm.register("is_active");
+  }, [valueForm]);
 
   const computedBreadcrumbs = useMemo(() => {
     const catName =
@@ -121,7 +195,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
         const tpl = await getTemplateById(templateId);
         if (!isActive) return;
         setSelectedTemplate(tpl as CategoryTemplate);
-        setEditForm({
+        editForm.reset({
           category_id: String((tpl as any).category_id || ""),
           name: String((tpl as any).name || ""),
           description: String((tpl as any).description || ""),
@@ -136,24 +210,30 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
     return () => {
       isActive = false;
     };
-  }, [getTemplateById, loadCategories, loadTemplateDetails, setEditForm, t, templateId]);
+  }, [editForm, getTemplateById, loadCategories, loadTemplateDetails, t, templateId]);
 
-  const handleSaveTemplate = useCallback(async () => {
-    if (!selectedTemplate) return;
-    const ok = await updateTemplate(selectedTemplate.id, editForm);
-    if (ok) {
-      setSelectedTemplate((prev) =>
-        prev
-          ? {
-              ...prev,
-              category_id: Number(editForm.category_id),
-              name: editForm.name.trim(),
-              description: editForm.description.trim() || null,
-            }
-          : prev,
-      );
-    }
-  }, [editForm, selectedTemplate, updateTemplate]);
+  const onEditSubmit = useCallback(
+    async (data: z.infer<typeof editTemplateSchema>) => {
+      if (!selectedTemplate) return;
+      const ok = await updateTemplate(selectedTemplate.id, {
+        ...data,
+        description: data.description || "",
+      });
+      if (ok) {
+        setSelectedTemplate((prev) =>
+          prev
+            ? {
+                ...prev,
+                category_id: Number(data.category_id),
+                name: data.name.trim(),
+                description: data.description?.trim() || null,
+              }
+            : prev,
+        );
+      }
+    },
+    [selectedTemplate, updateTemplate],
+  );
 
   const handleAddAttribute = useCallback(async () => {
     if (!selectedTemplate) return;
@@ -174,7 +254,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
   }, [addAttribute, attrForm, selectedTemplate, setAttrForm]);
 
   const openAddValueDialog = useCallback((attribute: TemplateAttribute) => {
-    setValueForm({
+    valueForm.reset({
       attribute_id: attribute.id,
       value: "",
       valueid: "",
@@ -187,20 +267,22 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
       is_active: true,
     });
     setValueDialogOpen(true);
-  }, [setValueForm]);
+  }, [valueForm]);
 
   const openBulkAddValueDialog = useCallback((attribute: TemplateAttribute) => {
     setBulkAttribute(attribute);
-    setBulkValuesText("");
-    setBulkSuffix("");
-    setBulkPrefix("");
-    setBulkGenerateValueId(true);
+    bulkForm.reset({
+      valuesText: "",
+      prefix: "",
+      suffix: "",
+      generateValueId: true,
+    });
     setBulkDialogOpen(true);
-  }, [setBulkAttribute, setBulkGenerateValueId, setBulkPrefix, setBulkSuffix, setBulkValuesText]);
+  }, [bulkForm]);
 
   const openEditValueDialog = useCallback((attribute: TemplateAttribute, value: AttributeValue) => {
     const lang = (value as any).value_lang || {};
-    setValueForm({
+    valueForm.reset({
       id: value.id,
       attribute_id: attribute.id,
       value: value.value,
@@ -214,42 +296,54 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
       is_active: value.is_active ?? true,
     });
     setValueDialogOpen(true);
-  }, [setValueForm]);
+  }, [valueForm]);
 
-  const handleSaveValue = useCallback(async () => {
-    const ok = await saveValue(valueForm);
-    if (ok) {
-      setValueDialogOpen(false);
-      setValueForm({
-        value: "",
-        valueid: "",
-        display_value: "",
-        display_order: "",
-        value_lang_uk: "",
-        value_lang_en: "",
-        value_lang_ru: "",
-        metadata: "",
-        is_active: true,
+  const onValueSubmit = useCallback(
+    async (data: z.infer<typeof valueSchema>) => {
+      const ok = await saveValue(data);
+      if (ok) {
+        setValueDialogOpen(false);
+        valueForm.reset({
+          value: "",
+          valueid: "",
+          display_value: "",
+          display_order: "",
+          value_lang_uk: "",
+          value_lang_en: "",
+          value_lang_ru: "",
+          metadata: "",
+          is_active: true,
+        });
+      }
+    },
+    [saveValue, valueForm],
+  );
+
+  const onBulkSubmit = useCallback(
+    async (data: z.infer<typeof bulkValuesSchema>) => {
+      if (!bulkAttribute) {
+        toast.error(t("failed_save"));
+        return;
+      }
+      const ok = await bulkSaveValues({
+        attribute: bulkAttribute,
+        valuesText: data.valuesText,
+        prefix: data.prefix || "",
+        suffix: data.suffix || "",
+        generateValueId: data.generateValueId,
       });
-    }
-  }, [saveValue, setValueForm, valueForm]);
-
-  const handleBulkSaveValues = useCallback(async () => {
-    const ok = await bulkSaveValues({
-      attribute: bulkAttribute,
-      valuesText: bulkValuesText,
-      prefix: bulkPrefix,
-      suffix: bulkSuffix,
-      generateValueId: bulkGenerateValueId,
-    });
-    if (ok) {
-      setBulkDialogOpen(false);
-      setBulkValuesText("");
-      setBulkPrefix("");
-      setBulkSuffix("");
-      setBulkGenerateValueId(true);
-    }
-  }, [bulkAttribute, bulkGenerateValueId, bulkPrefix, bulkSaveValues, bulkSuffix, bulkValuesText, setBulkGenerateValueId, setBulkPrefix, setBulkSuffix, setBulkValuesText]);
+      if (ok) {
+        setBulkDialogOpen(false);
+        bulkForm.reset({
+          valuesText: "",
+          prefix: "",
+          suffix: "",
+          generateValueId: true,
+        });
+      }
+    },
+    [bulkAttribute, bulkForm, bulkSaveValues, t],
+  );
 
   const handleAttrsDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -311,39 +405,68 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="space-y-2">
-              <Label htmlFor="tpl-category">{t("menu_categories")}</Label>
-              <Select value={editForm.category_id} onValueChange={(v) => setEditForm((p) => ({ ...p, category_id: v }))}>
-                <SelectTrigger id="tpl-category">
-                  <SelectValue placeholder={t("menu_categories")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name || c.external_id || String(c.id)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tpl-name">{t("menu_product_templates")}</Label>
-              <Input id="tpl-name" value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} />
-            </div>
-            <div className="space-y-2 md:col-span-1">
-              <Label htmlFor="tpl-desc">{t("description")}</Label>
-              <Input id="tpl-desc" value={editForm.description} onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))} />
-            </div>
-            <div className="md:col-span-1 md:col-start-3">
-              <div className="flex justify-end">
-                <Button onClick={handleSaveTemplate}>
-                  <Check className="h-4 w-4" />
-                  {t("save")}
-                </Button>
+          <RHFForm {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <RHFFormField
+                control={editForm.control}
+                name="category_id"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel>{t("menu_categories")}</RHFFormLabel>
+                    <RHFFormControl>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="tpl-category">
+                          <SelectValue placeholder={t("menu_categories")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((c) => (
+                            <SelectItem key={c.id} value={String(c.id)}>
+                              {c.name || c.external_id || String(c.id)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <RHFFormField
+                control={editForm.control}
+                name="name"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel>{t("menu_product_templates")}</RHFFormLabel>
+                    <RHFFormControl>
+                      <Input id="tpl-name" {...field} />
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <RHFFormField
+                control={editForm.control}
+                name="description"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel>{t("description")}</RHFFormLabel>
+                    <RHFFormControl>
+                      <Input id="tpl-desc" {...field} />
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <div className="md:col-span-1 md:col-start-3">
+                <div className="flex justify-end">
+                  <Button type="submit">
+                    <Check className="h-4 w-4" />
+                    {t("save")}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </div>
+            </form>
+          </RHFForm>
           <Tabs defaultValue="attributes">
             <TabsList>
               <TabsTrigger value="attributes">{t("attributes")}</TabsTrigger>
@@ -432,32 +555,69 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
       <Dialog open={valueDialogOpen} onOpenChange={setValueDialogOpen}>
         <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{valueForm.id ? t("edit_value") : t("add_value")}</DialogTitle>
+            <DialogTitle>{valueForm.getValues("id") ? t("edit_value") : t("add_value")}</DialogTitle>
             <DialogDescription className="sr-only">{t("add_value")}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <FormField label={t("value")} htmlFor="value-name" icon={Type}>
-              <Input id="value-name" value={valueForm.value} onChange={(e) => setValueForm((p) => ({ ...p, value: e.target.value }))} />
-            </FormField>
-            <FormField label={t("value_display")} htmlFor="value-display" icon={Eye}>
-              <Input
-                id="value-display"
-                value={valueForm.display_value || ""}
-                onChange={(e) => setValueForm((p) => ({ ...p, display_value: e.target.value }))}
+          <RHFForm {...valueForm}>
+            <form onSubmit={valueForm.handleSubmit(onValueSubmit)} className="space-y-4">
+              <RHFFormField
+                control={valueForm.control}
+                name="value"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <Type className="h-4 w-4 text-emerald-600" />
+                      {t("value")}
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <Input id="value-name" {...field} />
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
               />
-            </FormField>
-            <FormField label={t("value_id_optional")} htmlFor="value-id" icon={KeyRound}>
-              <Input id="value-id" value={valueForm.valueid || ""} onChange={(e) => setValueForm((p) => ({ ...p, valueid: e.target.value }))} />
-            </FormField>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setValueDialogOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button onClick={handleSaveValue} disabled={valueSaving}>
-              {valueSaving ? t("please_wait") : t("save")}
-            </Button>
-          </DialogFooter>
+              <RHFFormField
+                control={valueForm.control}
+                name="display_value"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <Eye className="h-4 w-4 text-emerald-600" />
+                      {t("value_display")}
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <Input id="value-display" {...field} />
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <RHFFormField
+                control={valueForm.control}
+                name="valueid"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <KeyRound className="h-4 w-4 text-emerald-600" />
+                      {t("value_id_optional")}
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <Input id="value-id" {...field} />
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setValueDialogOpen(false)}>
+                  {t("cancel")}
+                </Button>
+                <Button type="submit" disabled={valueSaving}>
+                  {valueSaving ? t("please_wait") : t("save")}
+                </Button>
+              </DialogFooter>
+            </form>
+          </RHFForm>
         </DialogContent>
       </Dialog>
       <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
@@ -466,31 +626,85 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
             <DialogTitle>{t("bulk_add_value")}</DialogTitle>
             <DialogDescription className="sr-only">{t("bulk_add_value")}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <FormField label={t("value")} icon={List}>
-              <Textarea value={bulkValuesText} onChange={(e) => setBulkValuesText(e.target.value)} placeholder="Значення з нового рядка" rows={6} />
-            </FormField>
-            <FormField label={t("prefix")} icon={ArrowLeft}>
-              <Input value={bulkPrefix} onChange={(e) => setBulkPrefix(e.target.value)} />
-            </FormField>
-            <FormField label={t("suffix")} icon={ArrowRight}>
-              <Input value={bulkSuffix} onChange={(e) => setBulkSuffix(e.target.value)} />
-            </FormField>
-            <SwitchField
-              label="Згенерувати value_id"
-              icon={Sparkles}
-              checked={bulkGenerateValueId}
-              onCheckedChange={(v) => setBulkGenerateValueId(!!v)}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkDialogOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button onClick={handleBulkSaveValues} disabled={bulkSaving}>
-              {bulkSaving ? t("please_wait") : t("save")}
-            </Button>
-          </DialogFooter>
+          <RHFForm {...bulkForm}>
+            <form onSubmit={bulkForm.handleSubmit(onBulkSubmit)} className="space-y-4">
+              <RHFFormField
+                control={bulkForm.control}
+                name="valuesText"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <List className="h-4 w-4 text-emerald-600" />
+                      {t("value")}
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <Textarea {...field} placeholder="Значення з нового рядка" rows={6} />
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <RHFFormField
+                control={bulkForm.control}
+                name="prefix"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <ArrowLeft className="h-4 w-4 text-emerald-600" />
+                      {t("prefix")}
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <Input {...field} />
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <RHFFormField
+                control={bulkForm.control}
+                name="suffix"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <ArrowRight className="h-4 w-4 text-emerald-600" />
+                      {t("suffix")}
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <Input {...field} />
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <RHFFormField
+                control={bulkForm.control}
+                name="generateValueId"
+                render={({ field }) => (
+                  <RHFFormItem>
+                    <RHFFormLabel className="flex items-center gap-2 text-sm font-medium">
+                      <Sparkles className="h-4 w-4 text-emerald-600" />
+                      Згенерувати value_id
+                    </RHFFormLabel>
+                    <RHFFormControl>
+                      <div className="flex items-center justify-between rounded-md border p-3">
+                        <span className="text-sm font-medium">Згенерувати value_id</span>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </div>
+                    </RHFFormControl>
+                    <RHFFormMessage />
+                  </RHFFormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setBulkDialogOpen(false)}>
+                  {t("cancel")}
+                </Button>
+                <Button type="submit" disabled={bulkSaving}>
+                  {bulkSaving ? t("please_wait") : t("save")}
+                </Button>
+              </DialogFooter>
+            </form>
+          </RHFForm>
         </DialogContent>
       </Dialog>
     </div>
