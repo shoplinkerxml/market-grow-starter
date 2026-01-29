@@ -418,9 +418,21 @@ export class TemplateAttributeService {
 
   static async reorderAttributes(updates: Array<{ id: number; display_order: number }>): Promise<void> {
     if (updates.length === 0) return;
-    const { error } = await (supabase as any).from("template_attributes").upsert(updates, { onConflict: "id" });
-    if (error) {
-      throw new TemplateServiceError("delete_failed", error.message || "Failed to update attribute order", { code: error.code });
+    const results = await Promise.all(
+      updates.map((row) =>
+        (supabase as any)
+          .from("template_attributes")
+          .update({ display_order: row.display_order })
+          .eq("id", row.id),
+      ),
+    );
+    const failed = results.find((r: any) => r?.error);
+    if (failed?.error) {
+      throw new TemplateServiceError(
+        "delete_failed",
+        failed.error.message || "Failed to update attribute order",
+        { code: failed.error.code },
+      );
     }
   }
 
