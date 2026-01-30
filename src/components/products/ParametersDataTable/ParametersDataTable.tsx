@@ -43,6 +43,7 @@ type Props = {
   toolbarLeft?: React.ReactNode;
   onReplaceData?: (rows: ProductParam[]) => void;
   onValueChange?: (rowIndex: number, value: string, valueid?: string | null) => void;
+  onNameChange?: (rowIndex: number, value: string) => void;
 };
 
 export function ParametersDataTable({
@@ -55,6 +56,7 @@ export function ParametersDataTable({
   toolbarLeft,
   onReplaceData,
   onValueChange,
+  onNameChange,
 }: Props) {
   const { t } = useI18n();
 
@@ -79,8 +81,8 @@ export function ParametersDataTable({
   const [previewFilename, setPreviewFilename] = React.useState<string>("");
 
   const columns = React.useMemo(() => {
-    return createParametersColumns({ t, onEditRow, onDeleteRow, onValueChange });
-  }, [t, onEditRow, onDeleteRow, onValueChange]);
+    return createParametersColumns({ t, onEditRow, onDeleteRow, onValueChange, onNameChange });
+  }, [t, onEditRow, onDeleteRow, onNameChange, onValueChange]);
 
   const table = useReactTable({
     data,

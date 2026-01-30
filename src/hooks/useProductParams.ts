@@ -127,6 +127,7 @@ export function useProductParams(preloadedParams?: ProductParam[], onChange?: (p
         value,
         paramid,
         valueid,
+        value_options: updated[editingParamIndex].value_options || [],
       };
       dirtyRef.current = true;
       setParametersState(updated);

@@ -37,6 +37,7 @@ type Props = {
   onAddParam: () => void
   onReplaceData: (rows: ProductParam[]) => void
   onValueChange: (rowIndex: number, value: string, valueid?: string | null) => void
+  onNameChange: (rowIndex: number, value: string) => void
   isParamModalOpen: boolean
   setIsParamModalOpen: (open: boolean) => void
   paramForm: ParamForm
@@ -119,6 +120,7 @@ export default function ParamsSection(props: Props) {
             }
             onReplaceData={props.onReplaceData}
             onValueChange={props.onValueChange}
+            onNameChange={props.onNameChange}
           />
         )}
 

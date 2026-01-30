@@ -225,7 +225,6 @@ export const ProductEdit = () => {
       await ProductService.updateProduct(id, payload);
 
       toast.success(t('product_updated'));
-      navigate('/user/products');
     } catch (error) {
       console.error('Failed to save product:', error);
       toast.error(t('failed_save_product'));

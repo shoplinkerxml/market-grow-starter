@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ export function createParametersColumns(args: {
   onEditRow: (rowIndex: number) => void;
   onDeleteRow: (rowIndex: number) => void;
   onValueChange?: (rowIndex: number, value: string, valueid?: string | null) => void;
+  onNameChange?: (rowIndex: number, value: string) => void;
 }): ColumnDef<ProductParam>[] {
   return [
     {
@@ -57,7 +59,16 @@ export function createParametersColumns(args: {
     {
       accessorKey: "name",
       header: args.t("characteristic_name"),
-      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.name}</span>,
+      cell: ({ row }) => (
+        <Input
+          className="h-8"
+          value={row.original.name}
+          onChange={(e) => {
+            const v = e.target.value;
+            args.onNameChange?.(row.index, v);
+          }}
+        />
+      ),
     },
     {
       accessorKey: "value",
@@ -65,7 +76,16 @@ export function createParametersColumns(args: {
       cell: ({ row }) => {
         const options = row.original.value_options || [];
         if (options.length === 0) {
-          return <span className="text-sm font-medium">{row.original.value}</span>;
+          return (
+            <Input
+              className="h-8"
+              value={row.original.value}
+              onChange={(e) => {
+                const v = e.target.value;
+                args.onValueChange?.(row.index, v, null);
+              }}
+            />
+          );
         }
         const currentValue = options.some((o) => o.value === row.original.value)
           ? row.original.value
@@ -78,7 +98,7 @@ export function createParametersColumns(args: {
               args.onValueChange?.(row.index, value, selected?.valueid ?? null);
             }}
           >
-            <SelectTrigger className="h-8">
+            <SelectTrigger className="h-8 w-fit">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

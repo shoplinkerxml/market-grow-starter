@@ -22,6 +22,7 @@ type Props = {
   onAddParam: () => void;
   onReplaceData: (rows: ProductParam[]) => void;
   onValueChange: (rowIndex: number, value: string, valueid?: string | null) => void;
+  onNameChange: (rowIndex: number, value: string) => void;
   isParamModalOpen: boolean;
   setIsParamModalOpen: (v: boolean) => void;
   paramForm: { name: string; value: string; paramid?: string; valueid?: string };
@@ -52,6 +53,7 @@ export const ParamsTab = React.memo(function ParamsTab(props: Props) {
           onAddParam={props.onAddParam}
           onReplaceData={props.onReplaceData}
           onValueChange={props.onValueChange}
+          onNameChange={props.onNameChange}
           isParamModalOpen={props.isParamModalOpen}
           setIsParamModalOpen={props.setIsParamModalOpen}
           paramForm={props.paramForm}

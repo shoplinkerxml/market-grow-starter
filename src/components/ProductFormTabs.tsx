@@ -289,6 +289,16 @@ export function ProductFormTabs({
     [onParamsChange, parameters, setParameters],
   );
 
+  const handleNameChange = useCallback(
+    (rowIndex: number, value: string) => {
+      const next = parameters.map((p, i) => (i === rowIndex ? { ...p, name: value } : p));
+      const normalized = next.map((p, i) => ({ ...p, order_index: i }));
+      setParameters(normalized);
+      onParamsChange?.(normalized);
+    },
+    [onParamsChange, parameters, setParameters],
+  );
+
   const lookups = useProductLookups(
     product?.store_id || '',
     basicData,
@@ -591,6 +601,7 @@ export function ProductFormTabs({
                   onAddParam={openAddParamModal}
                   onReplaceData={handleReplaceParams}
                   onValueChange={handleValueChange}
+                  onNameChange={handleNameChange}
                   isParamModalOpen={isParamModalOpen}
                   setIsParamModalOpen={setIsParamModalOpen as any}
                   paramForm={paramForm}
