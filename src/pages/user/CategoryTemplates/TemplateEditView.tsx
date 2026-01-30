@@ -52,7 +52,7 @@ import {
   Save,
   X,
 } from "lucide-react";
-import type { AttributeValue, CategoryTemplate, TemplateAttribute } from "@/lib/template-service";
+import type { AttributeValue, CategoryTemplate, TemplateAttribute } from "@/lib/category-template";
 import { FormField, SwitchField } from "./components/Fields";
 import { SortableAttributeRow } from "./components/SortableAttributeRow";
 import { useCategories } from "./hooks/useCategories";

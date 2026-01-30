@@ -24,7 +24,7 @@ import { useImageActions } from '@/hooks/useImageActions';
 import { mapImageErrorToToast } from '@/utils/imageErrorHelpers';
 import type { SupplierOption, CategoryOption, CurrencyOption, ProductImage, ProductParam, FormData } from './ProductFormTabs/types';
 import { ProductImageDeleteProgressDialog, ProductSaveProgressDialog } from '@/components/user/products/ProductsTable/Dialogs';
-import { CategoryTemplateService } from '@/lib/template-service';
+import { getTemplateAttributes, listTemplatesByCategory } from '@/lib/category-template';
 
 const InfoTab = lazy(async () => {
   const mod = await import('./ProductFormTabs/tabs/InfoTab');
@@ -181,7 +181,7 @@ export function ProductFormTabs({
       return;
     }
     setTemplatesLoading(true);
-    CategoryTemplateService.listByCategory(categoryId)
+    listTemplatesByCategory(categoryId)
       .then((items) => {
         if (!active) return;
         const list = Array.isArray(items) ? items : [];
@@ -220,7 +220,7 @@ export function ProductFormTabs({
     if (!selectedTemplateId) return;
     setApplyingTemplate(true);
     try {
-      const attrs = await CategoryTemplateService.getTemplateAttributes(Number(selectedTemplateId));
+      const attrs = await getTemplateAttributes(Number(selectedTemplateId));
       const next = [...parameters];
       for (const attr of attrs) {
         const options = (attr.values || []).map((v) => ({

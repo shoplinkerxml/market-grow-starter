@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { AttributeForm, CreateTemplateForm, ValueForm } from "../types";
-import type { TemplateAttribute } from "@/lib/template-service";
+import type { TemplateAttribute } from "@/lib/category-template";
 
 export function useTemplateForms() {
   const [createForm, setCreateForm] = useState<CreateTemplateForm>({

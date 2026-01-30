@@ -11,7 +11,7 @@ import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/i18n";
 import { Copy, GripVertical, MoreVertical, Pencil, Plus, Trash2, Save, Hash, List, Ruler, Tag, ChevronDown } from "lucide-react";
-import type { AttributeValue, TemplateAttribute } from "@/lib/template-service";
+import type { AttributeValue, TemplateAttribute } from "@/lib/category-template";
 import type { TemplateAttributeWithValues } from "../types";
 import { FormField } from "./Fields";
 

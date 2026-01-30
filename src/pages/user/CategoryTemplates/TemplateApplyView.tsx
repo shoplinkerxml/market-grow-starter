@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { Layers } from "lucide-react";
-import type { CategoryTemplate } from "@/lib/template-service";
+import type { CategoryTemplate } from "@/lib/category-template";
 import type { ApplyPreview } from "./types";
 import { useCategories } from "./hooks/useCategories";
 import { useTemplates } from "./hooks/useTemplates";

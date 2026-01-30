@@ -1,7 +1,18 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CategoryTemplateService } from "@/lib/template-service";
-import type { CategoryTemplate } from "@/lib/template-service";
+import {
+  applyTemplate,
+  createTemplate as createTemplateApi,
+  deleteTemplate as deleteTemplateApi,
+  duplicateTemplate as duplicateTemplateApi,
+  getApplyPreview as getApplyPreviewApi,
+  getTemplate as getTemplateApi,
+  listAttributeCounts,
+  listTemplates,
+  toggleTemplate,
+  updateTemplate as updateTemplateApi,
+} from "@/lib/category-template";
+import type { CategoryTemplate } from "@/lib/category-template";
 import type { ApplyPreview, CategoryTemplateRow, CreateTemplateForm } from "../types";
 
 type Translator = (key: string) => string;
@@ -14,13 +25,13 @@ export function useTemplates(t: Translator) {
   const loadTemplates = useCallback(async () => {
     loadTemplatesRequestIdRef.current += 1;
     const requestId = loadTemplatesRequestIdRef.current;
-    const rows = (await CategoryTemplateService.listTemplates()) as CategoryTemplateRow[];
+    const rows = (await listTemplates()) as CategoryTemplateRow[];
     if (loadTemplatesRequestIdRef.current !== requestId) return;
     setTemplates(rows);
     if (rows.length > 0) {
       const ids = rows.map((r) => r.id);
       if (loadTemplatesRequestIdRef.current !== requestId) return;
-      const map = await CategoryTemplateService.listAttributeCounts(ids);
+      const map = await listAttributeCounts(ids);
       if (loadTemplatesRequestIdRef.current !== requestId) return;
       setAttributeCounts(map);
     } else {
@@ -33,7 +44,7 @@ export function useTemplates(t: Translator) {
     async (id: number) => {
       const found = templates.find((tpl) => Number(tpl.id) === id);
       if (found) return found;
-      return (await CategoryTemplateService.getTemplateById(id)) as CategoryTemplate;
+      return (await getTemplateApi(id)) as CategoryTemplate;
     },
     [templates],
   );
@@ -45,7 +56,7 @@ export function useTemplates(t: Translator) {
         return false;
       }
       try {
-        await CategoryTemplateService.createTemplate({
+        await createTemplateApi({
           category_id: Number(form.category_id),
           name: form.name.trim(),
           description: form.description.trim() || null,
@@ -65,7 +76,7 @@ export function useTemplates(t: Translator) {
   const updateTemplate = useCallback(
     async (id: number, form: { category_id: string; name: string; description: string }) => {
       try {
-        const updated = await CategoryTemplateService.updateTemplate(id, {
+        const updated = await updateTemplateApi(id, {
           category_id: Number(form.category_id),
           name: form.name.trim(),
           description: form.description.trim() || null,
@@ -90,7 +101,7 @@ export function useTemplates(t: Translator) {
   const deleteTemplate = useCallback(
     async (tpl: CategoryTemplate) => {
       try {
-        await CategoryTemplateService.deleteTemplate(tpl.id);
+        await deleteTemplateApi(tpl.id);
         await loadTemplates();
         toast.success(t("template_deleted"));
         return true;
@@ -105,7 +116,7 @@ export function useTemplates(t: Translator) {
   const duplicateTemplate = useCallback(
     async (tpl: CategoryTemplateRow) => {
       try {
-        await CategoryTemplateService.duplicateTemplate(tpl);
+        await duplicateTemplateApi(tpl);
         await loadTemplates();
         toast.success(t("duplicate_tariff"));
         return true;
@@ -120,7 +131,7 @@ export function useTemplates(t: Translator) {
   const toggleTemplateActive = useCallback(
     async (tpl: CategoryTemplateRow, active: boolean) => {
       try {
-        await CategoryTemplateService.toggleTemplateActive(tpl.id, active);
+        await toggleTemplate(tpl.id, active);
         setTemplates((prev) => prev.map((r) => (r.id === tpl.id ? { ...r, is_active: active } : r)));
         toast.success(t("currency_status_updated"));
         return true;
@@ -135,7 +146,7 @@ export function useTemplates(t: Translator) {
   const getApplyPreview = useCallback(
     async (templateId: number, categoryId: number) => {
       try {
-        return (await CategoryTemplateService.getApplyPreview(templateId, categoryId)) as ApplyPreview;
+        return (await getApplyPreviewApi(templateId, categoryId)) as ApplyPreview;
       } catch (error: any) {
         toast.error(error?.message || t("operation_failed"));
         return null;
@@ -147,7 +158,7 @@ export function useTemplates(t: Translator) {
   const applyTemplateToCategory = useCallback(
     async (templateId: number, categoryId: number) => {
       try {
-        return await CategoryTemplateService.applyTemplateToCategory(templateId, categoryId);
+        return await applyTemplate(templateId, categoryId);
       } catch (error: any) {
         toast.error(error?.message || t("failed_save"));
         return null;

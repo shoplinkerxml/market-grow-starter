@@ -1,7 +1,20 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { AttributeValueService, CategoryTemplateService, TemplateAttributeService } from "@/lib/template-service";
-import type { AttributeValue, CategoryTemplate, TemplateAttribute } from "@/lib/template-service";
+import {
+  bulkCreateValues as bulkCreateValuesApi,
+  createAttribute as createAttributeApi,
+  createValue as createValueApi,
+  deleteAttribute as deleteAttributeApi,
+  deleteValue as deleteValueApi,
+  duplicateValue as duplicateValueApi,
+  getTemplateAttributes as getTemplateAttributesApi,
+  reorderAttributes as reorderAttributesApi,
+  reorderValues as reorderValuesApi,
+  toggleValue as toggleValueApi,
+  updateAttribute as updateAttributeApi,
+  updateValue as updateValueApi,
+} from "@/lib/category-template";
+import type { AttributeValue, CategoryTemplate, TemplateAttribute } from "@/lib/category-template";
 import type { AttributeForm, TemplateAttributeWithValues, ValueForm } from "../types";
 
 type Translator = (key: string) => string;
@@ -27,7 +40,7 @@ export function useTemplateAttributes(t: Translator) {
   const [bulkSaving, setBulkSaving] = useState(false);
 
   const loadTemplateDetails = useCallback(async (tpl: CategoryTemplate) => {
-    const rows = await CategoryTemplateService.getTemplateAttributes(tpl.id);
+    const rows = await getTemplateAttributesApi(tpl.id);
     setAttributes(rows.map((a) => ({ ...a, values: a.values || [] })));
   }, []);
 
@@ -38,7 +51,7 @@ export function useTemplateAttributes(t: Translator) {
         return false;
       }
       try {
-        const row = await TemplateAttributeService.createAttribute(
+        const row = await createAttributeApi(
           templateId,
           {
             name: form.name,
@@ -66,7 +79,7 @@ export function useTemplateAttributes(t: Translator) {
   const updateAttribute = useCallback(
     async (attrId: number, updates: Partial<TemplateAttribute>) => {
       try {
-        const updated = await TemplateAttributeService.updateAttribute(attrId, updates);
+        const updated = await updateAttributeApi(attrId, updates);
         setAttributes((prev) => prev.map((row) => (row.id === attrId ? { ...row, ...updated } : row)));
         toast.success(t("feature_saved_successfully"));
         return true;
@@ -84,9 +97,9 @@ export function useTemplateAttributes(t: Translator) {
         const next = attributes
           .filter((attr) => attr.id !== attribute.id)
           .map((attr, idx) => ({ ...attr, display_order: idx }));
-        await TemplateAttributeService.deleteAttribute(attribute.id);
+        await deleteAttributeApi(attribute.id);
         setAttributes(next);
-        await TemplateAttributeService.reorderAttributes(
+        await reorderAttributesApi(
           next.map((row) => ({
             id: row.id,
             display_order: row.display_order ?? 0,
@@ -114,7 +127,7 @@ export function useTemplateAttributes(t: Translator) {
   const duplicateAttribute = useCallback(
     async (attribute: TemplateAttributeWithValues) => {
       try {
-        const newAttr = await TemplateAttributeService.createAttribute(
+        const newAttr = await createAttributeApi(
           attribute.template_id,
           {
             name: `${attribute.name} (копія)`,
@@ -140,7 +153,7 @@ export function useTemplateAttributes(t: Translator) {
             metadata: (value as any).metadata || null,
             is_active: value.is_active ?? true,
           }));
-          newValues = await AttributeValueService.bulkCreateValues(rows);
+          newValues = await bulkCreateValuesApi(rows);
         }
         setAttributes((prev) => [...prev, { ...newAttr, values: newValues }]);
         toast.success(t("attribute_duplicated"));
@@ -178,7 +191,7 @@ export function useTemplateAttributes(t: Translator) {
         const displayOrder = form.display_order?.trim() ? Number(form.display_order) : null;
         setValueSaving(true);
         if (form.id) {
-          const row = await AttributeValueService.updateValue(form.id, {
+          const row = await updateValueApi(form.id, {
             value: form.value.trim(),
             valueid: form.valueid?.trim() || null,
             display_value: form.display_value?.trim() || null,
@@ -200,7 +213,7 @@ export function useTemplateAttributes(t: Translator) {
         } else {
           const target = attributes.find((a) => a.id === attributeId);
           const fallbackOrder = target?.values?.length ?? 0;
-          const row = await AttributeValueService.createValue({
+          const row = await createValueApi({
             attribute_id: attributeId,
             value: form.value.trim(),
             valueid: form.valueid?.trim() || null,
@@ -229,11 +242,11 @@ export function useTemplateAttributes(t: Translator) {
   const deleteValue = useCallback(
     async (attribute: TemplateAttributeWithValues, value: AttributeValue) => {
       try {
-        await AttributeValueService.deleteValue(value.id);
+        await deleteValueApi(value.id);
         const remaining = (attribute.values || []).filter((v) => v.id !== value.id);
         const reordered = remaining.map((v, idx) => ({ ...v, display_order: idx }));
         if (reordered.length > 0) {
-          await AttributeValueService.reorderValues(reordered.map((v) => ({ id: v.id, display_order: v.display_order ?? 0 })));
+          await reorderValuesApi(reordered.map((v) => ({ id: v.id, display_order: v.display_order ?? 0 })));
         }
         setAttributes((prev) => prev.map((attr) => (attr.id === attribute.id ? { ...attr, values: reordered } : attr)));
         toast.success(t("value_deleted"));
@@ -250,7 +263,7 @@ export function useTemplateAttributes(t: Translator) {
     async (attribute: TemplateAttributeWithValues, value: AttributeValue) => {
       try {
         const displayOrder = (attribute.values || []).length;
-        const row = await AttributeValueService.duplicateValue({
+        const row = await duplicateValueApi({
           attribute_id: attribute.id,
           value: value.value,
           valueid: value.valueid ? `${value.valueid}-copy` : null,
@@ -276,7 +289,7 @@ export function useTemplateAttributes(t: Translator) {
   const toggleValueActive = useCallback(
     async (attributeId: number, valueId: number, nextActive: boolean) => {
       try {
-        await AttributeValueService.toggleValueActive(valueId, nextActive);
+        await toggleValueApi(valueId, nextActive);
         setAttributes((prev) =>
           prev.map((attr) =>
             attr.id === attributeId
@@ -323,7 +336,7 @@ export function useTemplateAttributes(t: Translator) {
       });
       try {
         setBulkSaving(true);
-        const inserted = await AttributeValueService.bulkCreateValues(rows);
+        const inserted = await bulkCreateValuesApi(rows);
         setAttributes((prev) =>
           prev.map((attr) => (attr.id === attribute.id ? { ...attr, values: [...attr.values, ...inserted] } : attr)),
         );
@@ -357,7 +370,7 @@ export function useTemplateAttributes(t: Translator) {
           is_active: a.is_active,
           paramid: a.paramid,
         }));
-        await TemplateAttributeService.reorderAttributes(updates);
+        await reorderAttributesApi(updates);
         toast.success(t("attributes_order_updated"));
         return true;
       } catch (error: any) {

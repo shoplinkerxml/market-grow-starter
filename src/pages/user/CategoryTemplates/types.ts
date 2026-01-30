@@ -1,4 +1,4 @@
-import type { CategoryTemplate, TemplateAttribute, AttributeValue } from "@/lib/template-service";
+import type { CategoryTemplate, TemplateAttribute, AttributeValue } from "@/lib/category-template";
 
 export type UserDashboardContextType = {
   user: { id?: string } | null;
