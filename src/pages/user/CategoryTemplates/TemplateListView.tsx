@@ -267,15 +267,15 @@ export function TemplateListView() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => openEditor(tpl)} className="cursor-pointer" disabled={selectedRowIds.length !== 1}>
+                                  <DropdownMenuItem onClick={() => openEditor(tpl)} className="cursor-pointer">
                                     <Pencil className="mr-2 h-4 w-4" />
                                     {t("edit_template")}
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => openApply(tpl)} className="cursor-pointer" disabled={selectedRowIds.length !== 1}>
+                                  <DropdownMenuItem onClick={() => openApply(tpl)} className="cursor-pointer">
                                     <CircleCheckBig className="mr-2 h-4 w-4" />
                                     {t("apply_template")}
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => duplicateTemplate(tpl)} className="cursor-pointer" disabled={selectedRowIds.length !== 1}>
+                                  <DropdownMenuItem onClick={() => duplicateTemplate(tpl)} className="cursor-pointer">
                                     <Copy className="mr-2 h-4 w-4" />
                                     {t("duplicate")}
                                   </DropdownMenuItem>

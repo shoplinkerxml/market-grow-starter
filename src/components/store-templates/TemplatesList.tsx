@@ -17,7 +17,6 @@ import { FileText, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useI18n } from "@/i18n";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { TemplateService } from '@/lib/template-service';
 
 interface Template {
   id: string;
@@ -68,9 +67,13 @@ export const TemplatesList = ({ onSelect, onTemplatesLoaded, onCreateNew }: Temp
     loadTemplates();
   }, [loadTemplates]);
 
-  const handleDelete = async (templateId: string, templateName: string) => {
+  const handleDelete = async (templateId: string) => {
     try {
-      await TemplateService.deleteTemplate(templateId);
+      const { error } = await (supabase as any)
+        .from('store_templates')
+        .update({ is_active: false })
+        .eq('id', templateId);
+      if (error) throw error;
       
       toast.success(t('template_deleted'));
       setDeleteDialog({ open: false, template: null });
@@ -184,7 +187,7 @@ export const TemplatesList = ({ onSelect, onTemplatesLoaded, onCreateNew }: Temp
           <AlertDialogFooter>
             <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteDialog.template && handleDelete(deleteDialog.template.id, deleteDialog.template.name)}
+              onClick={() => deleteDialog.template && handleDelete(deleteDialog.template.id)}
               className="bg-destructive hover:bg-destructive/90"
             >
               {t('delete')}

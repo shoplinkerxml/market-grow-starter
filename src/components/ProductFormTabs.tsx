@@ -220,7 +220,7 @@ export function ProductFormTabs({
     if (!selectedTemplateId) return;
     setApplyingTemplate(true);
     try {
-      const attrs = await CategoryTemplateService.getTemplateAttributes(selectedTemplateId);
+      const attrs = await CategoryTemplateService.getTemplateAttributes(Number(selectedTemplateId));
       const next = [...parameters];
       for (const attr of attrs) {
         const options = (attr.values || []).map((v) => ({

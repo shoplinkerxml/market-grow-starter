@@ -86,7 +86,21 @@ export function useTemplateAttributes(t: Translator) {
           .map((attr, idx) => ({ ...attr, display_order: idx }));
         await TemplateAttributeService.deleteAttribute(attribute.id);
         setAttributes(next);
-        await TemplateAttributeService.reorderAttributes(next.map((row) => ({ id: row.id, display_order: row.display_order ?? 0 })));
+        await TemplateAttributeService.reorderAttributes(
+          next.map((row) => ({
+            id: row.id,
+            display_order: row.display_order ?? 0,
+            template_id: row.template_id,
+            name: row.name,
+            attribute_type: row.attribute_type,
+            is_required: row.is_required,
+            unit: row.unit,
+            default_value: row.default_value,
+            is_filterable: row.is_filterable,
+            is_active: row.is_active,
+            paramid: row.paramid,
+          })),
+        );
         toast.success(t("attribute_deleted"));
         return true;
       } catch (error: any) {
@@ -330,7 +344,19 @@ export function useTemplateAttributes(t: Translator) {
       setAttributes(next);
       if (!template) return;
       try {
-        const updates = next.map((a, idx) => ({ id: a.id, display_order: idx }));
+        const updates = next.map((a, idx) => ({
+          id: a.id,
+          display_order: idx,
+          template_id: a.template_id,
+          name: a.name,
+          attribute_type: a.attribute_type,
+          is_required: a.is_required,
+          unit: a.unit,
+          default_value: a.default_value,
+          is_filterable: a.is_filterable,
+          is_active: a.is_active,
+          paramid: a.paramid,
+        }));
         await TemplateAttributeService.reorderAttributes(updates);
         toast.success(t("attributes_order_updated"));
         return true;

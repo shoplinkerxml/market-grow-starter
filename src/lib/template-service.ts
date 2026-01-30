@@ -1,56 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { SessionValidator } from './session-validation';
-
-/**
- * Получить токен аутентификации из текущей сессии
- * Включает валидацию через SessionValidator для совместимости с существующим кодом
- * @throws {Error} Если токен недоступен или сессия невалидна
- */
-export async function getAuthToken(): Promise<string> {
-  // КРИТИЧНО: Валидация сессии через SessionValidator (как в оригинальном коде)
-  const validation = await SessionValidator.ensureValidSession();
-  if (!validation.isValid) {
-    // Обрабатываем error любого типа
-    let errorMsg = 'Session validation failed';
-    try {
-      const err = validation.error;
-      if (typeof err === 'string') {
-        errorMsg = err;
-      } else if (err && typeof err === 'object' && 'message' in err) {
-        errorMsg = String((err as { message: string }).message);
-      }
-    } catch {
-      // Если не удалось получить сообщение, используем дефолтное
-    }
-    throw new Error(`Invalid session: ${errorMsg}`);
-  }
-  
-  const { data: { session }, error } = await supabase.auth.getSession();
-  
-  if (error) {
-    throw new Error(`Session error: ${error.message}`);
-  }
-  
-  if (!session?.access_token) {
-    throw new Error('No authentication token available');
-  }
-  
-  return session.access_token;
-}
-
-/**
- * Получить заголовки для авторизованных запросов
- * Совместимо с оригинальным getAuthHeaders из template-service.ts
- * @throws {Error} Если токен недоступен
- */
-export async function getAuthHeaders(): Promise<HeadersInit> {
-  const token = await getAuthToken();
-  
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
-  };
-}
+import { cache, withCache } from './cache-helper';
 
 /**
  * Проверить валидность текущей сессии
@@ -259,16 +209,13 @@ async function getApplyPreviewDb(
   categoryId: number,
 ): Promise<{ products: number; attributes: number; required: number; optional: number }> {
   await ensureValidSessionOrThrow();
-  const { count: productCount, error: productError } = await supabase
-    .from("store_products")
-    .select("id", { count: "exact", head: true })
-    .eq("category_id", categoryId);
+  const [productsRes, attrsRes] = await Promise.all([
+    supabase.from("store_products").select("id", { count: "exact", head: true }).eq("category_id", categoryId),
+    db.from(TEMPLATE_ATTRIBUTES_TABLE).select("id,is_required").eq("template_id", templateId).eq("is_active", true),
+  ]);
+  const { count: productCount, error: productError } = productsRes;
   if (productError) throw toDbError(productError, "Failed to load preview");
-  const { data: attrs, error: attrError } = await db
-    .from(TEMPLATE_ATTRIBUTES_TABLE)
-    .select("id,is_required")
-    .eq("template_id", templateId)
-    .eq("is_active", true);
+  const { data: attrs, error: attrError } = attrsRes;
   if (attrError) throw toDbError(attrError, "Failed to load preview");
   const rows = Array.isArray(attrs) ? attrs : [];
   const attributes = rows.length;
@@ -289,13 +236,13 @@ async function applyTemplateToCategoryDb(templateId: number, categoryId: number)
 
 async function duplicateTemplateDb(tpl: CategoryTemplate): Promise<void> {
   await ensureValidSessionOrThrow();
+  const newName = `${tpl.name} (копія)`;
   const { data: attrs, error: attrErr } = await db
     .from(TEMPLATE_ATTRIBUTES_TABLE)
     .select("*")
     .eq("template_id", tpl.id)
     .order("display_order", { ascending: true });
   if (attrErr) throw toDbError(attrErr, "Failed to duplicate template");
-  const newName = `${tpl.name} (копія)`;
   const { data: newTpl, error: tplErr } = await db
     .from(CATEGORY_TEMPLATES_TABLE)
     .insert({ category_id: tpl.category_id, name: newName, description: tpl.description, is_active: tpl.is_active })
@@ -371,40 +318,54 @@ async function duplicateTemplateDb(tpl: CategoryTemplate): Promise<void> {
 
 export const CategoryTemplateService = {
   async listTemplates(): Promise<CategoryTemplate[]> {
-    return await listTemplatesDb();
+    return await withCache("template:list", async () => await listTemplatesDb());
   },
   async listByCategory(categoryId: number): Promise<CategoryTemplate[]> {
-    return await listTemplatesByCategoryDb(categoryId);
+    return await withCache(`template:category:${Number(categoryId)}`, async () => await listTemplatesByCategoryDb(categoryId));
   },
   async listAttributeCounts(templateIds: number[]): Promise<Record<number, number>> {
-    return await listAttributeCountsDb(templateIds);
+    const ids = Array.from(new Set((templateIds || []).map((n) => Number(n)).filter((n) => Number.isFinite(n)))).sort((a, b) => a - b);
+    const key = `template:counts:${ids.join(",")}`;
+    return await withCache(key, async () => await listAttributeCountsDb(ids));
   },
   async getTemplateById(id: number): Promise<CategoryTemplate> {
-    return await getTemplateByIdDb(id);
+    return await withCache(`template:${Number(id)}`, async () => await getTemplateByIdDb(id));
   },
   async createTemplate(data: { category_id: number; name: string; description: string | null; is_active: boolean }): Promise<CategoryTemplate> {
-    return await createTemplateDb(data);
+    const created = await createTemplateDb(data);
+    cache.clearByPrefix("template:");
+    return created;
   },
   async updateTemplate(id: number, updates: { category_id: number; name: string; description: string | null }): Promise<CategoryTemplate> {
-    return await updateTemplateDb(id, updates);
+    const updated = await updateTemplateDb(id, updates);
+    cache.clearByPrefix("template:");
+    return updated;
   },
   async deleteTemplate(id: number): Promise<void> {
     await deleteTemplateDb(id);
+    cache.clearByPrefix("template:");
   },
   async duplicateTemplate(tpl: CategoryTemplate): Promise<void> {
     await duplicateTemplateDb(tpl);
+    cache.clearByPrefix("template:");
   },
   async toggleTemplateActive(id: number, isActive: boolean): Promise<void> {
     await toggleTemplateActiveDb(id, isActive);
+    cache.clearByPrefix("template:");
   },
   async getTemplateAttributes(templateId: number): Promise<Array<TemplateAttribute & { values: AttributeValue[] }>> {
-    return await getTemplateAttributesDb(templateId);
+    return await withCache(`template:attrs:${Number(templateId)}`, async () => await getTemplateAttributesDb(templateId));
   },
   async getApplyPreview(templateId: number, categoryId: number): Promise<{ products: number; attributes: number; required: number; optional: number }> {
-    return await getApplyPreviewDb(templateId, categoryId);
+    return await withCache(
+      `template:preview:${Number(templateId)}:${Number(categoryId)}`,
+      async () => await getApplyPreviewDb(templateId, categoryId),
+    );
   },
   async applyTemplateToCategory(templateId: number, categoryId: number): Promise<number> {
-    return await applyTemplateToCategoryDb(templateId, categoryId);
+    const created = await applyTemplateToCategoryDb(templateId, categoryId);
+    cache.clearByPrefix("template:");
+    return created;
   },
 };
 
@@ -431,6 +392,7 @@ export const TemplateAttributeService = {
       .select("*")
       .single();
     if (error) throw toDbError(error, "Failed to create attribute");
+    cache.clearByPrefix("template:");
     return row as TemplateAttribute;
   },
   async updateAttribute(attrId: number, updates: Partial<TemplateAttribute>): Promise<TemplateAttribute> {
@@ -442,18 +404,47 @@ export const TemplateAttributeService = {
       .select("*")
       .single();
     if (error) throw toDbError(error, "Failed to update attribute");
+    cache.clearByPrefix("template:");
     return row as TemplateAttribute;
   },
   async deleteAttribute(attrId: number): Promise<void> {
     await ensureValidSessionOrThrow();
     const { error } = await db.from(TEMPLATE_ATTRIBUTES_TABLE).delete().eq("id", attrId);
     if (error) throw toDbError(error, "Failed to delete attribute");
+    cache.clearByPrefix("template:");
   },
-  async reorderAttributes(updates: Array<{ id: number; display_order: number }>): Promise<void> {
+  async reorderAttributes(
+    updates: Array<{
+      id: number;
+      display_order: number;
+      template_id: number;
+      name: string;
+      attribute_type?: string | null;
+      is_required?: boolean | null;
+      unit?: string | null;
+      default_value?: string | null;
+      is_filterable?: boolean | null;
+      is_active?: boolean | null;
+      paramid?: string | null;
+    }>,
+  ): Promise<void> {
     await ensureValidSessionOrThrow();
-    const payload = updates.map((row) => ({ id: row.id, display_order: row.display_order }));
+    const payload = updates.map((row) => ({
+      id: row.id,
+      display_order: row.display_order,
+      template_id: row.template_id,
+      name: row.name,
+      attribute_type: row.attribute_type ?? undefined,
+      is_required: row.is_required ?? undefined,
+      unit: row.unit ?? undefined,
+      default_value: row.default_value ?? undefined,
+      is_filterable: row.is_filterable ?? undefined,
+      is_active: row.is_active ?? undefined,
+      paramid: row.paramid ?? undefined,
+    }));
     const { error } = await db.from(TEMPLATE_ATTRIBUTES_TABLE).upsert(payload, { onConflict: "id" });
     if (error) throw toDbError(error, "Failed to reorder attributes");
+    cache.clearByPrefix("template:");
   },
 };
 
@@ -471,6 +462,7 @@ export const AttributeValueService = {
     await ensureValidSessionOrThrow();
     const { data: row, error } = await db.from(ATTRIBUTE_VALUES_TABLE).insert(data).select("*").single();
     if (error) throw toDbError(error, "Failed to create value");
+    cache.clearByPrefix("template:");
     return row as AttributeValue;
   },
   async updateValue(
@@ -493,12 +485,14 @@ export const AttributeValueService = {
       .select("*")
       .single();
     if (error) throw toDbError(error, "Failed to update value");
+    cache.clearByPrefix("template:");
     return row as AttributeValue;
   },
   async deleteValue(id: number): Promise<void> {
     await ensureValidSessionOrThrow();
     const { error } = await db.from(ATTRIBUTE_VALUES_TABLE).delete().eq("id", id);
     if (error) throw toDbError(error, "Failed to delete value");
+    cache.clearByPrefix("template:");
   },
   async duplicateValue(data: {
     attribute_id: number;
@@ -513,6 +507,7 @@ export const AttributeValueService = {
     await ensureValidSessionOrThrow();
     const { data: row, error } = await db.from(ATTRIBUTE_VALUES_TABLE).insert(data).select("*").single();
     if (error) throw toDbError(error, "Failed to duplicate value");
+    cache.clearByPrefix("template:");
     return row as AttributeValue;
   },
   async bulkCreateValues(items: Array<{
@@ -528,6 +523,7 @@ export const AttributeValueService = {
     await ensureValidSessionOrThrow();
     const { data, error } = await db.from(ATTRIBUTE_VALUES_TABLE).insert(items).select("*");
     if (error) throw toDbError(error, "Failed to create values");
+    cache.clearByPrefix("template:");
     return (Array.isArray(data) ? data : []) as AttributeValue[];
   },
   async reorderValues(updates: Array<{ id: number; display_order: number }>): Promise<void> {
@@ -535,10 +531,12 @@ export const AttributeValueService = {
     const payload = updates.map((row) => ({ id: row.id, display_order: row.display_order }));
     const { error } = await db.from(ATTRIBUTE_VALUES_TABLE).upsert(payload, { onConflict: "id" });
     if (error) throw toDbError(error, "Failed to reorder values");
+    cache.clearByPrefix("template:");
   },
   async toggleValueActive(id: number, isActive: boolean): Promise<void> {
     await ensureValidSessionOrThrow();
     const { error } = await db.from(ATTRIBUTE_VALUES_TABLE).update({ is_active: isActive }).eq("id", id);
     if (error) throw toDbError(error, "Failed to update value");
+    cache.clearByPrefix("template:");
   },
 };
