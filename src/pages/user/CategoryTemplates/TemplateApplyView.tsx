@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import { Layers } from "lucide-react";
+import { ArrowLeft, Check, Layers, PencilLine, X } from "lucide-react";
 import type { CategoryTemplate } from "@/lib/category-template";
+import { getTemplateAttributes } from "@/lib/category-template";
+import { createAuthenticatedClient } from "@/lib/session-validation";
 import type { ApplyPreview } from "./types";
 import { useCategories } from "./hooks/useCategories";
 import { useTemplates } from "./hooks/useTemplates";
@@ -36,8 +38,7 @@ export function TemplateApplyView({ templateId }: TemplateApplyViewProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<CategoryTemplate | null>(null);
   const [loading, setLoading] = useState(true);
   const [applyCategoryId, setApplyCategoryId] = useState<string>("");
-  const [applyOnlyRequired, setApplyOnlyRequired] = useState(true);
-  const [applyOverwriteExisting, setApplyOverwriteExisting] = useState(false);
+  const [applyOverwriteExisting, setApplyOverwriteExisting] = useState(true);
   const [applyToExisting, setApplyToExisting] = useState(true);
   const [applyPreview, setApplyPreview] = useState<ApplyPreview>(emptyPreview);
   const [applying, setApplying] = useState(false);
@@ -115,6 +116,97 @@ export function TemplateApplyView({ templateId }: TemplateApplyViewProps) {
     return () => window.clearInterval(interval);
   }, [applying]);
 
+  const applyMissingAttributes = useCallback(
+    async (templateId: number, categoryId: number) => {
+      const attrs = await getTemplateAttributes(templateId);
+      const activeAttrs = attrs.filter((attr) => attr.is_active !== false);
+      if (activeAttrs.length === 0) return 0;
+      const authenticatedClient = await createAuthenticatedClient();
+      const { data: products, error: productsError } = await authenticatedClient
+        .from("store_products")
+        .select("id")
+        .eq("category_id", categoryId);
+      if (productsError) throw productsError;
+      const productIds = (products || [])
+        .map((row: { id?: string | number | null }) => (row?.id != null ? String(row.id) : ""))
+        .filter((id: string) => id.length > 0);
+      if (productIds.length === 0) return 0;
+      const existingByProduct = new Map<string, { maxOrder: number; keys: Set<string> }>();
+      const paramsChunkSize = 200;
+      for (let i = 0; i < productIds.length; i += paramsChunkSize) {
+        const batch = productIds.slice(i, i + paramsChunkSize);
+        const { data: params, error: paramsError } = await authenticatedClient
+          .from("store_product_params")
+          .select("product_id,name,paramid,order_index")
+          .in("product_id", batch);
+        if (paramsError) throw paramsError;
+        for (const row of params || []) {
+          const pid = row?.product_id != null ? String(row.product_id) : "";
+          if (!pid) continue;
+          const key = row?.paramid ? `paramid:${String(row.paramid)}` : `name:${String(row?.name ?? "")}`;
+          const rawOrder = typeof row?.order_index === "number" ? row.order_index : Number(row?.order_index);
+          const order = Number.isFinite(rawOrder) ? rawOrder : -1;
+          let entry = existingByProduct.get(pid);
+          if (!entry) {
+            entry = { maxOrder: -1, keys: new Set<string>() };
+            existingByProduct.set(pid, entry);
+          }
+          if (key) entry.keys.add(key);
+          if (order > entry.maxOrder) entry.maxOrder = order;
+        }
+      }
+      for (const pid of productIds) {
+        if (!existingByProduct.has(pid)) {
+          existingByProduct.set(pid, { maxOrder: -1, keys: new Set<string>() });
+        }
+      }
+      const rows: Array<{
+        product_id: string;
+        name: string;
+        value: string;
+        paramid: string | null;
+        valueid: string | null;
+        order_index: number;
+      }> = [];
+      for (const pid of productIds) {
+        const entry = existingByProduct.get(pid);
+        if (!entry) continue;
+        for (const attr of activeAttrs) {
+          const name = String(attr.name || "").trim();
+          if (!name) continue;
+          const key = attr.paramid ? `paramid:${String(attr.paramid)}` : `name:${name}`;
+          if (entry.keys.has(key)) continue;
+          const options = Array.isArray(attr.values) ? attr.values : [];
+          const defaultOption = attr.default_value ? options.find((o) => o.value === attr.default_value) : options[0];
+          const value = defaultOption?.value || attr.default_value || "";
+          const valueid = defaultOption?.valueid ?? null;
+          const nextOrder = entry.maxOrder + 1;
+          entry.maxOrder = nextOrder;
+          entry.keys.add(key);
+          rows.push({
+            product_id: pid,
+            name,
+            value,
+            paramid: attr.paramid ? String(attr.paramid) : null,
+            valueid: valueid != null ? String(valueid) : null,
+            order_index: nextOrder,
+          });
+        }
+      }
+      if (rows.length === 0) return 0;
+      const insertChunkSize = 500;
+      let inserted = 0;
+      for (let i = 0; i < rows.length; i += insertChunkSize) {
+        const slice = rows.slice(i, i + insertChunkSize);
+        const { error: insertError } = await authenticatedClient.from("store_product_params").insert(slice);
+        if (insertError) throw insertError;
+        inserted += slice.length;
+      }
+      return inserted;
+    },
+    [],
+  );
+
   const handleApplyTemplateAction = useCallback(async () => {
     if (!selectedTemplate || !applyCategoryId) return;
     setApplying(true);
@@ -122,12 +214,13 @@ export function TemplateApplyView({ templateId }: TemplateApplyViewProps) {
     try {
       const createdCount = await applyTemplateToCategory(selectedTemplate.id, Number(applyCategoryId));
       if (createdCount == null) return;
-      setApplyResult(`${createdCount}`);
+      const extraCount = await applyMissingAttributes(selectedTemplate.id, Number(applyCategoryId));
+      setApplyResult(`${createdCount + extraCount}`);
       await refreshPreview(selectedTemplate, applyCategoryId);
     } finally {
       setApplying(false);
     }
-  }, [applyCategoryId, applyTemplateToCategory, refreshPreview, selectedTemplate]);
+  }, [applyCategoryId, applyMissingAttributes, applyTemplateToCategory, refreshPreview, selectedTemplate]);
 
   if (loading) {
     return (
@@ -142,8 +235,15 @@ export function TemplateApplyView({ templateId }: TemplateApplyViewProps) {
   if (!selectedTemplate) {
     return (
       <div className="p-6">
-        <Button variant="outline" onClick={() => navigate("/user/category-templates")}>
-          {t("back")}
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/user/category-templates")}
+          className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+          title={t("back")}
+        >
+          <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
+            <ArrowLeft className="h-4 w-4" />
+          </span>
         </Button>
       </div>
     );
@@ -161,10 +261,28 @@ export function TemplateApplyView({ templateId }: TemplateApplyViewProps) {
         breadcrumbItems={computedBreadcrumbs}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => navigate("/user/category-templates")}>
-              {t("back")}
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/user/category-templates")}
+              className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+              title={t("back")}
+            >
+              <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
+                <ArrowLeft className="h-4 w-4" />
+              </span>
             </Button>
-            <Button onClick={() => navigate(`/user/category-templates/${selectedTemplate.id}/edit`)}>{t("edit_template")}</Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/user/category-templates/${selectedTemplate.id}/edit`)}
+              className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+              title={t("edit_template")}
+              aria-label={t("edit_template")}
+            >
+              <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
+                <PencilLine className="h-4 w-4" />
+              </span>
+            </Button>
           </div>
         }
       />
@@ -195,26 +313,22 @@ export function TemplateApplyView({ templateId }: TemplateApplyViewProps) {
             <div className="space-y-3">
               <Label>{t("settings")}</Label>
               <div className="flex items-center gap-2">
-                <Switch checked={applyOnlyRequired} onCheckedChange={(v) => setApplyOnlyRequired(!!v)} />
-                <span className="text-sm">Тільки обовʼязкові параметри</span>
-              </div>
-              <div className="flex items-center gap-2">
                 <Switch checked={applyOverwriteExisting} onCheckedChange={(v) => setApplyOverwriteExisting(!!v)} />
-                <span className="text-sm">Перезаписати існуючі</span>
+                <span className="text-sm">{t("apply_overwrite_existing")}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Switch checked={applyToExisting} onCheckedChange={(v) => setApplyToExisting(!!v)} />
-                <span className="text-sm">Застосувати до існуючих товарів</span>
+                <span className="text-sm">{t("apply_to_existing_products")}</span>
               </div>
             </div>
           </div>
           <div className="rounded-md border p-4 space-y-2">
             <div className="text-sm font-medium">Превʼю</div>
             <div className="text-sm text-muted-foreground">
-              Буде застосовано до {applyPreview.products} товарів у категорії {catName}
+              {t("apply_preview_apply_to")} {applyPreview.products} {t("apply_preview_products_in_category")} {catName}
             </div>
             <div className="text-sm text-muted-foreground">
-              Буде створено характеристик: {applyPreview.attributes} • Обовʼязкових: {applyPreview.required} • Опціональних: {applyPreview.optional}
+              {t("apply_preview_attributes_created")}: {applyPreview.attributes} • {t("apply_preview_required")}: {applyPreview.required} • {t("apply_preview_optional")}: {applyPreview.optional}
             </div>
           </div>
           {applying ? (
@@ -227,9 +341,11 @@ export function TemplateApplyView({ templateId }: TemplateApplyViewProps) {
           ) : null}
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => navigate("/user/category-templates")}>
+              <X className="h-4 w-4" />
               {t("cancel")}
             </Button>
             <Button onClick={handleApplyTemplateAction} disabled={applying || !applyCategoryId}>
+              <Check className="h-4 w-4" />
               {applying ? t("please_wait") : t("apply_template")}
             </Button>
           </div>

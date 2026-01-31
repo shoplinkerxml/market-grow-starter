@@ -32,6 +32,10 @@ export const commonDictionary: Dictionary = {
     uk: "Цю дію неможливо скасувати.",
     en: "This action cannot be undone.",
   },
+  apply_template_function_missing: {
+    uk: "Не знайдено функцію public.apply_template_to_products",
+    en: "Could not find the function public.apply_template_to_products",
+  },
   delete_template_name_prefix: {
     uk: "Шаблон",
     en: "Template",
@@ -360,6 +364,7 @@ export const commonDictionary: Dictionary = {
   menu_dashboard: { uk: "Панель управління", en: "Dashboard" },
   menu_forms: { uk: "Форми", en: "Forms" },
   menu_settings: { uk: "Налаштування", en: "Settings" },
+  settings: { uk: "Налаштування", en: "Settings" },
   menu_users: { uk: "Користувачі", en: "Users" },
   menu_analytics: { uk: "Аналітика", en: "Analytics" },
   menu_reports: { uk: "Звіти", en: "Reports" },

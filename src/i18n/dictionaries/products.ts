@@ -204,6 +204,34 @@ export const productsDictionary: Dictionary = {
     uk: "Застосування…",
     en: "Applying…",
   },
+  apply_overwrite_existing: {
+    uk: "Перезаписати існуючі",
+    en: "Overwrite existing",
+  },
+  apply_to_existing_products: {
+    uk: "Застосувати до існуючих товарів",
+    en: "Apply to existing products",
+  },
+  apply_preview_apply_to: {
+    uk: "Буде застосовано до",
+    en: "Will be applied to",
+  },
+  apply_preview_products_in_category: {
+    uk: "товарів у категорії",
+    en: "products in category",
+  },
+  apply_preview_attributes_created: {
+    uk: "Буде створено характеристик",
+    en: "Attributes to be created",
+  },
+  apply_preview_required: {
+    uk: "Обовʼязкових",
+    en: "Required",
+  },
+  apply_preview_optional: {
+    uk: "Опціональних",
+    en: "Optional",
+  },
   template_empty_for_category: {
     uk: "Для цієї категорії немає активних шаблонів",
     en: "No active templates for this category",

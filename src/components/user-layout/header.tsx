@@ -1,6 +1,5 @@
 import { memo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SheetNoOverlay, SheetNoOverlayContent, SheetNoOverlayHeader, SheetNoOverlayTitle, SheetNoOverlayTrigger } from "@/components/ui/sheet-no-overlay";
 import { AlignJustify, Moon, Sun } from "lucide-react";
 import { ProfileSheetContent } from "@/components/ui/profile-sheet-content";
@@ -41,8 +40,9 @@ export const UserHeader = memo(
       }
     }, [setMobileMenuOpen, setSidebarCollapsed]);
 
-    const setLangUk = useCallback(() => setLang("uk"), [setLang]);
-    const setLangEn = useCallback(() => setLang("en"), [setLang]);
+    const toggleLanguage = useCallback(() => {
+      setLang(lang === "uk" ? "en" : "uk");
+    }, [lang, setLang]);
 
     const openProfile = useCallback(() => setProfileSheetOpen(true), [setProfileSheetOpen]);
     const closeProfile = useCallback(() => setProfileSheetOpen(false), [setProfileSheetOpen]);
@@ -66,17 +66,18 @@ export const UserHeader = memo(
             <Moon className="h-5 w-5 block dark:hidden" />
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="hover:bg-transparent cursor-pointer" title={lang === "uk" ? "Українська" : "English"}>
-                <span className="text-lg">{lang === "uk" ? "🇺🇦" : "🇺🇸"}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={setLangUk}>🇺🇦 Українська</DropdownMenuItem>
-              <DropdownMenuItem onClick={setLangEn}>🇺🇸 English</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleLanguage}
+            className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+            title={lang === "uk" ? "Українська" : "English"}
+            aria-label={t("toggle_language")}
+          >
+            <span className="inline-flex items-center justify-center rounded-full bg-transparent text-foreground w-7 h-7 transition-colors group-hover:text-emerald-600 group-active:scale-95">
+              <span className="text-lg">{lang === "uk" ? "🇺🇦" : "🇺🇸"}</span>
+            </span>
+          </Button>
 
           <SheetNoOverlay open={profileSheetOpen} onOpenChange={setProfileSheetOpen}>
             <SheetNoOverlayTrigger asChild>
@@ -95,4 +96,3 @@ export const UserHeader = memo(
   },
 );
 UserHeader.displayName = "UserHeader";
-

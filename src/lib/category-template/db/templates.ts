@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { createAuthenticatedClient } from "@/lib/session-validation";
 import { ensureValidSession } from "../utils/validation";
 import { toDbError } from "../utils/errors";
 import type { CategoryTemplate } from "../types";
@@ -76,8 +77,8 @@ export async function toggleActive(id: number, isActive: boolean): Promise<void>
 export async function applyToCategory(templateId: number, categoryId: number): Promise<number> {
   await ensureValidSession();
   const { data, error } = await db.rpc("apply_template_to_products", {
-    p_template_id: templateId,
     p_category_id: categoryId,
+    p_template_id: templateId,
   });
   if (error) throw toDbError(error, "Failed to apply template", { templateId, categoryId });
   return Number(data ?? 0);
@@ -90,9 +91,10 @@ export async function getApplyPreview(templateId: number, categoryId: number): P
   optional: number;
 }> {
   await ensureValidSession();
+  const authenticatedClient = await createAuthenticatedClient();
   const [productsRes, attrsRes] = await Promise.all([
-    db.from("store_products").select("id", { count: "exact", head: true }).eq("category_id", categoryId),
-    db.from("template_attributes").select("id,is_required").eq("template_id", templateId).eq("is_active", true),
+    authenticatedClient.from("store_products").select("id", { count: "exact", head: true }).eq("category_id", categoryId),
+    authenticatedClient.from("template_attributes").select("id,is_required").eq("template_id", templateId).eq("is_active", true),
   ]);
   const { count: productCount, error: productError } = productsRes;
   if (productError) throw toDbError(productError, "Failed to load preview", { templateId, categoryId });

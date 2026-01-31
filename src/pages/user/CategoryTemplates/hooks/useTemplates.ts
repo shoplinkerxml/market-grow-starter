@@ -22,6 +22,28 @@ export function useTemplates(t: Translator) {
   const [attributeCounts, setAttributeCounts] = useState<Record<number, number>>({});
   const loadTemplatesRequestIdRef = useRef(0);
 
+  const getErrorMessage = useCallback(
+    (error: unknown, fallbackKey: string) => {
+      const message =
+        error instanceof Error ? error.message : typeof error === "string" ? error : "";
+      const normalized = message.toLowerCase();
+      const knownMappings: Array<{ match: string; key: string }> = [
+        { match: "could not find the function public.apply_template_to_products", key: "apply_template_function_missing" },
+        { match: "failed to load preview", key: "operation_failed" },
+        { match: "failed to apply template", key: "failed_save" },
+        { match: "failed to load templates", key: "operation_failed" },
+        { match: "failed to load template", key: "operation_failed" },
+        { match: "failed to create template", key: "failed_save_template" },
+        { match: "failed to update template", key: "failed_save_template" },
+        { match: "failed to delete template", key: "failed_delete_template" },
+      ];
+      const mappedKey = knownMappings.find((item) => normalized.includes(item.match))?.key;
+      if (mappedKey) return t(mappedKey);
+      return message || t(fallbackKey);
+    },
+    [t],
+  );
+
   const loadTemplates = useCallback(async () => {
     loadTemplatesRequestIdRef.current += 1;
     const requestId = loadTemplatesRequestIdRef.current;
@@ -44,9 +66,13 @@ export function useTemplates(t: Translator) {
     async (id: number) => {
       const found = templates.find((tpl) => Number(tpl.id) === id);
       if (found) return found;
-      return (await getTemplateApi(id)) as CategoryTemplate;
+      try {
+        return (await getTemplateApi(id)) as CategoryTemplate;
+      } catch (error) {
+        throw new Error(getErrorMessage(error, "operation_failed"));
+      }
     },
-    [templates],
+    [getErrorMessage, templates],
   );
 
   const createTemplate = useCallback(
@@ -66,11 +92,11 @@ export function useTemplates(t: Translator) {
         toast.success(t("template_saved"));
         return true;
       } catch (error: any) {
-        toast.error(error?.message || t("failed_save"));
+        toast.error(getErrorMessage(error, "failed_save"));
         return false;
       }
     },
-    [loadTemplates, t],
+    [getErrorMessage, loadTemplates, t],
   );
 
   const updateTemplate = useCallback(
@@ -91,11 +117,11 @@ export function useTemplates(t: Translator) {
         toast.success(t("template_saved"));
         return true;
       } catch (error: any) {
-        toast.error(error?.message || t("failed_save"));
+        toast.error(getErrorMessage(error, "failed_save"));
         return false;
       }
     },
-    [t],
+    [getErrorMessage, t],
   );
 
   const deleteTemplate = useCallback(
@@ -106,11 +132,11 @@ export function useTemplates(t: Translator) {
         toast.success(t("template_deleted"));
         return true;
       } catch (error: any) {
-        toast.error(error?.message || t("failed_delete_template"));
+        toast.error(getErrorMessage(error, "failed_delete_template"));
         return false;
       }
     },
-    [loadTemplates, t],
+    [getErrorMessage, loadTemplates, t],
   );
 
   const duplicateTemplate = useCallback(
@@ -121,11 +147,11 @@ export function useTemplates(t: Translator) {
         toast.success(t("duplicate_tariff"));
         return true;
       } catch (e: any) {
-        toast.error(e?.message || t("failed_save"));
+        toast.error(getErrorMessage(e, "failed_save"));
         return false;
       }
     },
-    [loadTemplates, t],
+    [getErrorMessage, loadTemplates, t],
   );
 
   const toggleTemplateActive = useCallback(
@@ -136,11 +162,11 @@ export function useTemplates(t: Translator) {
         toast.success(t("currency_status_updated"));
         return true;
       } catch (e: any) {
-        toast.error(e?.message || t("failed_save"));
+        toast.error(getErrorMessage(e, "failed_save"));
         return false;
       }
     },
-    [t],
+    [getErrorMessage, t],
   );
 
   const getApplyPreview = useCallback(
@@ -148,11 +174,11 @@ export function useTemplates(t: Translator) {
       try {
         return (await getApplyPreviewApi(templateId, categoryId)) as ApplyPreview;
       } catch (error: any) {
-        toast.error(error?.message || t("operation_failed"));
+        toast.error(getErrorMessage(error, "operation_failed"));
         return null;
       }
     },
-    [t],
+    [getErrorMessage],
   );
 
   const applyTemplateToCategory = useCallback(
@@ -160,11 +186,11 @@ export function useTemplates(t: Translator) {
       try {
         return await applyTemplate(templateId, categoryId);
       } catch (error: any) {
-        toast.error(error?.message || t("failed_save"));
+        toast.error(getErrorMessage(error, "failed_save"));
         return null;
       }
     },
-    [t],
+    [getErrorMessage],
   );
 
   return {

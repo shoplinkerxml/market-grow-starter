@@ -28,7 +28,7 @@ export function HeroSection() {
           {/* Left Content */}
           <div className="flex-1 min-w-0 flex flex-col items-center text-center max-w-2xl min-[1320px]:items-start min-[1320px]:text-left min-[1320px]:max-w-[40rem]">
             {/* Top Banner */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary backdrop-blur-md mb-6 animate-bob self-center min-[1320px]:self-start">
+            <div className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary backdrop-blur-md mb-4 animate-bob self-center min-[1320px]:self-start sm:px-4 sm:py-2 sm:text-sm sm:mb-6">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
@@ -37,36 +37,36 @@ export function HeroSection() {
             </div>
 
             {/* Main Title */}
-            <h1 className="text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+            <h1 className="text-3xl font-bold leading-tight sm:text-5xl lg:text-6xl">
               <span className="md:hidden">
-                <span className="block whitespace-nowrap">
+                <span className="block">
                   {t('hero_title_create')}{" "}
                   <span className="relative inline-block">
                     <span className="relative z-10 text-primary">{t('hero_title_visible')}</span>
                     <span className="absolute -bottom-1 left-0 right-0 h-3 bg-primary/20 -skew-x-3"></span>
                   </span>
                 </span>
-                <span className="block whitespace-nowrap">{t('hero_title_everywhere')}</span>
+                <span className="block">{t('hero_title_everywhere')}</span>
               </span>
               <span className="hidden md:inline">
-                <span className="block whitespace-nowrap">{t('hero_title_create')}</span>
-                <span className="block whitespace-nowrap">
+                <span className="block">{t('hero_title_create')}</span>
+                <span className="block">
                   <span className="relative inline-block">
                     <span className="relative z-10 text-primary">{t('hero_title_visible')}</span>
                     <span className="absolute -bottom-1 left-0 right-0 h-3 bg-primary/20 -skew-x-3"></span>
                   </span>
                 </span>
-                <span className="block whitespace-nowrap">{t('hero_title_everywhere')}</span>
+                <span className="block">{t('hero_title_everywhere')}</span>
               </span>
             </h1>
 
             {/* CTA Buttons */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-4 min-[1320px]:justify-start">
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 min-[1320px]:justify-start sm:mt-8">
               <div className="animate-bob will-change-transform [animation-duration:3.6s] [animation-delay:450ms]">
                 <Button
                   variant="hero"
                   size="lg"
-                  className="text-lg px-14 py-7 rounded-lg min-w-[16rem] sm:min-w-[18rem] justify-center group"
+                  className="text-base px-8 py-5 rounded-lg min-w-[12rem] w-full max-w-[18rem] justify-center group sm:text-lg sm:px-14 sm:py-7 sm:min-w-[18rem] sm:w-auto"
                   onClick={handleStartClick}
                 >
                   {t('hero_cta_start')}
@@ -76,12 +76,12 @@ export function HeroSection() {
             </div>
 
             {/* Social Proof */}
-            <div className="mt-10 flex items-center justify-center gap-4 min-[1320px]:justify-start">
-              <div className="flex -space-x-3">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center sm:mt-10 sm:flex-row sm:gap-4 min-[1320px]:justify-start">
+              <div className="flex -space-x-2 sm:-space-x-3">
                 {['МГ', 'ТС', 'ОК', 'ВП', 'ДЗ'].map((initials, i) => (
                   <div
                     key={i}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background text-xs font-semibold shadow-md"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background text-[10px] font-semibold shadow-md sm:h-10 sm:w-10 sm:text-xs"
                     style={{
                       background: `linear-gradient(135deg, hsl(${160 + i * 20} 60% ${45 + i * 5}%), hsl(${170 + i * 15} 50% ${35 + i * 5}%))`,
                       color: 'white'

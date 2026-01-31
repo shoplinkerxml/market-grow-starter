@@ -357,13 +357,6 @@ const UserRegister = () => {
                 </Button>
               </form>
 
-              <div className="text-center text-sm text-muted-foreground pt-2">
-                <Mail className="inline h-4 w-4 mr-1" />
-                {lang === 'uk' 
-                  ? 'Після реєстрації перевірте електронну пошту для підтвердження' 
-                  : 'Check your email for confirmation after registration'}
-              </div>
-
               <p className="text-center text-sm text-muted-foreground">
                 {t("already_account")} 
                 <Link

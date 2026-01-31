@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Form as RHFForm,
   FormControl as RHFFormControl,
@@ -25,7 +26,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
-import { Loader2, Plus, Pencil, Trash2, Copy, CircleCheckBig, MoreVertical, Layers, Folder, FileText, AlignLeft, Power, Save, X } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Pencil, Trash2, Copy, CircleCheckBig, MoreVertical, Layers, Folder, FileText, AlignLeft, Power, Save, X } from "lucide-react";
 import type { CategoryTemplateRow } from "./types";
 import { useCategories } from "./hooks/useCategories";
 import { useTemplates } from "./hooks/useTemplates";
@@ -113,9 +114,16 @@ export function TemplateListView() {
         title={title}
         breadcrumbItems={breadcrumbs}
         actions={
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            {t("create_template")}
+          <Button
+            variant="ghost"
+            onClick={() => navigate(-1)}
+            className="shrink-0 group inline-flex items-center gap-2 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+            title={t("back")}
+          >
+            <span className="inline sm:hidden">{t("back")}</span>
+            <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-8 h-8 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
+              <ArrowLeft className="h-4 w-4" />
+            </span>
           </Button>
         }
       />
@@ -149,60 +157,91 @@ export function TemplateListView() {
             </div>
           ) : (
             <div>
-              <div className="flex items-center justify-end gap-2 mb-2">
-                <Button variant="ghost" size="icon" onClick={() => setCreateDialogOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={selectedRowIds.length !== 1}
-                  onClick={() => {
-                    const id = selectedRowIds[0];
-                    const tpl = templates.find((r) => r.id === id);
-                    if (tpl) openEditor(tpl);
-                  }}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={selectedRowIds.length !== 1}
-                  onClick={() => {
-                    const id = selectedRowIds[0];
-                    const tpl = templates.find((r) => r.id === id);
-                    if (tpl) openApply(tpl);
-                  }}
-                >
-                  <CircleCheckBig className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={selectedRowIds.length !== 1}
-                  onClick={() => {
-                    const id = selectedRowIds[0];
-                    const tpl = templates.find((r) => r.id === id);
-                    if (tpl) duplicateTemplate(tpl);
-                  }}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={selectedRowIds.length === 0}
-                  onClick={() => {
-                    const ids = selectedRowIds;
-                    if (ids.length === 0) return;
-                    const tpl = templates.find((r) => r.id === ids[0]);
-                    if (tpl) deleteTemplate(tpl);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+              <TooltipProvider delayDuration={200}>
+                <div className="flex items-center justify-end gap-2 mb-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => setCreateDialogOpen(true)} aria-label={t("create_template")}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{t("create_template")}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={selectedRowIds.length !== 1}
+                        aria-label={t("edit_template")}
+                        onClick={() => {
+                          const id = selectedRowIds[0];
+                          const tpl = templates.find((r) => r.id === id);
+                          if (tpl) openEditor(tpl);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{t("edit_template")}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={selectedRowIds.length !== 1}
+                        aria-label={t("apply_template")}
+                        onClick={() => {
+                          const id = selectedRowIds[0];
+                          const tpl = templates.find((r) => r.id === id);
+                          if (tpl) openApply(tpl);
+                        }}
+                      >
+                        <CircleCheckBig className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{t("apply_template")}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={selectedRowIds.length !== 1}
+                        aria-label={t("duplicate")}
+                        onClick={() => {
+                          const id = selectedRowIds[0];
+                          const tpl = templates.find((r) => r.id === id);
+                          if (tpl) duplicateTemplate(tpl);
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{t("duplicate")}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={selectedRowIds.length === 0}
+                        aria-label={t("delete")}
+                        onClick={() => {
+                          const ids = selectedRowIds;
+                          if (ids.length === 0) return;
+                          const tpl = templates.find((r) => r.id === ids[0]);
+                          if (tpl) deleteTemplate(tpl);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{t("delete")}</TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
@@ -269,11 +308,24 @@ export function TemplateListView() {
                           <TableCell className="w-[72px] p-0 align-middle">
                             <div className="flex items-center justify-center">
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedRowIds([Number(tpl.id)])}>
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
+                                <TooltipProvider delayDuration={200}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8"
+                                          aria-label={t("table_actions")}
+                                          onClick={() => setSelectedRowIds([Number(tpl.id)])}
+                                        >
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom">{t("table_actions")}</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => openEditor(tpl)} className="cursor-pointer">
                                     <Pencil className="mr-2 h-4 w-4" />
