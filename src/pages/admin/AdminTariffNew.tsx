@@ -337,7 +337,7 @@ const AdminTariffNew = () => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/admin/tariff')} className="p-2 sm:p-3">
+                  <Button variant="ghost" size="icon" onClick={() => navigate('/admin/tariff')} className="hover:bg-transparent">
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -349,7 +349,7 @@ const AdminTariffNew = () => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button onClick={handleSave} disabled={loading} size="sm" className="p-2 sm:p-3">
+                  <Button variant="ghost" size="icon" onClick={handleSave} disabled={loading} className="hover:bg-transparent">
                     <Save className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>

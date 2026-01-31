@@ -265,10 +265,10 @@ export function ImageSection(props: Props) {
                   {/* Белая (outline) - первая */}
                   <Button
                     size="icon"
-                    variant="outline"
+                    variant="ghost"
                     aria-label={t('reorder') || 'Змінити порядок'}
                     onClick={() => { setReorderList(props.images.slice()); setReorderOpen(true) }}
-                    className="h-7 w-7 rounded-md"
+                    className="h-7 w-7"
                   >
                     <ListOrdered className="h-3 w-3" />
                   </Button>
@@ -279,7 +279,7 @@ export function ImageSection(props: Props) {
                       variant="ghost"
                       onClick={() => props.onSetMainImage(props.activeIndex)}
                       aria-label={t('set_as_main_photo')}
-                      className="h-7 w-7 rounded-md bg-success text-primary-foreground hover:bg-success/90"
+                      className="h-7 w-7"
                     >
                       <Check className="h-3 w-3" />
                     </Button>
@@ -287,9 +287,9 @@ export function ImageSection(props: Props) {
                   {/* Красная (delete) - третья */}
                   <Button
                     size="icon"
-                    variant="destructive"
+                    variant="ghost"
                     onClick={() => props.onRemoveImage(props.activeIndex)}
-                    className="h-7 w-7 rounded-md"
+                    className="h-7 w-7"
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -299,18 +299,18 @@ export function ImageSection(props: Props) {
             {props.images.length > 1 && (
               <>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors dark:bg-neutral-900 dark:border-emerald-500/60 dark:text-emerald-200 dark:hover:border-emerald-400/80 dark:hover:text-emerald-100"
+                  className="absolute top-1/2 -translate-y-1/2"
                   style={{ left: 'min(1.75%, 0.5rem)' }}
                   onClick={props.onPrev}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="icon"
-                  className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors dark:bg-neutral-900 dark:border-emerald-500/60 dark:text-emerald-200 dark:hover:border-emerald-400/80 dark:hover:text-emerald-100"
+                  className="absolute top-1/2 -translate-y-1/2"
                   style={{ right: 'min(1.75%, 0.5rem)' }}
                   onClick={props.onNext}
                 >

@@ -87,10 +87,22 @@ export default function ImagePreviewSection(props: Props) {
               </CardContent>
               {props.images.length > 1 && (
                 <>
-                  <Button variant="outline" size="icon" className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors" style={{ left: 'min(1.75%, 0.5rem)' }} onClick={props.onPrev}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1/2 -translate-y-1/2"
+                    style={{ left: 'min(1.75%, 0.5rem)' }}
+                    onClick={props.onPrev}
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="absolute top-1/2 -translate-y-1/2 rounded-full bg-transparent border border-border text-foreground hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner transition-colors" style={{ right: 'min(1.75%, 0.5rem)' }} onClick={props.onNext}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1/2 -translate-y-1/2"
+                    style={{ right: 'min(1.75%, 0.5rem)' }}
+                    onClick={props.onNext}
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </>

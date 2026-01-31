@@ -720,7 +720,7 @@ const AdminTariffEdit = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" onClick={() => navigate('/admin/tariff')} className="hover:bg-transparent">
-                    <ArrowLeft className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+                    <ArrowLeft className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -732,7 +732,7 @@ const AdminTariffEdit = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" onClick={handleSave} disabled={loading} className="hover:bg-transparent">
-                    <Save className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
+                    <Save className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -973,7 +973,7 @@ const AdminTariffEdit = () => {
                               {isAdmin && <div className="flex justify-center">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="hover:bg-transparent">
+                                      <Button variant="ghost" size="icon" className="rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent">
                                         <MoreVertical className="h-5 w-5 text-muted-foreground hover:text-foreground transition-colors" />
                                       </Button>
                                     </DropdownMenuTrigger>

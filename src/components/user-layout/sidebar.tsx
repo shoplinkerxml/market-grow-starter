@@ -125,7 +125,7 @@ export const UserSidebarFooter = memo(
         {collapsed ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="w-full" title={user.name}>
+              <Button variant="ghost" size="icon" className="h-10 w-10 p-0" title={user.name}>
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={user.avatar_url} alt={user.name} />
                   <AvatarFallback className="bg-emerald-100 text-emerald-600 font-semibold dark:bg-emerald-900/40 dark:text-emerald-200">
@@ -158,7 +158,7 @@ export const UserSidebarFooter = memo(
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground hover:bg-transparent hover:border-transparent hover:shadow-none active:scale-100 hover:[&_svg]:[stroke-width:2]"
+                  className="h-8 w-8 shrink-0"
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>

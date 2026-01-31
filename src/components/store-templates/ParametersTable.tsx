@@ -179,7 +179,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({
                     size="sm"
                     variant="ghost"
                     onClick={() => copyPath(field.path)}
-                    className="h-6 w-6 p-0"
+                    className="h-6 w-6 p-0 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600"
                     title="Копіювати шлях"
                   >
                     <Copy className="h-3 w-3" />
@@ -209,7 +209,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({
                     size="sm"
                     variant="ghost"
                     onClick={() => toggleVisibility(index)}
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600"
                     title={hiddenFields.has(index) ? 'Показати' : 'Приховати'}
                   >
                     {hiddenFields.has(index) ? (
@@ -222,7 +222,7 @@ export const ParametersTable: React.FC<ParametersTableProps> = ({
                     size="sm"
                     variant="ghost"
                     onClick={() => deleteField(index)}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-200 dark:hover:text-red-100 dark:hover:bg-red-500/20"
+                    className="h-8 w-8 p-0 rounded-full border border-border text-red-600 hover:border-emerald-500 hover:text-red-700 hover:bg-red-50 dark:text-red-200 dark:hover:text-red-100 dark:hover:bg-red-500/20"
                     title="Видалити"
                   >
                     <Trash2 className="h-4 w-4" />

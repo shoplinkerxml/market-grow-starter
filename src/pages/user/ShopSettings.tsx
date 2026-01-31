@@ -359,7 +359,7 @@ export default function ShopSettings() {
                               </div>
                             </td>
                             <td className="px-3 py-2 text-right">
-                              <Button variant="ghost" size="icon" onClick={() => handleDeleteCurrency(cur.code)} disabled={cur.is_base} className="h-8 w-8 transition-all duration-200 hover:bg-muted dark:hover:bg-emerald-900/30 active:scale-[0.98]" aria-disabled={cur.is_base}>
+                              <Button variant="ghost" size="icon" onClick={() => handleDeleteCurrency(cur.code)} disabled={cur.is_base} className="h-8 w-8 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600" aria-disabled={cur.is_base}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </td>
@@ -377,7 +377,7 @@ export default function ShopSettings() {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-end">
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" disabled={selectedRowIds.length !== 1} onClick={() => {
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600" disabled={selectedRowIds.length !== 1} onClick={() => {
                     const cat = rows.find(r => r.store_category_id === selectedRowIds[0]);
                     if (cat) {
                       setEditRow(cat);
@@ -389,7 +389,7 @@ export default function ShopSettings() {
                   }} data-testid="shop_settings_edit_btn">
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" disabled={selectedRowIds.length === 0} onClick={async () => {
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600" disabled={selectedRowIds.length === 0} onClick={async () => {
                     setDeletingCategories(true);
                     try {
                       for (const catId of selectedRowIds) {
@@ -408,7 +408,7 @@ export default function ShopSettings() {
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={t('view_options')} data-testid="shop_settings_viewOptions">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600" aria-label={t('view_options')} data-testid="shop_settings_viewOptions">
                         <ColumnsIcon className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

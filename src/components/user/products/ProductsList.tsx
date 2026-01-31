@@ -120,7 +120,7 @@ export const ProductsList = ({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 w-8 p-0 hover:!bg-success-light hover:text-success"
+                    className="h-8 w-8 p-0 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600"
                     onClick={() => onEdit?.(product)}
                   >
                     <Edit className="h-4 w-4" />
@@ -128,7 +128,7 @@ export const ProductsList = ({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:!bg-success-light"
+                    className="h-8 w-8 p-0 rounded-full border border-border text-destructive hover:border-emerald-500 hover:text-destructive"
                     onClick={() => setDeleteDialog({ open: true, product })}
                   >
                     <Trash2 className="h-4 w-4" />

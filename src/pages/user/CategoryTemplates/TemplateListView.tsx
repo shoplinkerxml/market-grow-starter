@@ -192,7 +192,6 @@ export function TemplateListView() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-destructive"
                   disabled={selectedRowIds.length === 0}
                   onClick={() => {
                     const ids = selectedRowIds;

@@ -55,11 +55,13 @@ export const NotFoundFallback = ({
           <div className="flex gap-2 pt-4">
             <Button 
               onClick={() => navigate(-1)} 
-              variant="outline" 
-              className="flex items-center gap-2"
+              variant="ghost"
+              className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+              title="Go Back"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Go Back
+              <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
+                <ArrowLeft className="h-4 w-4" />
+              </span>
             </Button>
             <Button 
               onClick={() => navigate('/admin/dashboard')} 

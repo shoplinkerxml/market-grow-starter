@@ -229,7 +229,7 @@ export const UserSidebar = ({
           variant="ghost"
           size="sm"
           onClick={onToggle}
-          className="h-8 w-8 p-0"
+          className="h-8 w-8 p-0 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600"
         >
           {collapsed ? (
             <ChevronRight className="h-4 w-4" />

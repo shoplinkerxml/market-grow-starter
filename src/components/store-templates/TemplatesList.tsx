@@ -133,7 +133,7 @@ export const TemplatesList = ({ onSelect, onTemplatesLoaded, onCreateNew }: Temp
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600"
                     onClick={() => onSelect?.(template)}
                   >
                     <Edit className="h-4 w-4" />
@@ -141,7 +141,7 @@ export const TemplatesList = ({ onSelect, onTemplatesLoaded, onCreateNew }: Temp
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    className="h-8 w-8 p-0 rounded-full border border-border text-destructive hover:border-emerald-500 hover:text-destructive"
                     onClick={() => setDeleteDialog({ open: true, template })}
                   >
                     <Trash2 className="h-4 w-4" />

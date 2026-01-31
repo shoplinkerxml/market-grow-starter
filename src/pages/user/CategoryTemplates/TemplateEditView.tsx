@@ -415,8 +415,15 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
   if (!selectedTemplate) {
     return (
       <div className="p-6">
-        <Button variant="outline" onClick={() => navigate("/user/category-templates")}>
-          {t("back")}
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/user/category-templates")}
+          className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+          title={t("back")}
+        >
+          <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
+            <ArrowLeft className="h-4 w-4" />
+          </span>
         </Button>
       </div>
     );
@@ -429,8 +436,15 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
         breadcrumbItems={computedBreadcrumbs}
         actions={
           <div className="flex items-center gap-2 justify-end flex-nowrap">
-            <Button variant="outline" onClick={() => navigate("/user/category-templates")}>
-              {t("back")}
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/user/category-templates")}
+              className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+              title={t("back")}
+            >
+              <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
+                <ArrowLeft className="h-4 w-4" />
+              </span>
             </Button>
           </div>
         }
@@ -544,7 +558,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-full border border-border text-foreground transition-colors hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner"
+                    className="h-8 w-8"
                     onClick={() => setAttrDialogOpen(true)}
                     aria-label={t("btn_add")}
                   >
@@ -554,7 +568,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-full border border-border text-foreground transition-colors hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner"
+                    className="h-8 w-8"
                     onClick={handleDuplicateSelected}
                     aria-label={t("duplicate")}
                     disabled={selectedAttributeIds.length !== 1}
@@ -566,7 +580,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-full border border-border text-foreground transition-colors hover:border-destructive hover:text-destructive active:scale-95 active:shadow-inner"
+                    className="h-8 w-8"
                     onClick={handleDeleteSelected}
                     aria-label={selectedAttributeIds.length > 1 ? t("delete_selected") : t("delete")}
                     disabled={selectedAttributeIds.length === 0}

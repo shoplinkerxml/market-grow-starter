@@ -270,10 +270,10 @@ function SortableTreeNode({
                 style={{ width: `${Math.max(editValue.length * 7 + 16, 150)}px`, minWidth: '150px' }}
                 placeholder="Значення"
               />
-              <Button size="sm" variant="default" onClick={handleSave} className="h-6 w-6 p-0 flex-shrink-0" title="Зберегти">
+              <Button size="sm" variant="default" onClick={handleSave} className="h-6 w-6 p-0 flex-shrink-0 rounded-full" title="Зберегти">
                 <Save className="h-3 w-3" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={handleCancel} className="h-6 w-6 p-0 flex-shrink-0" title="Скасувати">
+              <Button size="sm" variant="ghost" onClick={handleCancel} className="h-6 w-6 p-0 flex-shrink-0 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600" title="Скасувати">
                 <X className="h-3 w-3" />
               </Button>
             </div>

@@ -112,7 +112,7 @@ export const TemplateEditor = ({ structure }: TemplateEditorProps) => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6"
+                          className="h-6 w-6 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600"
                           onClick={() => copyPath(field.path)}
                         >
                           <Copy className="h-3 w-3" />
@@ -131,13 +131,13 @@ export const TemplateEditor = ({ structure }: TemplateEditorProps) => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600">
                           <Edit2 className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600"
                           onClick={() => toggleFieldVisibility(field.path)}
                         >
                           {hiddenFields.has(field.path) ? (

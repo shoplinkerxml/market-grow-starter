@@ -367,7 +367,7 @@ export const CategoryTreeEditor: React.FC<CategoryTreeEditorProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-4 w-4 text-destructive hover:text-destructive hover:bg-destructive/10"
+                className="h-4 w-4 rounded-full border border-border text-destructive hover:border-emerald-500 hover:text-destructive hover:bg-destructive/10"
                 aria-label="Retry"
                 onClick={e => {
                   e.stopPropagation();
