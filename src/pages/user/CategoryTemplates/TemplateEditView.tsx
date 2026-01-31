@@ -417,13 +417,12 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
       <div className="p-6">
         <Button
           variant="ghost"
+          size="icon"
           onClick={() => navigate("/user/category-templates")}
-          className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+          className="shrink-0 border border-border bg-muted-foreground/10 hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
           title={t("back")}
         >
-          <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
-            <ArrowLeft className="h-4 w-4" />
-          </span>
+          <ArrowLeft className="h-4 w-4" />
         </Button>
       </div>
     );
@@ -438,13 +437,12 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
           <div className="flex items-center gap-2 justify-end flex-nowrap">
             <Button
               variant="ghost"
+              size="icon"
               onClick={() => navigate("/user/category-templates")}
-              className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+              className="shrink-0 border border-border bg-muted-foreground/10 hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
               title={t("back")}
             >
-              <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
-                <ArrowLeft className="h-4 w-4" />
-              </span>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
           </div>
         }

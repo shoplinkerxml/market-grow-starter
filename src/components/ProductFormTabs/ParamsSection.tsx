@@ -167,10 +167,10 @@ export default function ParamsSection(props: Props) {
                         }))
                       }}
                     >
-                      <SelectTrigger id="param-value-modal" data-testid="productForm_modal_paramValueSelect">
+                      <SelectTrigger id="param-value-modal" data-testid="productForm_modal_paramValueSelect" className="h-9 pl-3 pr-8">
                         <SelectValue placeholder={props.t('characteristic_value_placeholder')} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="min-w-[var(--radix-select-trigger-width)] w-[var(--radix-select-trigger-width)]">
                         {valueOptions.map((opt) => (
                           <SelectItem key={opt.id} value={opt.value}>
                             {opt.display_value || opt.value}

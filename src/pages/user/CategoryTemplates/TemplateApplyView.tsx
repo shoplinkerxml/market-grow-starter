@@ -237,13 +237,12 @@ export function TemplateApplyView({ templateId }: TemplateApplyViewProps) {
       <div className="p-6">
         <Button
           variant="ghost"
+          size="icon"
           onClick={() => navigate("/user/category-templates")}
-          className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+          className="shrink-0 border border-border bg-muted-foreground/10 hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
           title={t("back")}
         >
-          <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
-            <ArrowLeft className="h-4 w-4" />
-          </span>
+          <ArrowLeft className="h-4 w-4" />
         </Button>
       </div>
     );
@@ -263,25 +262,22 @@ export function TemplateApplyView({ templateId }: TemplateApplyViewProps) {
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
+              size="icon"
               onClick={() => navigate("/user/category-templates")}
-              className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+              className="shrink-0 border border-border bg-muted-foreground/10 hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
               title={t("back")}
             >
-              <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
-                <ArrowLeft className="h-4 w-4" />
-              </span>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => navigate(`/user/category-templates/${selectedTemplate.id}/edit`)}
-              className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+              className="shrink-0 border border-border bg-muted-foreground/10 hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
               title={t("edit_template")}
               aria-label={t("edit_template")}
             >
-              <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
-                <PencilLine className="h-4 w-4" />
-              </span>
+              <PencilLine className="h-4 w-4" />
             </Button>
           </div>
         }
@@ -328,7 +324,7 @@ export function TemplateApplyView({ templateId }: TemplateApplyViewProps) {
               {t("apply_preview_apply_to")} {applyPreview.products} {t("apply_preview_products_in_category")} {catName}
             </div>
             <div className="text-sm text-muted-foreground">
-              {t("apply_preview_attributes_created")}: {applyPreview.attributes} • {t("apply_preview_required")}: {applyPreview.required} • {t("apply_preview_optional")}: {applyPreview.optional}
+              {t("apply_preview_attributes_created")}: {applyPreview.attributes}
             </div>
           </div>
           {applying ? (

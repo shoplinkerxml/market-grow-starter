@@ -98,10 +98,10 @@ export function createParametersColumns(args: {
               args.onValueChange?.(row.index, value, selected?.valueid ?? null);
             }}
           >
-            <SelectTrigger className="h-8 w-fit">
+            <SelectTrigger className="h-9 w-fit pl-3 pr-8">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="min-w-[var(--radix-select-trigger-width)] w-[var(--radix-select-trigger-width)]">
               {options.map((opt) => (
                 <SelectItem key={opt.id} value={opt.value}>
                   {opt.display_value || `${opt.value}${row.original.unit ? ` ${row.original.unit}` : ""}`}

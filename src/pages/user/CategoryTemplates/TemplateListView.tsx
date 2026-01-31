@@ -116,14 +116,12 @@ export function TemplateListView() {
         actions={
           <Button
             variant="ghost"
+            size="icon"
             onClick={() => navigate(-1)}
-            className="shrink-0 group inline-flex items-center gap-2 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
+            className="shrink-0 border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
             title={t("back")}
           >
-            <span className="inline sm:hidden">{t("back")}</span>
-            <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-8 h-8 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
-              <ArrowLeft className="h-4 w-4" />
-            </span>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         }
       />
@@ -161,7 +159,13 @@ export function TemplateListView() {
                 <div className="flex items-center justify-end gap-2 mb-2">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => setCreateDialogOpen(true)} aria-label={t("create_template")}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setCreateDialogOpen(true)}
+                        aria-label={t("create_template")}
+                        className="border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
+                      >
                         <Plus className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
@@ -179,6 +183,7 @@ export function TemplateListView() {
                           const tpl = templates.find((r) => r.id === id);
                           if (tpl) openEditor(tpl);
                         }}
+                        className="border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -197,6 +202,7 @@ export function TemplateListView() {
                           const tpl = templates.find((r) => r.id === id);
                           if (tpl) openApply(tpl);
                         }}
+                        className="border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
                       >
                         <CircleCheckBig className="h-4 w-4" />
                       </Button>

@@ -28,12 +28,12 @@ export function HeroSection() {
           {/* Left Content */}
           <div className="flex-1 min-w-0 flex flex-col items-center text-center max-w-2xl min-[1320px]:items-start min-[1320px]:text-left min-[1320px]:max-w-[40rem]">
             {/* Top Banner */}
-            <div className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary backdrop-blur-md mb-4 animate-bob self-center min-[1320px]:self-start sm:px-4 sm:py-2 sm:text-sm sm:mb-6">
-              <span className="relative flex h-2 w-2">
+            <div className="inline-flex items-start justify-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-left text-xs font-medium text-primary backdrop-blur-md mb-4 animate-bob self-center min-[1320px]:self-start sm:px-4 sm:py-2 sm:text-sm sm:mb-6">
+              <span className="relative flex h-2 w-2 shrink-0 mt-0.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
               </span>
-              {t("hero_banner_supplier_prices")}
+              <span className="min-w-0 leading-tight">{t("hero_banner_supplier_prices")}</span>
             </div>
 
             {/* Main Title */}
