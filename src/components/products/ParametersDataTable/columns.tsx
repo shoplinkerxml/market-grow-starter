@@ -140,7 +140,7 @@ export function createParametersColumns(args: {
         <div className="flex justify-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent" data-testid="parametersDataTable_rowActions">
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:text-emerald-600" data-testid="parametersDataTable_rowActions">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

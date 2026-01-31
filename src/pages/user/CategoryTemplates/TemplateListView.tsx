@@ -164,7 +164,7 @@ export function TemplateListView() {
                         size="icon"
                         onClick={() => setCreateDialogOpen(true)}
                         aria-label={t("create_template")}
-                        className="border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
+                        className="text-muted-foreground hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
@@ -183,7 +183,7 @@ export function TemplateListView() {
                           const tpl = templates.find((r) => r.id === id);
                           if (tpl) openEditor(tpl);
                         }}
-                        className="border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
+                        className="text-muted-foreground hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -202,7 +202,7 @@ export function TemplateListView() {
                           const tpl = templates.find((r) => r.id === id);
                           if (tpl) openApply(tpl);
                         }}
-                        className="border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
+                        className="text-muted-foreground hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
                       >
                         <CircleCheckBig className="h-4 w-4" />
                       </Button>

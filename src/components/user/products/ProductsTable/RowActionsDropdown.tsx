@@ -99,7 +99,7 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-8 w-8 p-0 rounded-full border border-border hover:border-emerald-500 hover:text-emerald-600"
+          className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:text-emerald-600"
           aria-label="Open row actions"
           onClick={() => { onTrigger?.(); }}
           disabled={duplicating === true || isDupPending}

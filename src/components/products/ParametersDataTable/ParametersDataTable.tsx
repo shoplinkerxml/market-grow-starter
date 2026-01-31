@@ -22,6 +22,7 @@ export interface ProductParam {
   order_index: number;
   paramid?: string;
   valueid?: string;
+  unit?: string | null;
   template_attribute_id?: number;
   attribute_type?: string;
   value_options?: Array<{
