@@ -251,7 +251,16 @@ export function TemplateListView() {
                               />
                             </div>
                           </TableCell>
-                          <TableCell className="truncate">{catName}</TableCell>
+                          <TableCell className="truncate">
+                            <button
+                              type="button"
+                              className="text-left font-medium break-words line-clamp-2 w-full transition-colors hover:text-emerald-600 hover:font-semibold"
+                              title={catName}
+                              onClick={() => openEditor(tpl)}
+                            >
+                              {catName}
+                            </button>
+                          </TableCell>
                           <TableCell className="font-medium">{tpl.name}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{attributeCounts[tpl.id] ?? 0}</TableCell>
                           <TableCell className="truncate text-sm text-muted-foreground">{tpl.description || "—"}</TableCell>
