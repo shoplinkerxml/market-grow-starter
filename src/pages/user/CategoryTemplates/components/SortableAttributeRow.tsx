@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -18,13 +19,13 @@ import { FormField } from "./Fields";
 type SortableAttributeRowProps = {
   attribute: TemplateAttributeWithValues;
   index: number;
+  isSelected: boolean;
+  onSelectChange: (attrId: number, nextSelected: boolean) => void;
   onAddValue: (attr: TemplateAttribute) => void;
   onBulkAddValue: (attr: TemplateAttribute) => void;
   onEditValue: (attr: TemplateAttribute, value: AttributeValue) => void;
   onDeleteValue: (attr: TemplateAttributeWithValues, value: AttributeValue) => void;
   onDuplicateValue: (attr: TemplateAttributeWithValues, value: AttributeValue) => void;
-  onDeleteAttribute: (attr: TemplateAttributeWithValues) => void;
-  onDuplicateAttribute: (attr: TemplateAttributeWithValues) => void;
   onToggleValueActive: (attributeId: number, valueId: number, nextActive: boolean) => void;
   onUpdateAttribute: (attrId: number, updates: Partial<TemplateAttribute>) => Promise<void>;
 };
@@ -32,13 +33,13 @@ type SortableAttributeRowProps = {
 export function SortableAttributeRow({
   attribute,
   index,
+  isSelected,
+  onSelectChange,
   onAddValue,
   onBulkAddValue,
   onEditValue,
   onDeleteValue,
   onDuplicateValue,
-  onDeleteAttribute,
-  onDuplicateAttribute,
   onToggleValueActive,
   onUpdateAttribute,
 }: SortableAttributeRowProps) {
@@ -69,6 +70,11 @@ export function SortableAttributeRow({
       <AccordionItem value={`attr-${attribute.id}`}>
         <div className="flex items-center gap-3 px-4 py-2">
           <div className="flex items-center gap-3">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={(v) => onSelectChange(attribute.id, v === true)}
+              aria-label={t("select_row")}
+            />
             <div className="cursor-move touch-none" {...attributes} {...listeners}>
               <GripVertical className="h-5 w-5 text-muted-foreground hover:text-foreground" />
             </div>
@@ -109,24 +115,6 @@ export function SortableAttributeRow({
           >
             <Save className="h-4 w-4" />
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onDuplicateAttribute(attribute)} className="cursor-pointer">
-                <Copy className="mr-2 h-4 w-4" />
-                {t("duplicate")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onDeleteAttribute(attribute)} className="cursor-pointer focus:text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t("delete")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
         <AccordionContent className="px-4 max-h-[60vh] overflow-y-auto">
           <div className="space-y-4">

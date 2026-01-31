@@ -9,6 +9,7 @@ import { useBreadcrumbs } from "@/hooks/useBreadcrumbs";
 import { useI18n } from "@/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -50,6 +51,8 @@ import {
   Sparkles,
   Tag,
   Save,
+  Copy,
+  Trash2,
   X,
 } from "lucide-react";
 import type { AttributeValue, CategoryTemplate, TemplateAttribute } from "@/lib/category-template";
@@ -126,6 +129,7 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
   const [bulkAttribute, setBulkAttribute] = useState<TemplateAttribute | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<CategoryTemplate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedAttributeIds, setSelectedAttributeIds] = useState<number[]>([]);
   const [attrDialogOpen, setAttrDialogOpen] = useState(false);
   const [valueDialogOpen, setValueDialogOpen] = useState(false);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
@@ -216,6 +220,10 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
       isActive = false;
     };
   }, [editForm, getTemplateById, loadCategories, loadTemplateDetails, t, templateId]);
+
+  useEffect(() => {
+    setSelectedAttributeIds((prev) => prev.filter((id) => attributes.some((attr) => attr.id === id)));
+  }, [attributes]);
 
   const onEditSubmit = useCallback(
     async (data: z.infer<typeof editTemplateSchema>) => {
@@ -365,6 +373,35 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
     [attributes, reorderAttributes, selectedTemplate],
   );
 
+  const handleToggleAttribute = useCallback((attrId: number, nextSelected: boolean) => {
+    setSelectedAttributeIds((prev) => {
+      const exists = prev.includes(attrId);
+      if (nextSelected && !exists) return [...prev, attrId];
+      if (!nextSelected && exists) return prev.filter((id) => id !== attrId);
+      return prev;
+    });
+  }, []);
+
+  const handleDuplicateSelected = useCallback(async () => {
+    if (selectedAttributeIds.length !== 1) return;
+    const target = attributes.find((attr) => attr.id === selectedAttributeIds[0]);
+    if (!target) return;
+    const ok = await duplicateAttribute(target);
+    if (ok) {
+      setSelectedAttributeIds([]);
+    }
+  }, [attributes, duplicateAttribute, selectedAttributeIds]);
+
+  const handleDeleteSelected = useCallback(async () => {
+    if (selectedAttributeIds.length === 0) return;
+    const targets = attributes.filter((attr) => selectedAttributeIds.includes(attr.id));
+    for (const attr of targets) {
+      const ok = await deleteAttribute(attr);
+      if (!ok) return;
+    }
+    setSelectedAttributeIds([]);
+  }, [attributes, deleteAttribute, selectedAttributeIds]);
+
   if (loading) {
     return (
       <div className="p-6">
@@ -394,10 +431,6 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
           <div className="flex items-center gap-2 justify-end flex-nowrap">
             <Button variant="outline" onClick={() => navigate("/user/category-templates")}>
               {t("back")}
-            </Button>
-            <Button onClick={() => setAttrDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("btn_add")}
             </Button>
           </div>
         }
@@ -483,6 +516,66 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="attributes" className="space-y-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={
+                      attributes.length > 0
+                        ? selectedAttributeIds.length === attributes.length
+                          ? true
+                          : selectedAttributeIds.length > 0
+                          ? "indeterminate"
+                          : false
+                        : false
+                    }
+                    onCheckedChange={(v) => {
+                      if (v === true) {
+                        setSelectedAttributeIds(attributes.map((attr) => attr.id));
+                      } else {
+                        setSelectedAttributeIds([]);
+                      }
+                    }}
+                    aria-label={t("select_all")}
+                  />
+                  <span className="text-sm text-muted-foreground">{t("select_all")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full border border-border text-foreground transition-colors hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner"
+                    onClick={() => setAttrDialogOpen(true)}
+                    aria-label={t("btn_add")}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full border border-border text-foreground transition-colors hover:border-emerald-500 hover:text-emerald-600 active:scale-95 active:shadow-inner"
+                    onClick={handleDuplicateSelected}
+                    aria-label={t("duplicate")}
+                    disabled={selectedAttributeIds.length !== 1}
+                    aria-disabled={selectedAttributeIds.length !== 1}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full border border-border text-foreground transition-colors hover:border-destructive hover:text-destructive active:scale-95 active:shadow-inner"
+                    onClick={handleDeleteSelected}
+                    aria-label={selectedAttributeIds.length > 1 ? t("delete_selected") : t("delete")}
+                    disabled={selectedAttributeIds.length === 0}
+                    aria-disabled={selectedAttributeIds.length === 0}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAttrsDragEnd}>
                 <SortableContext items={attributes.map((a) => a.id)} strategy={verticalListSortingStrategy}>
                   <Accordion type="multiple" className="space-y-2">
@@ -491,13 +584,13 @@ export function TemplateEditView({ templateId }: TemplateEditViewProps) {
                         key={a.id}
                         attribute={a}
                         index={i}
+                        isSelected={selectedAttributeIds.includes(a.id)}
+                        onSelectChange={handleToggleAttribute}
                         onAddValue={openAddValueDialog}
                         onBulkAddValue={openBulkAddValueDialog}
                         onEditValue={openEditValueDialog}
                         onDeleteValue={deleteValue}
                         onDuplicateValue={duplicateValue}
-                        onDeleteAttribute={deleteAttribute}
-                        onDuplicateAttribute={duplicateAttribute}
                         onToggleValueActive={toggleValueActive}
                         onUpdateAttribute={async (attrId, updates) => {
                           const nextUpdates = {
