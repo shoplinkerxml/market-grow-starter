@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/user-service";
+import { getTemplateAttributes, listTemplatesByCategory } from "@/lib/category-template";
 import { invokeEdge } from "./product-utils";
 import { 
   Product, 
@@ -181,7 +182,7 @@ export class ProductAggregatorService {
       const s = v == null ? "" : String(v).trim();
       return s ? s : undefined;
     };
-    const params = rawParams
+    let params = rawParams
       .map((p: any, idx: number) => {
         const rawOrder =
           typeof p?.order_index === "number" ? p.order_index : Number(p?.order_index);
@@ -199,6 +200,48 @@ export class ProductAggregatorService {
         } as ProductParam;
       })
       .sort((a, b) => Number(a.order_index || 0) - Number(b.order_index || 0));
+
+    const categoryId = resp?.product?.category_id;
+    if (categoryId != null) {
+      try {
+        const templates = await listTemplatesByCategory(Number(categoryId));
+        const preferred = templates.find((t) => t.is_active !== false) || templates[0];
+        if (preferred?.id != null) {
+          const attrs = await getTemplateAttributes(Number(preferred.id));
+          if (attrs.length > 0) {
+            const byParamid = new Map<string, typeof attrs[number]>();
+            const byName = new Map<string, typeof attrs[number]>();
+            for (const attr of attrs) {
+              if (attr.paramid) byParamid.set(String(attr.paramid), attr);
+              if (attr.name) byName.set(String(attr.name), attr);
+            }
+            params = params.map((p) => {
+              const match = (p.paramid ? byParamid.get(String(p.paramid)) : undefined) || byName.get(String(p.name));
+              if (!match) return p;
+              const options = Array.isArray((match as any).values)
+                ? (match as any).values.map((v: any) => ({
+                    id: Number(v.id),
+                    value: String(v.value ?? ""),
+                    valueid: v.valueid != null ? String(v.valueid) : null,
+                    display_value: v.display_value ?? null,
+                    value_lang: v.value_lang ?? null,
+                  }))
+                : [];
+              return {
+                ...p,
+                template_attribute_id: Number(match.id),
+                attribute_type: match.attribute_type,
+                unit: match.unit ?? null,
+                is_required: !!match.is_required,
+                value_options: options,
+              };
+            });
+          }
+        }
+      } catch {
+        void 0;
+      }
+    }
 
     return {
       product: (resp?.product || null) as Product | null,

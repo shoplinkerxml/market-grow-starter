@@ -224,6 +224,7 @@ export const productsDictionary: Dictionary = {
     uk: "Назва характеристики",
     en: "Characteristic Name",
   },
+  display_value: { uk: "Відображення", en: "Display" },
   value: { uk: "Значення", en: "Value" },
   characteristic_name_placeholder: {
     uk: "Назва характеристики",

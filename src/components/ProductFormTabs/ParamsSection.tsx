@@ -52,6 +52,18 @@ export default function ParamsSection(props: Props) {
   const currentValue = hasValueOptions
     ? (valueOptions.find((o) => o.value === props.paramForm.value)?.value || valueOptions[0]?.value || '')
     : props.paramForm.value
+  const resolveDisplayValue = React.useCallback((param: ProductParam) => {
+    const options = param.value_options || []
+    const matched = options.find((o) => o.value === param.value || (!!param.valueid && o.valueid === param.valueid))
+    if (matched?.display_value || matched?.value) {
+      return matched.display_value || matched.value
+    }
+    if (param.unit) {
+      const base = String(param.value || '').trim()
+      if (base) return `${base} ${param.unit}`
+    }
+    return param.value
+  }, [])
   return (
     <Card>
       <CardHeader>
@@ -72,7 +84,7 @@ export default function ParamsSection(props: Props) {
             {props.parameters.map((p) => (
               <div key={`${p.name}_${p.order_index}`} className="border rounded-md p-2">
                 <div className="text-xs text-muted-foreground">{p.name}</div>
-                <div className="text-sm break-words">{p.value}</div>
+                <div className="text-sm break-words">{resolveDisplayValue(p)}</div>
               </div>
             ))}
           </div>

@@ -34,6 +34,17 @@ export interface ProductParam {
   order_index: number;
   paramid?: string;
   valueid?: string;
+  template_attribute_id?: number;
+  attribute_type?: string;
+  unit?: string | null;
+  is_required?: boolean;
+  value_options?: Array<{
+    id: number;
+    value: string;
+    valueid?: string | null;
+    display_value?: string | null;
+    value_lang?: Record<string, string> | null;
+  }>;
 }
 
 export interface ProductImage {

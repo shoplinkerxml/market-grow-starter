@@ -61,7 +61,7 @@ export function createParametersColumns(args: {
       header: args.t("characteristic_name"),
       cell: ({ row }) => (
         <Input
-          className="h-8"
+          className="h-8 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           value={row.original.name}
           onChange={(e) => {
             const v = e.target.value;
@@ -78,7 +78,7 @@ export function createParametersColumns(args: {
         if (options.length === 0) {
           return (
             <Input
-              className="h-8"
+              className="h-8 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               value={row.original.value}
               onChange={(e) => {
                 const v = e.target.value;
@@ -104,7 +104,7 @@ export function createParametersColumns(args: {
             <SelectContent>
               {options.map((opt) => (
                 <SelectItem key={opt.id} value={opt.value}>
-                  {opt.display_value || opt.value}
+                  {opt.display_value || `${opt.value}${row.original.unit ? ` ${row.original.unit}` : ""}`}
                 </SelectItem>
               ))}
             </SelectContent>
