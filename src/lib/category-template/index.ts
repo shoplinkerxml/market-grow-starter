@@ -2,6 +2,9 @@ import { cache, withCache } from "@/lib/cache-helper";
 import * as TemplatesDb from "./db/templates";
 import * as AttributesDb from "./db/attributes";
 import * as ValuesDb from "./db/values";
+import { getTemplateAttributesOptimized } from "./db/attributes-optimized";
+import { countByTemplateIdsOptimized } from "./db/attributes-count-optimized";
+import { duplicateTemplateOptimized } from "./db/templates-optimized";
 
 export type { CategoryTemplate, TemplateAttribute, AttributeValue } from "./types";
 
@@ -17,7 +20,7 @@ export async function listAttributeCounts(templateIds: number[]): Promise<Record
   const ids = Array.from(new Set((templateIds || []).map((n) => Number(n)).filter((n) => Number.isFinite(n)))).sort((a, b) => a - b);
   if (ids.length === 0) return {};
   const key = `template:counts:${ids.join(",")}`;
-  return await withCache(key, async () => await AttributesDb.countByTemplateIds(ids));
+  return await withCache(key, async () => await countByTemplateIdsOptimized(ids));
 }
 
 export async function getTemplate(id: number) {
@@ -72,89 +75,13 @@ export async function getApplyPreview(templateId: number, categoryId: number) {
 }
 
 export async function duplicateTemplate(tpl: { id: number; category_id: number; name: string; description: string | null; is_active: boolean }) {
-  const attrs = await AttributesDb.getByTemplate(tpl.id);
-  const newName = `${tpl.name} (копія)`;
-  const newTpl = await TemplatesDb.create({
-    category_id: tpl.category_id,
-    name: newName,
-    description: tpl.description,
-    is_active: tpl.is_active,
-  });
-  if (attrs.length === 0) {
-    cache.clearByPrefix("template:");
-    return;
-  }
-  const attrPayload = attrs.map((row) => ({
-    template_id: newTpl.id,
-    name: row.name,
-    paramid: row.paramid ?? null,
-    attribute_type: row.attribute_type,
-    is_required: row.is_required,
-    display_order: row.display_order ?? 0,
-    unit: row.unit,
-    default_value: row.default_value,
-    is_filterable: row.is_filterable,
-    is_active: row.is_active,
-  }));
-  const insertedAttrs = await AttributesDb.bulkCreate(attrPayload);
-  const oldIds = attrs.map((row) => Number(row.id)).filter((n) => Number.isFinite(n));
-  const values = await ValuesDb.getByAttributes(oldIds);
-  if (values.length > 0) {
-    const attrMap = new Map<number, number>();
-    for (let i = 0; i < attrs.length; i += 1) {
-      const oldId = Number(attrs[i]?.id);
-      const newId = Number(insertedAttrs[i]?.id);
-      if (Number.isFinite(oldId) && Number.isFinite(newId)) attrMap.set(oldId, newId);
-    }
-    const valuePayload = values
-      .map((row) => {
-        const mappedId = attrMap.get(Number(row.attribute_id));
-        if (!mappedId) return null;
-        return {
-          attribute_id: mappedId,
-          value: row.value,
-          valueid: row.valueid ?? null,
-          display_value: row.display_value ?? null,
-          display_order: row.display_order ?? 0,
-          value_lang: row.value_lang ?? null,
-          metadata: row.metadata ?? null,
-          is_active: row.is_active ?? true,
-        };
-      })
-      .filter(Boolean) as Array<{
-      attribute_id: number;
-      value: string;
-      valueid: string | null;
-      display_value: string | null;
-      display_order: number;
-      value_lang: Record<string, string> | null;
-      metadata: Record<string, unknown> | null;
-      is_active: boolean;
-    }>;
-    if (valuePayload.length > 0) {
-      await ValuesDb.bulkCreate(valuePayload);
-    }
-  }
+  await duplicateTemplateOptimized(tpl.id, `${tpl.name} (копія)`);
   cache.clearByPrefix("template:");
-  void insertedAttrs;
 }
 
 export async function getTemplateAttributes(templateId: number) {
   return await withCache(`template:attrs:${Number(templateId)}`, async () => {
-    const attrs = await AttributesDb.getByTemplate(templateId);
-    if (attrs.length === 0) return [];
-    const attrIds = attrs.map((a) => Number(a.id)).filter((n) => Number.isFinite(n));
-    const values = await ValuesDb.getByAttributes(attrIds);
-    const valuesByAttr = new Map<number, typeof values>();
-    for (const v of values) {
-      const attrId = Number(v.attribute_id);
-      if (!valuesByAttr.has(attrId)) valuesByAttr.set(attrId, []);
-      valuesByAttr.get(attrId)?.push(v);
-    }
-    return attrs.map((attr) => ({
-      ...attr,
-      values: valuesByAttr.get(Number(attr.id)) || [],
-    }));
+    return await getTemplateAttributesOptimized(templateId);
   });
 }
 
