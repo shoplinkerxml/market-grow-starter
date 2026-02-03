@@ -21,7 +21,7 @@ export function PaginationFooter<TData>({
   const { t } = useI18n();
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-2" data-testid="user_products_dataTable_pagination">
-      <div className="text-xs text-muted-foreground" data-testid="user_products_dataTable_selectionStatus">
+      <div className="text-xs text-muted-foreground hidden sm:block" data-testid="user_products_dataTable_selectionStatus">
         {(() => {
           const selected = table.getSelectedRowModel().rows.length;
           const total = table.getFilteredRowModel().rows.length || 0;
@@ -120,7 +120,7 @@ export function PaginationFooter<TData>({
             <ChevronsRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="ml-4 text-xs text-muted-foreground" data-testid="user_products_dataTable_rangeIndicator">
+        <div className="ml-4 text-xs text-muted-foreground hidden sm:block" data-testid="user_products_dataTable_rangeIndicator">
           {(() => {
             const total = pageInfo?.total ?? rows.length;
             const start = total === 0 ? 0 : pagination.pageIndex * pagination.pageSize + 1;

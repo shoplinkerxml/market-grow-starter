@@ -180,7 +180,7 @@ export function ProductsTableView({
             onDragEnd={handleTableDragEnd}
           >
             <Table ref={tableElRef} wrapperClassName="h-full overflow-y-auto">
-              <TableHeader className="sticky top-0 z-10 bg-transparent">
+              <TableHeader className="sticky top-0 z-30 bg-background">
                 {table.getHeaderGroups().map((headerGroup) => {
                   const ids = headerGroup.headers.map((h) => h.column.id).filter((id) => id !== "actions");
                   return (

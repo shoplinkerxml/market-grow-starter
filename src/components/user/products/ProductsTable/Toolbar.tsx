@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus, Copy, Edit, Trash2, Loader2, Sliders, LayoutGrid, List } from "lucide-react";
@@ -10,6 +11,7 @@ import type { ShopAggregated } from "@/lib/shop-service";
 import { useSyncStatus } from "@/lib/optimistic-mutation";
 import { useProductsTableContext } from "./context";
 import type { ProductsViewMode } from "./state";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const ViewOptionsMenuLazy = React.lazy(() => import("./ViewOptionsMenu").then((m) => ({ default: m.ViewOptionsMenu })));
 const AddToStoresMenuLazy = React.lazy(() => import("./AddToStoresMenu").then((m) => ({ default: m.AddToStoresMenu })));
@@ -97,43 +99,63 @@ export function Toolbar({
   const createDisabled = (canCreate === false) || !!duplicating;
   const iconButtonCls = "h-8 w-8 hover:bg-transparent";
   const controlsDisabled = !!loading || !!duplicating;
+  const isMobile = useIsMobile();
+  const [mobileTarget, setMobileTarget] = React.useState<HTMLElement | null>(null);
+  React.useEffect(() => {
+    setMobileTarget(document.getElementById("user_products_header_mobile_controls"));
+  }, []);
+  const filterViewButtons = (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        aria-label={t("filter")}
+        disabled={controlsDisabled}
+        aria-disabled={controlsDisabled}
+        data-testid="user_products_filter_button"
+        onClick={() => {
+          if (controlsDisabled) return;
+          onOpenFilters();
+        }}
+      >
+        <Sliders className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        aria-label={viewMode === "table" ? t("view_cards") : t("view_table")}
+        disabled={controlsDisabled}
+        aria-disabled={controlsDisabled}
+        data-testid="user_products_view_toggle_button"
+        onClick={() => {
+          if (controlsDisabled) return;
+          setViewMode(viewMode === "table" ? "cards" : "table");
+        }}
+      >
+        {viewMode === "table" ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+      </Button>
+    </>
+  );
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
-      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          aria-label={t("filter")}
-          disabled={controlsDisabled}
-          aria-disabled={controlsDisabled}
-          data-testid="user_products_filter_button"
-          onClick={() => {
-            if (controlsDisabled) return;
-            onOpenFilters();
-          }}
-        >
-          <Sliders className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          aria-label={viewMode === "table" ? t("view_cards") : t("view_table")}
-          disabled={controlsDisabled}
-          aria-disabled={controlsDisabled}
-          data-testid="user_products_view_toggle_button"
-          onClick={() => {
-            if (controlsDisabled) return;
-            setViewMode(viewMode === "table" ? "cards" : "table");
-          }}
-        >
-          {viewMode === "table" ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
-        </Button>
-      </div>
+      {isMobile && mobileTarget
+        ? createPortal(
+            <div className="flex items-center gap-2" data-testid="user_products_header_mobile_controls">
+              {filterViewButtons}
+            </div>,
+            mobileTarget,
+          )
+        : null}
+      {isMobile ? null : (
+        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0 order-1 sm:order-none">
+          {filterViewButtons}
+        </div>
+      )}
 
       <TooltipProvider delayDuration={200}>
-        <div className="flex items-center gap-2 h-9" data-testid="user_products_actions_block">
+        <div className="flex items-center gap-2 h-9 order-2 sm:order-none" data-testid="user_products_actions_block">
           {storeId ? null : (
             <Tooltip>
               <TooltipTrigger asChild>
