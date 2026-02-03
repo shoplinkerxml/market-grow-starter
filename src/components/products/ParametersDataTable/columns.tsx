@@ -98,7 +98,7 @@ export function createParametersColumns(args: {
               args.onValueChange?.(row.index, value, selected?.valueid ?? null);
             }}
           >
-            <SelectTrigger className="h-9 w-fit pl-3 pr-8">
+            <SelectTrigger className="h-9 w-fit gap-2 pl-3 pr-3 [&>svg]:h-5 [&>svg]:w-5">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="min-w-[var(--radix-select-trigger-width)] w-[var(--radix-select-trigger-width)]">
