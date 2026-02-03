@@ -14,6 +14,112 @@ export type Database = {
   }
   public: {
     Tables: {
+      attribute_values: {
+        Row: {
+          attribute_id: number
+          created_at: string | null
+          display_order: number | null
+          display_value: string | null
+          id: number
+          is_active: boolean | null
+          metadata: Json | null
+          value: string
+          value_lang: Json | null
+          valueid: string | null
+        }
+        Insert: {
+          attribute_id: number
+          created_at?: string | null
+          display_order?: number | null
+          display_value?: string | null
+          id?: number
+          is_active?: boolean | null
+          metadata?: Json | null
+          value: string
+          value_lang?: Json | null
+          valueid?: string | null
+        }
+        Update: {
+          attribute_id?: number
+          created_at?: string | null
+          display_order?: number | null
+          display_value?: string | null
+          id?: number
+          is_active?: boolean | null
+          metadata?: Json | null
+          value?: string
+          value_lang?: Json | null
+          valueid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_attribute_values_attribute"
+            columns: ["attribute_id"]
+            isOneToOne: false
+            referencedRelation: "template_attributes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_attribute_values_attribute"
+            columns: ["attribute_id"]
+            isOneToOne: false
+            referencedRelation: "v_product_params_enriched"
+            referencedColumns: ["template_attribute_id"]
+          },
+          {
+            foreignKeyName: "fk_attribute_values_attribute"
+            columns: ["attribute_id"]
+            isOneToOne: false
+            referencedRelation: "v_template_attributes_full"
+            referencedColumns: ["attribute_id"]
+          },
+        ]
+      }
+      category_templates: {
+        Row: {
+          category_id: number
+          created_at: string | null
+          description: string | null
+          id: number
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          category_id: number
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          category_id?: number
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_category_templates_category"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "store_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_category_templates_category"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "v_categories_with_counts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       counters: {
         Row: {
           count: number
@@ -198,6 +304,87 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      product_param_templates: {
+        Row: {
+          attribute_value_id: number | null
+          created_at: string | null
+          id: number
+          product_param_id: number
+          template_attribute_id: number
+        }
+        Insert: {
+          attribute_value_id?: number | null
+          created_at?: string | null
+          id?: number
+          product_param_id: number
+          template_attribute_id: number
+        }
+        Update: {
+          attribute_value_id?: number | null
+          created_at?: string | null
+          id?: number
+          product_param_id?: number
+          template_attribute_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_product_param_templates_attribute"
+            columns: ["template_attribute_id"]
+            isOneToOne: false
+            referencedRelation: "template_attributes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_product_param_templates_attribute"
+            columns: ["template_attribute_id"]
+            isOneToOne: false
+            referencedRelation: "v_product_params_enriched"
+            referencedColumns: ["template_attribute_id"]
+          },
+          {
+            foreignKeyName: "fk_product_param_templates_attribute"
+            columns: ["template_attribute_id"]
+            isOneToOne: false
+            referencedRelation: "v_template_attributes_full"
+            referencedColumns: ["attribute_id"]
+          },
+          {
+            foreignKeyName: "fk_product_param_templates_param"
+            columns: ["product_param_id"]
+            isOneToOne: true
+            referencedRelation: "store_product_params"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_product_param_templates_param"
+            columns: ["product_param_id"]
+            isOneToOne: true
+            referencedRelation: "v_product_params_enriched"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_product_param_templates_value"
+            columns: ["attribute_value_id"]
+            isOneToOne: false
+            referencedRelation: "attribute_values"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_product_param_templates_value"
+            columns: ["attribute_value_id"]
+            isOneToOne: false
+            referencedRelation: "v_product_params_enriched"
+            referencedColumns: ["template_value_id"]
+          },
+          {
+            foreignKeyName: "fk_product_param_templates_value"
+            columns: ["attribute_value_id"]
+            isOneToOne: false
+            referencedRelation: "v_template_attributes_full"
+            referencedColumns: ["value_id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -915,6 +1102,68 @@ export type Database = {
           },
         ]
       }
+      template_attributes: {
+        Row: {
+          attribute_type: string
+          created_at: string | null
+          default_value: string | null
+          display_order: number | null
+          help_text: string | null
+          id: number
+          is_active: boolean | null
+          is_filterable: boolean | null
+          is_required: boolean | null
+          name: string
+          paramid: string | null
+          template_id: number
+          unit: string | null
+          updated_at: string | null
+          validation_rules: Json | null
+        }
+        Insert: {
+          attribute_type?: string
+          created_at?: string | null
+          default_value?: string | null
+          display_order?: number | null
+          help_text?: string | null
+          id?: number
+          is_active?: boolean | null
+          is_filterable?: boolean | null
+          is_required?: boolean | null
+          name: string
+          paramid?: string | null
+          template_id: number
+          unit?: string | null
+          updated_at?: string | null
+          validation_rules?: Json | null
+        }
+        Update: {
+          attribute_type?: string
+          created_at?: string | null
+          default_value?: string | null
+          display_order?: number | null
+          help_text?: string | null
+          id?: number
+          is_active?: boolean | null
+          is_filterable?: boolean | null
+          is_required?: boolean | null
+          name?: string
+          paramid?: string | null
+          template_id?: number
+          unit?: string | null
+          updated_at?: string | null
+          validation_rules?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_template_attributes_template"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "category_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_menu_items: {
         Row: {
           created_at: string
@@ -1276,6 +1525,84 @@ export type Database = {
           },
         ]
       }
+      v_product_params_enriched: {
+        Row: {
+          attribute_type: string | null
+          id: number | null
+          is_filterable: boolean | null
+          is_required: boolean | null
+          name: string | null
+          order_index: number | null
+          paramid: string | null
+          product_id: string | null
+          template_attribute_id: number | null
+          template_display_value: string | null
+          template_value_id: number | null
+          unit: string | null
+          value: string | null
+          value_lang: Json | null
+          valueid: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_product_params_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_with_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_product_params_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "store_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_template_attributes_full: {
+        Row: {
+          attribute_id: number | null
+          attribute_name: string | null
+          attribute_type: string | null
+          category_id: number | null
+          display_order: number | null
+          display_value: string | null
+          is_filterable: boolean | null
+          is_required: boolean | null
+          paramid: string | null
+          template_id: number | null
+          unit: string | null
+          value: string | null
+          value_display_order: number | null
+          value_id: number | null
+          value_lang: Json | null
+          valueid: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_category_templates_category"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "store_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_category_templates_category"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "v_categories_with_counts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_template_attributes_template"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "category_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       activate_tariff: {
@@ -1295,6 +1622,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      apply_template_to_products: {
+        Args: { p_category_id: number; p_template_id: number }
+        Returns: number
+      }
       bulk_delete_store_links: {
         Args: {
           p_include_categories?: boolean
@@ -1313,11 +1644,28 @@ export type Database = {
           parent_external_id: string
         }[]
       }
+      count_attributes_by_templates: {
+        Args: { p_template_ids: number[] }
+        Returns: {
+          active_count: number
+          inactive_count: number
+          template_id: number
+          total_count: number
+        }[]
+      }
       delete_category_cascade: {
         Args: { p_external_id: string; p_supplier_id: number }
         Returns: {
           deleted_count: number
         }[]
+      }
+      duplicate_template_with_attributes: {
+        Args: { p_new_name?: string; p_template_id: number }
+        Returns: Json
+      }
+      duplicate_template_with_attrs: {
+        Args: { p_new_name: string; p_template_id: number }
+        Returns: number
       }
       get_category_path: {
         Args: { p_external_id: string; p_supplier_id: number }
