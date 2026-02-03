@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import ParametersDataTable from '@/components/products/ParametersDataTable'
 import { Settings, Wand2 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { ProductParam } from './types'
 
 type ParamForm = {
@@ -63,6 +64,12 @@ export default function ParamsSection(props: Props) {
       if (base) return `${base} ${param.unit}`
     }
     return param.value
+  }, [])
+  const isValidParamText = React.useCallback((value: string) => {
+    const v = String(value ?? "")
+    if (!v) return true
+    if (v.trim().startsWith("-")) return false
+    return /^[\p{L}\p{N}\s.,:;()\-+/%&_'"#]+$/u.test(v)
   }, [])
   return (
     <Card>
@@ -151,7 +158,20 @@ export default function ParamsSection(props: Props) {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="param-name-modal">{props.t('characteristic_name')}</Label>
-                  <Input id="param-name-modal" value={props.paramForm.name} onChange={(e) => props.setParamForm((prev) => ({ ...prev, name: e.target.value }))} placeholder={props.t('characteristic_name_placeholder')} data-testid="productForm_modal_paramName" />
+                  <Input
+                    id="param-name-modal"
+                    value={props.paramForm.name}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (!isValidParamText(v)) {
+                        toast.error(props.t('invalid_characteristic_name'))
+                        return
+                      }
+                      props.setParamForm((prev) => ({ ...prev, name: v }))
+                    }}
+                    placeholder={props.t('characteristic_name_placeholder')}
+                    data-testid="productForm_modal_paramName"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="param-value-modal">{props.t('value')}</Label>
@@ -182,7 +202,14 @@ export default function ParamsSection(props: Props) {
                     <Input
                       id="param-value-modal"
                       value={props.paramForm.value}
-                      onChange={(e) => props.setParamForm((prev) => ({ ...prev, value: e.target.value }))}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (!isValidParamText(v)) {
+                          toast.error(props.t('invalid_characteristic_value'))
+                          return
+                        }
+                        props.setParamForm((prev) => ({ ...prev, value: v }))
+                      }}
                       placeholder={props.t('characteristic_value_placeholder')}
                       data-testid="productForm_modal_paramValue"
                     />
@@ -190,11 +217,37 @@ export default function ParamsSection(props: Props) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="param-paramid-modal">{props.t('param_id_optional')}</Label>
-                  <Input id="param-paramid-modal" value={props.paramForm.paramid || ''} onChange={(e) => props.setParamForm((prev) => ({ ...prev, paramid: e.target.value }))} placeholder={props.t('param_id_placeholder')} data-testid="productForm_modal_paramId" />
+                  <Input
+                    id="param-paramid-modal"
+                    value={props.paramForm.paramid || ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (!isValidParamText(v)) {
+                        toast.error(props.t('invalid_characteristic_name'))
+                        return
+                      }
+                      props.setParamForm((prev) => ({ ...prev, paramid: v }))
+                    }}
+                    placeholder={props.t('param_id_placeholder')}
+                    data-testid="productForm_modal_paramId"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="param-valueid-modal">{props.t('value_id_optional')}</Label>
-                  <Input id="param-valueid-modal" value={props.paramForm.valueid || ''} onChange={(e) => props.setParamForm((prev) => ({ ...prev, valueid: e.target.value }))} placeholder={props.t('value_id_placeholder')} data-testid="productForm_modal_valueId" />
+                  <Input
+                    id="param-valueid-modal"
+                    value={props.paramForm.valueid || ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (!isValidParamText(v)) {
+                        toast.error(props.t('invalid_characteristic_value'))
+                        return
+                      }
+                      props.setParamForm((prev) => ({ ...prev, valueid: v }))
+                    }}
+                    placeholder={props.t('value_id_placeholder')}
+                    data-testid="productForm_modal_valueId"
+                  />
                 </div>
               </div>
               <DialogFooter className="gap-2">

@@ -84,8 +84,39 @@ type Body = {
   params?: ParamInput[]
 }
 
-const MAX_IMAGES = 20
+const MAX_IMAGES = 15
 const MAX_PARAMS = 50
+const SHORT_ID_RE = /^[A-Za-z0-9._-]{1,10}$/
+const PARAM_TEXT_RE = /^[\p{L}\p{N}\s.,:;()\-+/%&_'"#]+$/u
+
+function isValidShortId(value?: string | null): boolean {
+  if (value == null) return true
+  const v = String(value).trim()
+  if (!v) return true
+  if (v.length > 10) return false
+  if (v.startsWith("-")) return false
+  return SHORT_ID_RE.test(v)
+}
+
+function isValidParamText(value?: string | null): boolean {
+  if (value == null) return true
+  const v = String(value)
+  if (!v) return true
+  if (v.trim().startsWith("-")) return false
+  return PARAM_TEXT_RE.test(v)
+}
+
+function isValidPrice(value: unknown): boolean {
+  if (value == null) return true
+  const n = Number(value)
+  return Number.isFinite(n) && n >= 0
+}
+
+function isValidStock(value: unknown): boolean {
+  if (value == null) return true
+  const n = Number(value)
+  return Number.isFinite(n) && n >= 0 && n <= 10000
+}
 
 // ENV и клиенты один раз
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? ""
@@ -293,6 +324,29 @@ serve(async (req) => {
       )
     }
 
+    if (body.external_id !== undefined && !isValidShortId(body.external_id)) {
+      return new Response(JSON.stringify({ error: "validation_error", message: "external_id invalid" }), { status: 422, headers: jsonHeaders })
+    }
+    if (body.article !== undefined && !isValidShortId(body.article)) {
+      return new Response(JSON.stringify({ error: "validation_error", message: "article invalid" }), { status: 422, headers: jsonHeaders })
+    }
+    if (body.stock_quantity !== undefined && !isValidStock(body.stock_quantity)) {
+      return new Response(JSON.stringify({ error: "validation_error", message: "stock_quantity invalid" }), { status: 422, headers: jsonHeaders })
+    }
+    if (
+      (body.price !== undefined && !isValidPrice(body.price)) ||
+      (body.price_old !== undefined && !isValidPrice(body.price_old)) ||
+      (body.price_promo !== undefined && !isValidPrice(body.price_promo))
+    ) {
+      return new Response(JSON.stringify({ error: "validation_error", message: "price invalid" }), { status: 422, headers: jsonHeaders })
+    }
+    if (Array.isArray(body.params)) {
+      for (const p of body.params) {
+        if (!isValidParamText(p?.name) || !isValidParamText(p?.value) || !isValidParamText(p?.paramid ?? "") || !isValidParamText(p?.valueid ?? "")) {
+          return new Response(JSON.stringify({ error: "validation_error", message: "params invalid" }), { status: 422, headers: jsonHeaders })
+        }
+      }
+    }
     if (Array.isArray(body.images) && body.images.length > MAX_IMAGES) {
       return new Response(
         JSON.stringify({ error: "too_many_images", max: MAX_IMAGES }),

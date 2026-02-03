@@ -169,6 +169,10 @@ export const productsDictionary: Dictionary = {
     uk: "Формати: JPEG, PNG, WebP, AVIF, GIF, SVG • Макс. 5 МБ",
     en: "Formats: JPEG, PNG, WebP, AVIF, GIF, SVG • Max 5MB",
   },
+  max_15_photos: {
+    uk: "Максимум 15 фото",
+    en: "Maximum 15 photos",
+  },
   added_images: { uk: "Додані зображення", en: "Added Images" },
   main_photo: { uk: "Головне", en: "Main" },
   set_as_main_photo: {
@@ -261,6 +265,14 @@ export const productsDictionary: Dictionary = {
   characteristic_value_placeholder: {
     uk: "Значення характеристики",
     en: "Characteristic value",
+  },
+  invalid_characteristic_name: {
+    uk: "Недопустимі символи або мінус у назві характеристики",
+    en: "Invalid characters or negative value in characteristic name",
+  },
+  invalid_characteristic_value: {
+    uk: "Недопустимі символи або мінус у значенні характеристики",
+    en: "Invalid characters or negative value in characteristic value",
   },
   param_id_placeholder: {
     uk: "ID параметра",

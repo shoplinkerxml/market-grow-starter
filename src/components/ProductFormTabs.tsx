@@ -80,7 +80,7 @@ export function ProductFormTabs({
   preloadedParams,
   preloadedSupplierCategoriesMap
 }: ProductFormTabsProps) {
-  
+  const MAX_IMAGES = 15
   const { tabsScrollRef, hasOverflow: tabsOverflow } = useTabsScroll();
   const navigate = useNavigate();
   const { t, lang } = useI18n();
@@ -208,6 +208,13 @@ export function ProductFormTabs({
     setSelectedTemplateId(id);
   }, []);
 
+  const isValidParamText = useCallback((value: string) => {
+    const v = String(value ?? "");
+    if (!v) return true
+    if (v.trim().startsWith("-")) return false
+    return /^[\p{L}\p{N}\s.,:;()\-+/%&_'"#]+$/u.test(v)
+  }, [])
+
   const mapOptionLabel = useCallback(
     (opt: { value: string; display_value?: string | null; value_lang?: Record<string, string> | null }) => {
       const localized = opt.value_lang?.[lang || ''] || opt.display_value;
@@ -279,6 +286,10 @@ export function ProductFormTabs({
 
   const handleValueChange = useCallback(
     (rowIndex: number, value: string, valueid?: string | null) => {
+      if (!isValidParamText(value)) {
+        toast.error(t('invalid_characteristic_value'))
+        return
+      }
       const next = parameters.map((p, i) =>
         i === rowIndex ? { ...p, value, valueid: valueid ?? p.valueid ?? '' } : p,
       );
@@ -286,17 +297,21 @@ export function ProductFormTabs({
       setParameters(normalized);
       onParamsChange?.(normalized);
     },
-    [onParamsChange, parameters, setParameters],
+    [isValidParamText, onParamsChange, parameters, setParameters, t],
   );
 
   const handleNameChange = useCallback(
     (rowIndex: number, value: string) => {
+      if (!isValidParamText(value)) {
+        toast.error(t('invalid_characteristic_name'))
+        return
+      }
       const next = parameters.map((p, i) => (i === rowIndex ? { ...p, name: value } : p));
       const normalized = next.map((p, i) => ({ ...p, order_index: i }));
       setParameters(normalized);
       onParamsChange?.(normalized);
     },
-    [onParamsChange, parameters, setParameters],
+    [isValidParamText, onParamsChange, parameters, setParameters, t],
   );
 
   const lookups = useProductLookups(
@@ -374,6 +389,10 @@ export function ProductFormTabs({
 
   const addImageFromUrl = useCallback(async () => {
     if (!imageUrl.trim()) return;
+    if (images.length >= MAX_IMAGES) {
+      toast.error(t('max_15_photos'))
+      return
+    }
     const res = await addImageFromUrlAction(imageUrl.trim());
     if (res.ok) {
       setImageUrl('');
@@ -381,7 +400,7 @@ export function ProductFormTabs({
     } else {
       toast.error(mapImageErrorToToast(t, res.errorCode));
     }
-  }, [addImageFromUrlAction, imageUrl, t]);
+  }, [addImageFromUrlAction, imageUrl, images.length, t]);
 
   const handleRemoveImage = useCallback(async (index: number) => {
     if (imageDeleteProgressTimerRef.current) {
@@ -420,10 +439,21 @@ export function ProductFormTabs({
   const handleDropAction = drop.onDrop;
   // Drop handler
   const handleDrop = useCallback(async (e: React.DragEvent) => {
+    if (images.length >= MAX_IMAGES) {
+      toast.error(t('max_15_photos'))
+      return
+    }
     await handleDropAction(e, images.length);
-  }, [handleDropAction, images.length]);
+  }, [handleDropAction, images.length, t]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
+    if (images.length >= MAX_IMAGES || images.length + files.length > MAX_IMAGES) {
+      toast.error(t('max_15_photos'))
+      event.target.value = ''
+      return
+    }
     const res = await handleFileUploadAction(event);
     if (res.uploadedCount && res.uploadedCount > 0) {
       toast.success(t('image_uploaded_successfully'));
@@ -431,7 +461,7 @@ export function ProductFormTabs({
     if (!res.ok) {
       toast.error(mapImageErrorToToast(t, res.errorCode));
     }
-  }, [handleFileUploadAction, t]);
+  }, [handleFileUploadAction, images.length, t]);
 
   const handleDropZoneClick = useCallback(() => {
     document.getElementById('fileUpload')?.click();

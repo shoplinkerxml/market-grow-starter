@@ -59,29 +59,68 @@ const PricesSection = React.memo(function PricesSection({ t, readOnly, editableK
 
             <div className="space-y-2">
               <Label htmlFor="price">{t('price')} *</Label>
-              <Input id="price" name="price" autoComplete="off" type="number" step="0.01" value={priceData.price} onChange={e => {
-                const v = parseFloat(e.target.value) || 0;
-                setPriceData(prev => ({ ...prev, price: v }));
-                onChange?.({ price: v });
-              }} placeholder={t('price_placeholder')} data-testid="productFormTabs_priceInput" disabled={!!readOnly && !(editableKeys || []).includes('price')} />
+              <Input
+                id="price"
+                name="price"
+                autoComplete="off"
+                type="number"
+                step="0.01"
+                min={0}
+                value={priceData.price}
+                onChange={e => {
+                  const raw = parseFloat(e.target.value);
+                  const v = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                  setPriceData(prev => ({ ...prev, price: v }));
+                  onChange?.({ price: v });
+                }}
+                placeholder={t('price_placeholder')}
+                data-testid="productFormTabs_priceInput"
+                disabled={!!readOnly && !(editableKeys || []).includes('price')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="price_old">{t('old_price')}</Label>
-              <Input id="price_old" name="price_old" autoComplete="off" type="number" step="0.01" value={priceData.price_old} onChange={e => {
-                const v = parseFloat(e.target.value) || 0;
-                setPriceData(prev => ({ ...prev, price_old: v }));
-                onChange?.({ price_old: v });
-              }} placeholder={t('price_placeholder')} data-testid="productFormTabs_priceOldInput" disabled={!!readOnly && !(editableKeys || []).includes('price_old')} />
+              <Input
+                id="price_old"
+                name="price_old"
+                autoComplete="off"
+                type="number"
+                step="0.01"
+                min={0}
+                value={priceData.price_old}
+                onChange={e => {
+                  const raw = parseFloat(e.target.value);
+                  const v = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                  setPriceData(prev => ({ ...prev, price_old: v }));
+                  onChange?.({ price_old: v });
+                }}
+                placeholder={t('price_placeholder')}
+                data-testid="productFormTabs_priceOldInput"
+                disabled={!!readOnly && !(editableKeys || []).includes('price_old')}
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="price_promo">{t('promo_price')}</Label>
-              <Input id="price_promo" name="price_promo" autoComplete="off" type="number" step="0.01" value={priceData.price_promo} onChange={e => {
-                const v = parseFloat(e.target.value) || 0;
-                setPriceData(prev => ({ ...prev, price_promo: v }));
-                onChange?.({ price_promo: v });
-              }} placeholder={t('price_placeholder')} data-testid="productFormTabs_pricePromoInput" disabled={!!readOnly && !(editableKeys || []).includes('price_promo')} />
+              <Input
+                id="price_promo"
+                name="price_promo"
+                autoComplete="off"
+                type="number"
+                step="0.01"
+                min={0}
+                value={priceData.price_promo}
+                onChange={e => {
+                  const raw = parseFloat(e.target.value);
+                  const v = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+                  setPriceData(prev => ({ ...prev, price_promo: v }));
+                  onChange?.({ price_promo: v });
+                }}
+                placeholder={t('price_placeholder')}
+                data-testid="productFormTabs_pricePromoInput"
+                disabled={!!readOnly && !(editableKeys || []).includes('price_promo')}
+              />
             </div>
           </div>
         </CollapsibleContent>

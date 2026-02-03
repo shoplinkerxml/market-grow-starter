@@ -67,12 +67,42 @@ const BasicSection = React.memo(function BasicSection({ t, basicData, setBasicDa
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="external_id">{t('external_id')}</Label>
-              <Input id="external_id" name="external_id" autoComplete="off" value={basicData.external_id} onChange={e => setBasicData(prev => ({ ...prev, external_id: e.target.value }))} placeholder={t('external_id_placeholder')} data-testid="productFormTabs_externalIdInput" />
+              <Input
+                id="external_id"
+                name="external_id"
+                autoComplete="off"
+                maxLength={10}
+                inputMode="numeric"
+                pattern="[A-Za-z0-9._-]{1,10}"
+                value={basicData.external_id}
+                onChange={e => {
+                  const v = e.target.value.slice(0, 10);
+                  setBasicData(prev => ({ ...prev, external_id: v }));
+                  onChange?.({ external_id: v });
+                }}
+                placeholder={t('external_id_placeholder')}
+                data-testid="productFormTabs_externalIdInput"
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="article">{t('article')}</Label>
-              <Input id="article" name="article" autoComplete="off" value={basicData.article} onChange={e => setBasicData(prev => ({ ...prev, article: e.target.value }))} placeholder={t('article_placeholder')} data-testid="productFormTabs_articleInput" />
+              <Input
+                id="article"
+                name="article"
+                autoComplete="off"
+                maxLength={10}
+                inputMode="numeric"
+                pattern="[A-Za-z0-9._-]{1,10}"
+                value={basicData.article}
+                onChange={e => {
+                  const v = e.target.value.slice(0, 10);
+                  setBasicData(prev => ({ ...prev, article: v }));
+                  onChange?.({ article: v });
+                }}
+                placeholder={t('article_placeholder')}
+                data-testid="productFormTabs_articleInput"
+              />
             </div>
 
             <div className="space-y-2">
@@ -113,11 +143,24 @@ const BasicSection = React.memo(function BasicSection({ t, basicData, setBasicDa
 
             <div className="space-y-2">
               <Label htmlFor="stock_quantity">{t('stock_quantity')}</Label>
-              <Input id="stock_quantity" name="stock_quantity" autoComplete="off" type="number" value={stockData.stock_quantity} onChange={e => {
-                const v = parseInt(e.target.value) || 0;
-                setStockData(prev => ({ ...prev, stock_quantity: v }));
-                onChange?.({ stock_quantity: v });
-              }} placeholder={t('stock_quantity_placeholder')} data-testid="productFormTabs_stockInput" disabled={!!readOnly && !(editableKeys || []).includes('stock_quantity')} />
+              <Input
+                id="stock_quantity"
+                name="stock_quantity"
+                autoComplete="off"
+                type="number"
+                min={0}
+                max={10000}
+                value={stockData.stock_quantity}
+                onChange={e => {
+                  const raw = Number(e.target.value);
+                  const v = Number.isFinite(raw) ? Math.max(0, Math.min(10000, Math.floor(raw))) : 0;
+                  setStockData(prev => ({ ...prev, stock_quantity: v }));
+                  onChange?.({ stock_quantity: v });
+                }}
+                placeholder={t('stock_quantity_placeholder')}
+                data-testid="productFormTabs_stockInput"
+                disabled={!!readOnly && !(editableKeys || []).includes('stock_quantity')}
+              />
             </div>
 
             <div className="flex items-center gap-2">
