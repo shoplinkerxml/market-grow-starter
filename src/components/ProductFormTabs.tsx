@@ -25,6 +25,7 @@ import { mapImageErrorToToast } from '@/utils/imageErrorHelpers';
 import type { SupplierOption, CategoryOption, CurrencyOption, ProductImage, ProductParam, FormData } from './ProductFormTabs/types';
 import { ProductImageDeleteProgressDialog, ProductSaveProgressDialog } from '@/components/user/products/ProductsTable/Dialogs';
 import { getTemplateAttributes, listTemplatesByCategory } from '@/lib/category-template';
+import { cn } from '@/lib/utils';
 
 const InfoTab = lazy(async () => {
   const mod = await import('./ProductFormTabs/tabs/InfoTab');
@@ -61,6 +62,10 @@ interface ProductFormTabsProps {
   preloadedImages?: ProductImage[];
   preloadedParams?: ProductParam[];
   preloadedSupplierCategoriesMap?: Record<string, CategoryOption[]>;
+  containerClassName?: string;
+  cardClassName?: string;
+  cardHeaderClassName?: string;
+  cardContentClassName?: string;
 }
 export function ProductFormTabs({
   product,
@@ -78,7 +83,11 @@ export function ProductFormTabs({
   preloadedCategories,
   preloadedImages,
   preloadedParams,
-  preloadedSupplierCategoriesMap
+  preloadedSupplierCategoriesMap,
+  containerClassName,
+  cardClassName,
+  cardHeaderClassName,
+  cardContentClassName
 }: ProductFormTabsProps) {
   const MAX_IMAGES = 15
   const { tabsScrollRef, hasOverflow: tabsOverflow } = useTabsScroll();
@@ -546,17 +555,17 @@ export function ProductFormTabs({
     onParamsChange?.(normalized);
   }, [onParamsChange, setParameters]);
 
-  return <div className="container mx-auto px-2 sm:px-6 py-3 sm:py-6 max-w-7xl" data-testid="productFormTabs_container">
+  return <div className={cn("container mx-auto px-2 sm:px-6 py-3 sm:py-6 max-w-7xl", containerClassName)} data-testid="productFormTabs_container">
       <ProductSaveProgressDialog open={saveProgress.open} title={saveProgress.title} productName={saveProgress.productName} />
       <ProductImageDeleteProgressDialog open={imageDeleteProgress.open} productName={imageDeleteProgress.productName} />
-      <Card className="border-0 shadow-none">
-        <CardHeader>
+      <Card className={cn("border-0 shadow-none", cardClassName)}>
+        <CardHeader className={cardHeaderClassName}>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
             {product ? t('edit_product') : t('create_new_product')}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className={cardContentClassName}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsHeader t={t} tabsOverflow={tabsOverflow} tabsScrollRef={tabsScrollRef} />
 

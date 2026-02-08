@@ -119,6 +119,25 @@ export const ProductEdit = () => {
     navigate('/user/products');
   };
 
+  const SHORT_ID_RE = /^[A-Za-z0-9._-]{1,64}$/;
+  const PARAM_TEXT_RE = /^[\p{L}\p{N}\s.,:;()\-+/%&_'"#]+$/u;
+  const isValidShortId = (value?: string | null) => {
+    if (value == null) return true;
+    const v = String(value).trim();
+    if (!v) return true;
+    if (v.length > 64) return false;
+    if (v.trim().startsWith('-')) return false;
+    return SHORT_ID_RE.test(v);
+  };
+  const isValidParamText = (value?: string | null) => {
+    if (value == null) return true;
+    const v = String(value);
+    if (!v) return true;
+    if (v.trim().startsWith('-')) return false;
+    return PARAM_TEXT_RE.test(v);
+  };
+  const clampStock = (n: number) => Math.max(0, Math.min(10000, n));
+
   type FormDataInput = {
     external_id: string;
     category_id?: number | string | null;
@@ -142,15 +161,17 @@ export const ProductEdit = () => {
   };
   const handleFormSubmit = async ({ formData, images, parameters }: { formData: FormDataInput; images: Array<{ url: string; order_index: number; is_main: boolean; object_key?: string }>; parameters: ProductParam[] }) => {
     if (!id) return;
-    const normalizedParams = (parameters || []).map((p, index) => ({
-      name: p.name,
-      value: p.value,
-      order_index: typeof p.order_index === "number" ? p.order_index : index,
-      paramid: p.paramid != null && String(p.paramid).trim() !== "" ? String(p.paramid).trim() : null,
-      valueid: p.valueid != null && String(p.valueid).trim() !== "" ? String(p.valueid).trim() : null,
-    }));
+    const normalizedParams = (parameters || [])
+      .filter((p) => isValidParamText(p?.name) && isValidParamText(p?.value) && isValidParamText(p?.paramid ?? "") && isValidParamText(p?.valueid ?? ""))
+      .map((p, index) => ({
+        name: p.name,
+        value: p.value,
+        order_index: typeof p.order_index === "number" ? p.order_index : index,
+        paramid: p.paramid != null && String(p.paramid).trim() !== "" ? String(p.paramid).trim() : null,
+        valueid: p.valueid != null && String(p.valueid).trim() !== "" ? String(p.valueid).trim() : null,
+      }));
     const payload: any = {
-      external_id: formData.external_id,
+      external_id: isValidShortId(formData.external_id) ? formData.external_id : undefined,
       category_id: formData.category_id || null,
       category_external_id: formData.category_external_id ? String(formData.category_external_id) : undefined,
       supplier_id: formData.supplier_id ? Number(formData.supplier_id) : null,
@@ -160,9 +181,9 @@ export const ProductEdit = () => {
       docket: formData.docket || null,
       docket_ua: formData.docket_ua || null,
       vendor: formData.vendor || null,
-      article: formData.article || null,
+      article: isValidShortId(formData.article || null) ? formData.article || null : undefined,
       available: !!formData.available,
-      stock_quantity: Number(formData.stock_quantity) || 0,
+      stock_quantity: clampStock(Number(formData.stock_quantity) || 0),
       price: typeof formData.price === 'number' ? formData.price : null,
       price_old: typeof formData.price_old === 'number' ? formData.price_old : null,
       price_promo: typeof formData.price_promo === 'number' ? formData.price_promo : null,

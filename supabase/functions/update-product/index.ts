@@ -86,14 +86,14 @@ type Body = {
 
 const MAX_IMAGES = 15
 const MAX_PARAMS = 50
-const SHORT_ID_RE = /^[A-Za-z0-9._-]{1,10}$/
+const SHORT_ID_RE = /^[A-Za-z0-9._-]{1,64}$/
 const PARAM_TEXT_RE = /^[\p{L}\p{N}\s.,:;()\-+/%&_'"#]+$/u
 
 function isValidShortId(value?: string | null): boolean {
   if (value == null) return true
   const v = String(value).trim()
   if (!v) return true
-  if (v.length > 10) return false
+  if (v.length > 64) return false
   if (v.startsWith("-")) return false
   return SHORT_ID_RE.test(v)
 }

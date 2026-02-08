@@ -471,6 +471,9 @@ export const StoreProductEdit = () => {
                 readOnly
                 editableKeys={["price", "price_old", "price_promo", "stock_quantity", "available"]}
                 overrides={formOverrides}
+                containerClassName="px-0 py-0 sm:py-0"
+                cardHeaderClassName="p-0 pb-4"
+                cardContentClassName="p-0"
                 preloadedImages={productData.images}
                 preloadedParams={productData.params}
                 preloadedSuppliers={productData.suppliers}
