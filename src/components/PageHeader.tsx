@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
   title: string;
+  titleIcon?: React.ReactNode;
   description?: string;
   breadcrumbItems: BreadcrumbItem[];
   actions?: React.ReactNode;
@@ -14,6 +15,7 @@ interface PageHeaderProps {
 
 export function PageHeader({
   title,
+  titleIcon,
   description,
   breadcrumbItems,
   actions,
@@ -38,7 +40,12 @@ export function PageHeader({
             ? "flex items-center gap-2 flex-nowrap"
             : "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
         )}>
-          <h1 className={cn("min-w-0 text-base xs:text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight truncate", hideTitleOnMobile ? "hidden sm:block" : "")}>{title}</h1>
+          {title ? (
+            <h1 className={cn("min-w-0 text-base xs:text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight flex items-center gap-2", hideTitleOnMobile ? "hidden sm:flex" : "")}>
+              {titleIcon ? <span className="shrink-0">{titleIcon}</span> : null}
+              <span className="truncate">{title}</span>
+            </h1>
+          ) : null}
           {actions && (
             <div className={cn(
               "flex items-center gap-2 shrink-0 justify-end",

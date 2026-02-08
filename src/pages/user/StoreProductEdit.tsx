@@ -1,13 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
+import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { ProductService, type Product, type ProductParam } from "@/lib/product-service";
 import { useI18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ProductFormTabs } from "@/components/ProductFormTabs";
 import { PageHeader } from "@/components/PageHeader";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Package, Save, X } from "lucide-react";
 import { ShopService } from "@/lib/shop-service";
 import { ProgressiveLoader, FullPageLoader } from "@/components/LoadingSkeletons";
 import { ShopCountsService } from "@/lib/shop-counts";
@@ -424,9 +423,10 @@ export const StoreProductEdit = () => {
   // ============================================================================
 
   return (
-    <div className="p-6 space-y-4 sm:space-y-6">
+    <div className="px-2 sm:px-6 py-3 sm:py-6 space-y-6">
       <PageHeader
         title={t("edit_product")}
+        titleIcon={<Package className="h-5 w-5" />}
         description={t("edit_product_description")}
         breadcrumbItems={[
           { label: t("breadcrumb_home"), href: "/user/dashboard" },
@@ -436,78 +436,74 @@ export const StoreProductEdit = () => {
         ]}
         mobileActionsInline
         actions={
-          <div className="pr-2">
-            <Link
-              to={`/user/shops/${storeId}`}
-              className="text-muted-foreground inline-flex items-center p-0 group hover:bg-transparent active:bg-transparent"
+          <div className="flex gap-2 items-center">
+            <Button
+              variant="ghost"
+              onClick={() => navigate(`/user/shops/${storeId}`)}
+              className="shrink-0 group inline-flex items-center p-0 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent"
               data-testid="store_product_edit_back"
-              aria-label={t("back_to_shops")}
               title={t("back_to_shops")}
             >
               <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
                 <ArrowLeft className="h-4 w-4" />
               </span>
-            </Link>
+            </Button>
           </div>
         }
       />
 
-      <Card className="p-6 space-y-6">
-        <ProgressiveLoader
-          isLoading={uiState.loading}
-          delay={150}
-          fallback={
-            <FullPageLoader
-              title="Завантаження товару магазина…"
-              subtitle="Готуємо форму редагування та дані лінка"
-              icon={Loader2}
+      <ProgressiveLoader
+        isLoading={uiState.loading}
+        delay={150}
+        fallback={
+          <FullPageLoader
+            title="Завантаження товару…"
+            subtitle="Готуємо форму редагування, дані та зображення"
+            icon={Loader2}
+          />
+        }
+      >
+        <div className="relative min-h-[clamp(12rem,50vh,24rem)]" aria-busy={uiState.loading}>
+          {productData.product && (
+            <ProductFormTabs
+              product={productData.product}
+              readOnly
+              editableKeys={["price", "price_old", "price_promo", "stock_quantity", "available"]}
+              overrides={formOverrides}
+              cardHeaderClassName="hidden sm:flex"
+              preloadedImages={productData.images}
+              preloadedParams={productData.params}
+              preloadedSuppliers={productData.suppliers}
+              preloadedCurrencies={productData.currencies}
+              preloadedCategories={categoriesForStore}
+              preloadedSupplierCategoriesMap={supplierCategoriesMapForStore}
+              onChange={handleFormChange as any}
+              forceParamsEditable
+              onParamsChange={(p) => setProductData(prev => ({ ...prev, params: p }))}
+              onImagesLoadingChange={(loading) => setUiState(prev => ({ ...prev, imagesLoading: loading }))}
             />
-          }
-        >
-          <div className="space-y-6">
-            {productData.product && (
-              <ProductFormTabs
-                product={productData.product}
-                readOnly
-                editableKeys={["price", "price_old", "price_promo", "stock_quantity", "available"]}
-                overrides={formOverrides}
-                containerClassName="px-0 py-0 sm:py-0"
-                cardHeaderClassName="p-0 pb-4"
-                cardContentClassName="p-0"
-                preloadedImages={productData.images}
-                preloadedParams={productData.params}
-                preloadedSuppliers={productData.suppliers}
-                preloadedCurrencies={productData.currencies}
-                preloadedCategories={categoriesForStore}
-                preloadedSupplierCategoriesMap={supplierCategoriesMapForStore}
-                onChange={handleFormChange as any}
-                forceParamsEditable
-                onParamsChange={(p) => setProductData(prev => ({ ...prev, params: p }))}
-                onImagesLoadingChange={(loading) => setUiState(prev => ({ ...prev, imagesLoading: loading }))}
-              />
-            )}
+          )}
+        </div>
+      </ProgressiveLoader>
 
-            <div className="space-y-3">
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => navigate(`/user/shops/${storeId}`)}
-                  disabled={uiState.saving}
-                >
-                  {t("cancel")}
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={uiState.saving}
-                  aria-disabled={uiState.saving}
-                >
-                  {uiState.saving ? t("saving") : t("save_changes")}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </ProgressiveLoader>
-      </Card>
+      <div className="mt-4 sm:mt-6 pt-1 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+        <Button
+          variant="outline"
+          onClick={() => navigate(`/user/shops/${storeId}`)}
+          disabled={uiState.saving}
+        >
+          <X className="h-4 w-4" />
+          {t("cancel")}
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={uiState.saving}
+          aria-disabled={uiState.saving}
+        >
+          <Save className="h-4 w-4" />
+          {uiState.saving ? t("saving") : t("save_changes")}
+        </Button>
+      </div>
     </div>
   );
 };

@@ -264,6 +264,7 @@ export const ProductEdit = () => {
     <div className="px-2 sm:px-6 py-3 sm:py-6 space-y-6" data-testid="product_edit_page">
       <PageHeader
         title={t('edit_product')}
+        titleIcon={<Package className="h-5 w-5" />}
         description={t('edit_product_description')}
         breadcrumbItems={pageBreadcrumbs}
         mobileActionsInline
