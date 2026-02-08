@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import ParametersDataTable from '@/components/products/ParametersDataTable'
 import { Settings, Wand2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -73,12 +74,12 @@ export default function ParamsSection(props: Props) {
   }, [])
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>{props.t('product_characteristics')}</span>
+      <CardHeader className="px-3 py-4 sm:p-6">
+        <CardTitle className="flex items-center justify-between w-full">
+          <span className="block w-full text-left">{props.t('product_characteristics')}</span>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-3 pb-4 sm:px-6 sm:pb-6">
         {props.readOnly && !props.forceParamsEditable ? null : (
           <>
             {props.templates.length === 0 && !props.templatesLoading ? (
@@ -112,7 +113,7 @@ export default function ParamsSection(props: Props) {
                     onValueChange={props.onTemplateChange}
                     disabled={props.templatesLoading || props.templates.length === 0}
                   >
-                    <SelectTrigger className="w-[clamp(11.2rem,22.4vw,18.2rem)] max-w-full" data-testid="productForm_params_templateSelect">
+                    <SelectTrigger className="w-full sm:w-[clamp(11.2rem,22.4vw,18.2rem)] max-w-full" data-testid="productForm_params_templateSelect">
                       <SelectValue placeholder={props.t('template_select_placeholder')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -123,17 +124,27 @@ export default function ParamsSection(props: Props) {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={props.onApplyTemplate}
-                    disabled={!props.selectedTemplateId || props.templatesLoading || props.templates.length === 0 || props.applyingTemplate}
-                    aria-disabled={!props.selectedTemplateId || props.templatesLoading || props.templates.length === 0 || props.applyingTemplate}
-                    data-testid="productForm_params_applyTemplate"
-                  >
-                    <Wand2 className="h-4 w-4" />
-                    {props.applyingTemplate ? props.t('applying_template') : props.t('apply_template')}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={props.onApplyTemplate}
+                        disabled={!props.selectedTemplateId || props.templatesLoading || props.templates.length === 0 || props.applyingTemplate}
+                        aria-disabled={!props.selectedTemplateId || props.templatesLoading || props.templates.length === 0 || props.applyingTemplate}
+                        data-testid="productForm_params_applyTemplate"
+                        className="ml-auto border-transparent shadow-none hover:border-emerald-500"
+                      >
+                        <Wand2 className="h-4 w-4" />
+                        <span className="hidden sm:inline">
+                          {props.applyingTemplate ? props.t('applying_template') : props.t('apply_template')}
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {props.applyingTemplate ? props.t('applying_template') : props.t('apply_template')}
+                    </TooltipContent>
+                  </Tooltip>
                 </>
               )
             }

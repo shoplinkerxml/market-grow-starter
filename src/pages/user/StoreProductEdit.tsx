@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ProductFormTabs } from "@/components/ProductFormTabs";
 import { PageHeader } from "@/components/PageHeader";
-import { Loader2, ArrowLeft, Package, Save, X } from "lucide-react";
+import { Loader2, ArrowLeft, Package, Save } from "lucide-react";
 import { ShopService } from "@/lib/shop-service";
 import { ProgressiveLoader, FullPageLoader } from "@/components/LoadingSkeletons";
 import { ShopCountsService } from "@/lib/shop-counts";
@@ -486,23 +486,18 @@ export const StoreProductEdit = () => {
         </div>
       </ProgressiveLoader>
 
-      <div className="mt-4 sm:mt-6 pt-1 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-        <Button
-          variant="outline"
-          onClick={() => navigate(`/user/shops/${storeId}`)}
-          disabled={uiState.saving}
-        >
-          <X className="h-4 w-4" />
-          {t("cancel")}
-        </Button>
-        <Button
-          onClick={handleSave}
-          disabled={uiState.saving}
-          aria-disabled={uiState.saving}
-        >
-          <Save className="h-4 w-4" />
-          {uiState.saving ? t("saving") : t("save_changes")}
-        </Button>
+      <div className="mt-4 sm:mt-6 pt-1 px-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+          <Button
+            onClick={handleSave}
+            disabled={uiState.saving}
+            aria-disabled={uiState.saving}
+            className="w-full sm:w-auto"
+          >
+            <Save className="h-4 w-4" />
+            {uiState.saving ? t("saving") : t("save_changes")}
+          </Button>
+        </div>
       </div>
     </div>
   );

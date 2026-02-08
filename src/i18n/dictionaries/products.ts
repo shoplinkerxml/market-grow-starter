@@ -184,6 +184,7 @@ export const productsDictionary: Dictionary = {
     en: "Uploading image...",
   },
   reorder: { uk: "Змінити порядок", en: "Reorder" },
+  delete_image: { uk: "Видалити зображення", en: "Delete image" },
   drag_to_reorder: {
     uk: "Перетягніть, щоб змінити порядок",
     en: "Drag to reorder",

@@ -15,14 +15,25 @@ type Props = {
 export default function FormActions({ t, readOnly, loading, product, onCancel, onSubmit, disabledSubmit }: Props) {
   if (readOnly) return null
   return (
-    <div className="mt-4 sm:mt-6 pt-1 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+    <div className="mt-4 sm:mt-6 pt-1 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center w-full">
       {onCancel ? (
-        <Button type="button" variant="outline" onClick={onCancel} data-testid="productFormTabs_cancelButton">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          data-testid="productFormTabs_cancelButton"
+          className="w-full sm:w-auto"
+        >
           <X className="h-4 w-4" />
           {t('btn_cancel')}
         </Button>
       ) : null}
-      <Button onClick={onSubmit} disabled={disabledSubmit} data-testid="productFormTabs_submitButton">
+      <Button
+        onClick={onSubmit}
+        disabled={disabledSubmit}
+        data-testid="productFormTabs_submitButton"
+        className="w-full sm:w-auto"
+      >
         <Save className="h-4 w-4" />
         {loading
           ? (product ? t('loading_updating') : t('loading_creating'))

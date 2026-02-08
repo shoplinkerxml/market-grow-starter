@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useMemo, Suspense, lazy, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import TabsHeader from './ProductFormTabs/TabsHeader';
@@ -91,7 +90,6 @@ export function ProductFormTabs({
 }: ProductFormTabsProps) {
   const MAX_IMAGES = 15
   const { tabsScrollRef, hasOverflow: tabsOverflow } = useTabsScroll();
-  const navigate = useNavigate();
   const { t, lang } = useI18n();
   const [activeTab, setActiveTab] = useState('info');
   const [loading, setLoading] = useState(false);
@@ -384,14 +382,6 @@ export function ProductFormTabs({
     }
   }, [basicData.name, basicData.name_ua, formData, images, markSaved, onSubmit, parameters, product, t]);
 
-  const handleCancel = useCallback(() => {
-    if (onCancel) {
-      onCancel();
-    } else {
-      navigate('/user/products');
-    }
-  }, [navigate, onCancel]);
-
   // Image handling functions
   const addImageFromUrlAction = imageActions.addImageFromUrl;
   const handleFileUploadAction = imageActions.handleFileUpload;
@@ -555,7 +545,7 @@ export function ProductFormTabs({
     onParamsChange?.(normalized);
   }, [onParamsChange, setParameters]);
 
-  return <div className={cn("container mx-auto px-2 sm:px-6 py-3 sm:py-6 max-w-7xl", containerClassName)} data-testid="productFormTabs_container">
+  return <div className={cn("container mx-auto px-1 sm:px-6 py-3 sm:py-6 max-w-7xl", containerClassName)} data-testid="productFormTabs_container">
       <ProductSaveProgressDialog open={saveProgress.open} title={saveProgress.title} productName={saveProgress.productName} />
       <ProductImageDeleteProgressDialog open={imageDeleteProgress.open} productName={imageDeleteProgress.productName} />
       <Card className={cn("border-0 shadow-none", cardClassName)}>
@@ -565,7 +555,7 @@ export function ProductFormTabs({
             {product ? t('edit_product') : t('create_new_product')}
           </CardTitle>
         </CardHeader>
-        <CardContent className={cardContentClassName}>
+        <CardContent className={cn("px-3 sm:px-6", cardContentClassName)}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsHeader t={t} tabsOverflow={tabsOverflow} tabsScrollRef={tabsScrollRef} />
 
@@ -652,7 +642,7 @@ export function ProductFormTabs({
             </TabsContent>
           </Tabs>
           
-          <FormActions t={t} readOnly={readOnly} loading={loading} product={product} onCancel={handleCancel} onSubmit={handleSubmit} disabledSubmit={loading || (!basicData.name_ua.trim() && !basicData.name.trim())} />
+          <FormActions t={t} readOnly={readOnly} loading={loading} product={product} onCancel={onCancel} onSubmit={handleSubmit} disabledSubmit={loading || (!basicData.name_ua.trim() && !basicData.name.trim())} />
         </CardContent>
       </Card>
     </div>;

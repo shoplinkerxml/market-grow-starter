@@ -127,7 +127,7 @@ export function ParametersDataTable({
       const valueCol = table.getColumn("value");
       const paramCol = table.getColumn("paramid");
       if (mq.matches) {
-        valueCol?.toggleVisibility(false);
+        valueCol?.toggleVisibility(true);
         paramCol?.toggleVisibility(false);
       } else {
         valueCol?.toggleVisibility(true);

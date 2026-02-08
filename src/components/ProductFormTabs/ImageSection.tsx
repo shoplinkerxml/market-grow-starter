@@ -2,6 +2,7 @@ import React from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Image as ImageIcon, Check, X, Link as LinkIcon, Loader2, ChevronLeft, ChevronRight, ListOrdered } from 'lucide-react'
@@ -263,36 +264,52 @@ export function ImageSection(props: Props) {
               {!props.readOnly && (
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
                   {/* Белая (outline) - первая */}
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    aria-label={t('reorder') || 'Змінити порядок'}
-                    onClick={() => { setReorderList(props.images.slice()); setReorderOpen(true) }}
-                    className="h-7 w-7"
-                  >
-                    <ListOrdered className="h-3 w-3" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label={t('reorder')}
+                        onClick={() => { setReorderList(props.images.slice()); setReorderOpen(true) }}
+                        className="h-7 w-7"
+                      >
+                        <ListOrdered className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{t('reorder')}</TooltipContent>
+                  </Tooltip>
                   {/* Зеленая (set main) - вторая */}
                   {props.images[props.activeIndex]?.is_main ? null : (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => props.onSetMainImage(props.activeIndex)}
-                      aria-label={t('set_as_main_photo')}
-                      className="h-7 w-7"
-                    >
-                      <Check className="h-3 w-3" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => props.onSetMainImage(props.activeIndex)}
+                          aria-label={t('set_as_main_photo')}
+                          className="h-7 w-7"
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">{t('set_as_main_photo')}</TooltipContent>
+                    </Tooltip>
                   )}
                   {/* Красная (delete) - третья */}
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => props.onRemoveImage(props.activeIndex)}
-                    className="h-7 w-7"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => props.onRemoveImage(props.activeIndex)}
+                        aria-label={t('delete_image')}
+                        className="h-7 w-7"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{t('delete_image')}</TooltipContent>
+                  </Tooltip>
                 </div>
               )}
             </CardContent>

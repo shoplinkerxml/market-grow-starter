@@ -58,7 +58,12 @@ export function createParametersColumns(args: {
     },
     {
       accessorKey: "name",
-      header: args.t("characteristic_name"),
+      header: (
+        <>
+          <span className="sm:hidden">Назва</span>
+          <span className="hidden sm:inline">{args.t("characteristic_name")}</span>
+        </>
+      ),
       cell: ({ row }) => (
         <Input
           className="h-8 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"

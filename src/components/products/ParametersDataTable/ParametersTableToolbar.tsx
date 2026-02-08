@@ -69,27 +69,32 @@ export const ParametersTableToolbar = React.memo(function ParametersTableToolbar
   onFileChange: React.ChangeEventHandler<HTMLInputElement>;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 min-w-0">{leftContent}</div>
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">{leftContent}</div>
       <div
-        className={`flex items-center gap-2 h-9 ${dragActive ? "ring-2 ring-primary" : ""}`}
+        className={`flex items-center gap-2 h-9 w-full sm:w-auto justify-end ${dragActive ? "ring-2 ring-primary" : ""}`}
         data-testid="parametersDataTable_actions_block"
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
       {onAddParam && (
-        <Button
-          type="button"
-          onClick={onAddParam}
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 hover:bg-transparent"
-          data-testid="parametersDataTable_addParam"
-          aria-label={t("add_characteristic")}
-        >
-          <Plus className="h-4 w-4 transition-colors" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              onClick={onAddParam}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 hover:bg-transparent"
+              data-testid="parametersDataTable_addParam"
+              aria-label={t("add_characteristic")}
+            >
+              <Plus className="h-4 w-4 transition-colors" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{t("add_characteristic")}</TooltipContent>
+        </Tooltip>
       )}
 
         {onTriggerImportXlsx && onTriggerImportCsv && onTriggerImportJson && onExportXlsx && onExportCsv && onExportJson && (
@@ -104,13 +109,13 @@ export const ParametersTableToolbar = React.memo(function ParametersTableToolbar
                       size="icon"
                       className="h-8 w-8 hover:bg-transparent"
                       data-testid="parametersDataTable_importExport"
-                      aria-label={`Импорт / ${t("export_section")}`}
+                      aria-label={`${t("import")} / ${t("export_section")}`}
                     >
                       <ArrowLeftRight className="h-4 w-4 transition-colors" />
                     </Button>
                   </TooltipTrigger>
                 </DropdownMenuTrigger>
-                <TooltipContent side="bottom">{`Импорт / ${t("export_section")}`}</TooltipContent>
+                <TooltipContent side="bottom">{`${t("import")} / ${t("export_section")}`}</TooltipContent>
               </Tooltip>
 
               <DropdownMenuContent align="end">
@@ -120,7 +125,7 @@ export const ParametersTableToolbar = React.memo(function ParametersTableToolbar
                     className="flex-row-reverse justify-end [&>svg:last-child]:ml-0 [&>svg:last-child]:mr-2 [&>svg:first-child]:mr-0 [&>svg:first-child]:ml-2"
                   >
                     <Upload className="h-4 w-4" />
-                    Импорт
+                    {t("import")}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     <DropdownMenuItem onClick={onTriggerImportXlsx} data-testid="parametersDataTable_import_xlsx">
@@ -173,33 +178,43 @@ export const ParametersTableToolbar = React.memo(function ParametersTableToolbar
           </>
         )}
 
-        <Button
-          type="button"
-          onClick={onDeleteSelected}
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 hover:bg-transparent"
-          disabled={!canDeleteSelected}
-          aria-disabled={!canDeleteSelected}
-          data-testid="parametersDataTable_deleteSelected"
-          aria-label={t("btn_delete_selected")}
-        >
-          <Trash2 className={`h-4 w-4 transition-colors ${!canDeleteSelected ? "text-muted-foreground" : ""}`} />
-        </Button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button
               type="button"
+              onClick={onDeleteSelected}
               variant="ghost"
               size="icon"
               className="h-8 w-8 hover:bg-transparent"
-              data-testid="parametersDataTable_viewOptions"
-              aria-label={t("view_options")}
+              disabled={!canDeleteSelected}
+              aria-disabled={!canDeleteSelected}
+              data-testid="parametersDataTable_deleteSelected"
+              aria-label={t("btn_delete_selected")}
             >
-              <ColumnsIcon className="h-4 w-4 transition-colors" />
+              <Trash2 className={`h-4 w-4 transition-colors ${!canDeleteSelected ? "text-muted-foreground" : ""}`} />
             </Button>
-          </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{t("btn_delete_selected")}</TooltipContent>
+        </Tooltip>
+
+        <DropdownMenu>
+          <Tooltip>
+            <DropdownMenuTrigger asChild>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 hover:bg-transparent"
+                  data-testid="parametersDataTable_viewOptions"
+                  aria-label={t("view_options")}
+                >
+                  <ColumnsIcon className="h-4 w-4 transition-colors" />
+                </Button>
+              </TooltipTrigger>
+            </DropdownMenuTrigger>
+            <TooltipContent side="bottom">{t("view_options")}</TooltipContent>
+          </Tooltip>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuItem disabled className="text-sm">
               {t("toggle_columns")}

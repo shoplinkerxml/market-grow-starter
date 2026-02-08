@@ -301,7 +301,6 @@ export const ProductEdit = () => {
             product={product || undefined}
             overrides={categoryName ? { category_name: categoryName } : undefined}
             onSubmit={handleFormSubmit}
-            onCancel={handleCancel}
             onImagesLoadingChange={setImagesLoading}
             cardHeaderClassName="hidden sm:flex"
             preloadedImages={preloadedImagesRef.current}
