@@ -96,14 +96,16 @@ export const Products = () => {
   };
 
   return (
-    <div className="p-6 h-full min-h-0 flex flex-col gap-6">
+    <div className="p-6 h-full min-h-0 flex flex-col gap-2 sm:gap-6 md:gap-6">
       <PageHeader
         title={t('products_title')}
         description={t('products_description')}
         breadcrumbItems={breadcrumbs}
+        className="space-y-1 sm:space-y-2"
+        hideTitleOnMobile
         actions={
-          <div className="flex gap-2 items-center">
-            <Badge variant="outline" className="text-sm flex items-center gap-1.5 border-0">
+          <div className="flex gap-1 sm:gap-2 items-center w-full justify-end sm:w-auto flex-nowrap">
+            <Badge variant="outline" className="text-sm hidden sm:flex items-center gap-1.5 border-0">
               <Package className="h-4 w-4" />
               <span>{limitInfo.current} / {limitInfo.max}</span>
             </Badge>

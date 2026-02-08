@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
 import { Package } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { CopyProgressDialog, DeleteDialog, DeleteProgressDialog } from "./Dialogs";
 import { PaginationFooter } from "./PaginationFooter";
 import { SortableHeader } from "./SortableHeader";
@@ -161,12 +162,12 @@ export function ProductsTableView({
   const virtualBottomH = enableVirtualEffective ? Math.max(0, (allRows.length - virtualEnd) * rowHeight) : 0;
 
   return (
-    <div className="flex flex-col gap-4 bg-background px-4 sm:px-6 py-4 h-full min-h-0" data-testid="user_products_dataTable_root">
+    <div className="flex flex-col gap-1 sm:gap-4 md:gap-4 bg-background px-0 sm:px-6 pt-0 pb-4 sm:pt-4 h-full min-h-0" data-testid="user_products_dataTable_root">
       <ToolbarFromContext />
       {viewMode === "cards" ? (
-        <div className="bg-background flex-1 min-h-0 overflow-y-auto" data-testid="user_products_cards_wrap">
+        <ScrollArea className="bg-background flex-1 min-h-0" data-testid="user_products_cards_wrap">
           <ProductsCardsView />
-        </div>
+        </ScrollArea>
       ) : (
         <div className="bg-background flex-1 min-h-0 overflow-hidden" data-testid="user_products_table">
           <DndContext
@@ -179,7 +180,7 @@ export function ProductsTableView({
             onDragCancel={handleTableDragCancel}
             onDragEnd={handleTableDragEnd}
           >
-            <Table ref={tableElRef} wrapperClassName="h-full overflow-y-auto">
+            <Table ref={tableElRef} wrapperClassName="h-full">
               <TableHeader className="sticky top-0 z-30 bg-background">
                 {table.getHeaderGroups().map((headerGroup) => {
                   const ids = headerGroup.headers.map((h) => h.column.id).filter((id) => id !== "actions");

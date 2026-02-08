@@ -5,6 +5,7 @@ import { useI18n } from '@/i18n';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { PageLoadingModal } from '@/components/LoadingSkeletons';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface RefreshDataButtonProps {
   onRefresh: () => Promise<void>;
@@ -36,16 +37,24 @@ export const RefreshDataButton = ({ onRefresh, className, variant = "ghost", siz
 
   return (
     <>
-      <Button
-        variant={variant}
-        size={size}
-        className={cn("h-8 w-8", className)}
-        onClick={handleRefresh}
-        disabled={isRefreshing}
-        title={t('refresh_data') || 'Refresh data'}
-      >
-        <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-      </Button>
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={variant}
+              size={size}
+              className={cn("h-8 w-8", className)}
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title={t('refresh_data') || 'Refresh data'}
+              aria-label={t('refresh_data') || 'Refresh data'}
+            >
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{t('refresh_data') || 'Refresh data'}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       {isModalOpen && (
         <PageLoadingModal

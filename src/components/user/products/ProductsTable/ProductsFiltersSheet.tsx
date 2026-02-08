@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Slider } from "@/components/ui/slider";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -166,16 +167,23 @@ export function ProductsFiltersSheet() {
       <SheetContent side="right" className="flex flex-col w-full sm:max-w-[22rem]" onInteractOutside={() => {}}>
         <SheetHeader className="flex-row items-center justify-start gap-2 space-y-0 pr-10 text-left">
           <SheetTitle className="min-w-0">{t("filter")}</SheetTitle>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-emerald-600"
-            onClick={() => setServerFilters(DEFAULT_PRODUCTS_SERVER_FILTERS)}
-            aria-label={t("clear")}
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-emerald-600"
+                  onClick={() => setServerFilters(DEFAULT_PRODUCTS_SERVER_FILTERS)}
+                  aria-label={t("clear")}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{t("clear")}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </SheetHeader>
 
         <div className="flex-1 min-h-0 overflow-hidden pt-4">

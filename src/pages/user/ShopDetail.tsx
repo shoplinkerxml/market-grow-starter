@@ -174,14 +174,16 @@ export const ShopDetail = () => {
 
   return (
     <>
-      <div className="p-6 h-full min-h-0 flex flex-col gap-6">
+      <div className="p-6 h-full min-h-0 flex flex-col gap-2 sm:gap-6 md:gap-6">
         <PageHeader
           title={shop.store_name}
           description={`${t('managing_shop') || 'Управління магазином'} ${shop.store_name}`}
           breadcrumbItems={shopBreadcrumbs}
+          className="space-y-1 sm:space-y-2"
+          hideTitleOnMobile
           actions={
-            <div className="flex gap-2 items-center">
-              <div className="flex items-center gap-2 mr-1">
+            <div className="flex gap-1 sm:gap-2 items-center w-full justify-end sm:w-auto flex-nowrap">
+              <div className="hidden sm:flex items-center gap-2 mr-1">
                 <span className="inline-flex items-center gap-1 text-xs border rounded-md px-3 py-1">
                   <Package className="h-3 w-3" />
                   <span>{productsCount}</span>
@@ -191,6 +193,7 @@ export const ShopDetail = () => {
                   <span>{categoriesCount}</span>
                 </span>
               </div>
+              <div id="user_products_header_mobile_controls" className="flex items-center gap-1 sm:hidden" />
 
               <Button
                 variant="ghost"

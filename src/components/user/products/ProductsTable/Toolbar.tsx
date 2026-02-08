@@ -104,58 +104,73 @@ export function Toolbar({
   React.useEffect(() => {
     setMobileTarget(document.getElementById("user_products_header_mobile_controls"));
   }, []);
+  const viewToggleLabel = viewMode === "table" ? t("view_cards") : t("view_table");
   const filterViewButtons = (
     <>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        aria-label={t("filter")}
-        disabled={controlsDisabled}
-        aria-disabled={controlsDisabled}
-        data-testid="user_products_filter_button"
-        onClick={() => {
-          if (controlsDisabled) return;
-          onOpenFilters();
-        }}
-      >
-        <Sliders className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        aria-label={viewMode === "table" ? t("view_cards") : t("view_table")}
-        disabled={controlsDisabled}
-        aria-disabled={controlsDisabled}
-        data-testid="user_products_view_toggle_button"
-        onClick={() => {
-          if (controlsDisabled) return;
-          setViewMode(viewMode === "table" ? "cards" : "table");
-        }}
-      >
-        {viewMode === "table" ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            aria-label={t("filter")}
+            disabled={controlsDisabled}
+            aria-disabled={controlsDisabled}
+            data-testid="user_products_filter_button"
+            onClick={() => {
+              if (controlsDisabled) return;
+              onOpenFilters();
+            }}
+          >
+            <Sliders className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{t("filter")}</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            aria-label={viewToggleLabel}
+            disabled={controlsDisabled}
+            aria-disabled={controlsDisabled}
+            data-testid="user_products_view_toggle_button"
+            onClick={() => {
+              if (controlsDisabled) return;
+              setViewMode(viewMode === "table" ? "cards" : "table");
+            }}
+          >
+            {viewMode === "table" ? <LayoutGrid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{viewToggleLabel}</TooltipContent>
+      </Tooltip>
     </>
   );
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
       {isMobile && mobileTarget
         ? createPortal(
-            <div className="flex items-center gap-2" data-testid="user_products_header_mobile_controls">
-              {filterViewButtons}
-            </div>,
+            <TooltipProvider delayDuration={200}>
+              <div className="flex items-center gap-1 sm:gap-2" data-testid="user_products_header_mobile_controls">
+                {filterViewButtons}
+              </div>
+            </TooltipProvider>,
             mobileTarget,
           )
         : null}
       {isMobile ? null : (
-        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0 order-1 sm:order-none">
-          {filterViewButtons}
-        </div>
+        <TooltipProvider delayDuration={200}>
+          <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0 order-1 sm:order-none">
+            {filterViewButtons}
+          </div>
+        </TooltipProvider>
       )}
 
       <TooltipProvider delayDuration={200}>
-        <div className="flex items-center gap-2 h-9 order-2 sm:order-none" data-testid="user_products_actions_block">
+        <div className="flex items-center gap-2 h-9 order-2 sm:order-none ml-auto justify-end" data-testid="user_products_actions_block">
           {storeId ? null : (
             <Tooltip>
               <TooltipTrigger asChild>

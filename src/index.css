@@ -275,4 +275,46 @@ All colors MUST be HSL.
   .badge-active {
     @apply bg-primary-lighter text-primary-foreground;
   }
+
+  .scrollbar-unified {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .scrollbar-unified::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
+  .scrollbar-unified::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 20px 0;
+  }
+  .scrollbar-unified::-webkit-scrollbar-track:horizontal {
+    margin: 0 20px;
+  }
+  .scrollbar-unified::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    min-height: 6px;
+  }
+  .scrollbar-unified:hover {
+    scrollbar-color: hsl(var(--primary)) transparent;
+  }
+  .scrollbar-unified:hover::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--primary));
+  }
+  @media (prefers-color-scheme: dark) {
+    .scrollbar-unified {
+      scrollbar-color: transparent transparent;
+    }
+    .scrollbar-unified::-webkit-scrollbar-thumb {
+      background-color: transparent;
+    }
+    .scrollbar-unified:hover {
+      scrollbar-color: hsl(var(--primary)) transparent;
+    }
+    .scrollbar-unified:hover::-webkit-scrollbar-thumb {
+      background-color: hsl(var(--primary));
+    }
+  }
 }
