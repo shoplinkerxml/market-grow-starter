@@ -266,6 +266,7 @@ export const ProductEdit = () => {
         title={t('edit_product')}
         description={t('edit_product_description')}
         breadcrumbItems={pageBreadcrumbs}
+        mobileActionsInline
         actions={
           <div className="flex gap-2 items-center">
             <Button
@@ -301,6 +302,7 @@ export const ProductEdit = () => {
             onSubmit={handleFormSubmit}
             onCancel={handleCancel}
             onImagesLoadingChange={setImagesLoading}
+            cardHeaderClassName="hidden sm:flex"
             preloadedImages={preloadedImagesRef.current}
             preloadedParams={preloadedParamsRef.current}
             preloadedSuppliers={lookups?.suppliers}
