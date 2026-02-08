@@ -424,7 +424,7 @@ export const StoreProductEdit = () => {
   // ============================================================================
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-4 sm:space-y-6">
       <PageHeader
         title={t("edit_product")}
         description={t("edit_product_description")}
@@ -434,18 +434,21 @@ export const StoreProductEdit = () => {
           { label: productData.shopName || (uiState.loading ? "..." : storeId), href: `/user/shops/${storeId}` },
           { label: productData.categoryName || "—", current: true },
         ]}
+        mobileActionsInline
         actions={
-          <Link
-            to={`/user/shops/${storeId}`}
-            className="text-muted-foreground inline-flex items-center p-0 group hover:bg-transparent active:bg-transparent"
-            data-testid="store_product_edit_back"
-            aria-label={t("back_to_shops")}
-            title={t("back_to_shops")}
-          >
-            <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
-              <ArrowLeft className="h-4 w-4" />
-            </span>
-          </Link>
+          <div className="pr-2">
+            <Link
+              to={`/user/shops/${storeId}`}
+              className="text-muted-foreground inline-flex items-center p-0 group hover:bg-transparent active:bg-transparent"
+              data-testid="store_product_edit_back"
+              aria-label={t("back_to_shops")}
+              title={t("back_to_shops")}
+            >
+              <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-7 h-7 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
+                <ArrowLeft className="h-4 w-4" />
+              </span>
+            </Link>
+          </div>
         }
       />
 

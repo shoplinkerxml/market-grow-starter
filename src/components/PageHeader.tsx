@@ -9,6 +9,7 @@ interface PageHeaderProps {
   actions?: React.ReactNode;
   className?: string;
   hideTitleOnMobile?: boolean;
+  mobileActionsInline?: boolean;
 }
 
 export function PageHeader({
@@ -18,6 +19,7 @@ export function PageHeader({
   actions,
   className,
   hideTitleOnMobile,
+  mobileActionsInline = false,
 }: PageHeaderProps) {
   return (
     <div
@@ -31,7 +33,11 @@ export function PageHeader({
       
       {/* Title row with inline actions, description below */}
       <div className="space-y-1">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className={cn(
+          mobileActionsInline
+            ? "flex items-center justify-between gap-2"
+            : "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+        )}>
           <h1 className={cn("text-xl xs:text-2xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate", hideTitleOnMobile ? "hidden sm:block" : "")}>{title}</h1>
           {actions && (
             <div className="flex items-center gap-2 shrink-0 w-full justify-end sm:w-auto sm:justify-end">
