@@ -105,7 +105,7 @@ export const Products = () => {
         hideTitleOnMobile
         actions={
           <div className="flex gap-1 sm:gap-2 items-center w-full justify-end sm:w-auto flex-nowrap">
-            <Badge variant="outline" className="text-sm hidden sm:flex items-center gap-1.5 border-0">
+            <Badge variant="outline" className="text-sm flex items-center gap-1.5 border-0">
               <Package className="h-4 w-4" />
               <span>{limitInfo.current} / {limitInfo.max}</span>
             </Badge>
