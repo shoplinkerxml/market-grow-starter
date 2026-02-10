@@ -109,7 +109,7 @@ export const Products = () => {
               <Package className="h-4 w-4" />
               <span>{limitInfo.current} / {limitInfo.max}</span>
             </Badge>
-            <div id="user_products_header_mobile_controls" className="flex items-center gap-2 sm:hidden" />
+            
             <RefreshDataButton onRefresh={handleRefresh} />
           </div>
         }

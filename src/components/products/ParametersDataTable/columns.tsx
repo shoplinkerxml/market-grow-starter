@@ -58,7 +58,7 @@ export function createParametersColumns(args: {
     },
     {
       accessorKey: "name",
-      header: (
+      header: () => (
         <>
           <span className="sm:hidden">Назва</span>
           <span className="hidden sm:inline">{args.t("characteristic_name")}</span>
