@@ -1,7 +1,21 @@
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { useI18n } from "@/i18n";
 import { BreadcrumbItem } from "@/components/ui/breadcrumb";
+import { Home, Store, Package, Truck, BookOpen, CreditCard, Settings, User } from "lucide-react";
+
+/** Map route label keys to mobile icons */
+const MOBILE_ICON_MAP: Record<string, React.ReactElement> = {
+  breadcrumb_home: React.createElement(Home, { className: "h-3.5 w-3.5" }),
+  breadcrumb_dashboard: React.createElement(Home, { className: "h-3.5 w-3.5" }),
+  shops_title: React.createElement(Store, { className: "h-3.5 w-3.5" }),
+  products_title: React.createElement(Package, { className: "h-3.5 w-3.5" }),
+  menu_suppliers: React.createElement(Truck, { className: "h-3.5 w-3.5" }),
+  menu_directories: React.createElement(BookOpen, { className: "h-3.5 w-3.5" }),
+  menu_pricing: React.createElement(CreditCard, { className: "h-3.5 w-3.5" }),
+  breadcrumb_settings: React.createElement(Settings, { className: "h-3.5 w-3.5" }),
+  breadcrumb_personal: React.createElement(User, { className: "h-3.5 w-3.5" }),
+};
 
 // Route mapping for breadcrumb labels
 const ADMIN_ROUTE_MAPPING: Record<string, { labelKey: string; parentPath?: string }> = {
@@ -63,6 +77,7 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
     breadcrumbs.push({
       label: t("breadcrumb_home"),
       href: isUserPath ? "/user/dashboard" : "/admin/dashboard",
+      mobileIcon: MOBILE_ICON_MAP["breadcrumb_home"],
     });
 
     // Find the route in our mapping
@@ -90,6 +105,7 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
         breadcrumbs.push({
           label: t("shops_title"),
           href: "/user/shops",
+          mobileIcon: MOBILE_ICON_MAP["shops_title"],
         });
         // Shop name will be added by the ShopDetail component itself
         return breadcrumbs;
@@ -167,6 +183,7 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
           label: t(currentRoute.labelKey as any),
           href: currentPath === path ? undefined : currentPath,
           current: currentPath === path,
+          mobileIcon: currentPath !== path ? MOBILE_ICON_MAP[currentRoute.labelKey] : undefined,
         });
       }
     };

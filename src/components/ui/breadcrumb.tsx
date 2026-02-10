@@ -8,6 +8,8 @@ export interface BreadcrumbItem {
   label: string;
   href?: string;
   current?: boolean;
+  /** Icon shown instead of label on mobile (sm:hidden) */
+  mobileIcon?: React.ReactNode;
 }
 
 const BreadcrumbComponent = React.forwardRef<
@@ -28,7 +30,16 @@ const BreadcrumbComponent = React.forwardRef<
                   <BreadcrumbPage>{item.label}</BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink asChild>
-                    <Link to={item.href}>{item.label}</Link>
+                    <Link to={item.href}>
+                      {item.mobileIcon ? (
+                        <>
+                          <span className="sm:hidden flex items-center" aria-label={item.label}>{item.mobileIcon}</span>
+                          <span className="hidden sm:inline">{item.label}</span>
+                        </>
+                      ) : (
+                        item.label
+                      )}
+                    </Link>
                   </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
