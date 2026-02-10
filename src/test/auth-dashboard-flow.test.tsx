@@ -1,6 +1,6 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router-dom";
 
@@ -191,10 +191,10 @@ describe("auth + dashboard flow", () => {
     );
 
     await waitFor(() => expect(getDashboardStats).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText("Totals")).toBeInTheDocument();
-    expect(await screen.findByText(/Total products/i)).toBeInTheDocument();
-    expect(await screen.findByText("7")).toBeInTheDocument();
-    expect(await screen.findByText(/Total categories/i)).toBeInTheDocument();
-    expect(await screen.findByText("3")).toBeInTheDocument();
+    const totalsTitle = await screen.findByText("Totals");
+    const totalsHeader = totalsTitle.closest("div") as HTMLElement;
+    const totalsContent = totalsHeader.nextElementSibling as HTMLElement;
+    expect(within(totalsContent).getByText("7")).toBeInTheDocument();
+    expect(within(totalsContent).getByText("3")).toBeInTheDocument();
   });
 });

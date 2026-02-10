@@ -8,6 +8,8 @@ export interface DashboardStats {
     id: number;
     supplier_name: string;
     productCount: number;
+    categoriesCount: number;
+    categories: string[];
   }>;
   stores: Array<{
     id: string;

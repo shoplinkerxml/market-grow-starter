@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { UserProfile as UserProfileType } from "@/lib/user-auth-schemas";
 import { UserMenuItem } from "@/lib/user-menu-service";
 import { useI18n } from "@/i18n";
-import { User, Settings, TrendingUp, BarChart3, Activity, Database, Crown, CreditCard, Package, Store, Folder, Layers, Truck, Download, X } from "lucide-react";
+import { User, Settings, TrendingUp, BarChart3, Activity, Database, Crown, CreditCard, Package, Store, Folder, Layers, Truck, Download, X, List } from "lucide-react";
 import type { TariffLimit } from "@/lib/tariff-service";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -274,16 +274,29 @@ const UserDashboard = () => {
                     <Skeleton className="h-4 w-1/2" />
                   </div>
                 ) : (
-                  <ul className="list-inside list-disc space-y-1">
+                  <div className="space-y-3">
                     {dashboardStats?.suppliers?.map((supplier) => (
-                      <li key={supplier.id}>
-                        {supplier.supplier_name} - {supplier.productCount} {t('products_count_suffix')}
-                      </li>
+                      <div key={supplier.id} className="flex items-start gap-2">
+                        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        <div className="min-w-0 space-y-1">
+                          <span className="block truncate">{supplier.supplier_name}</span>
+                          <span className="inline-flex items-center gap-3 text-emerald-600">
+                            <span className="inline-flex items-center gap-1">
+                              <Package className="h-3 w-3" />
+                              <span className="font-semibold">{supplier.productCount}</span>
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <List className="h-3 w-3" />
+                              <span className="font-semibold">{supplier.categoriesCount ?? 0}</span>
+                            </span>
+                          </span>
+                        </div>
+                      </div>
                     ))}
                     {(!dashboardStats?.suppliers?.length) && (
-                      <li>{t('no_suppliers')}</li>
+                      <div>{t('no_suppliers')}</div>
                     )}
-                  </ul>
+                  </div>
                 )}
               </div>
             </div>
@@ -301,16 +314,23 @@ const UserDashboard = () => {
                     <Skeleton className="h-4 w-1/2" />
                   </div>
                 ) : (
-                  <ul className="list-inside list-disc space-y-1">
+                  <div className="space-y-2">
                     {dashboardStats?.stores?.map((store) => (
-                      <li key={store.id}>
-                        {store.store_name} - {store.productsCount || 0} {t('products_count_suffix')}
-                      </li>
+                      <div key={store.id} className="flex items-start gap-2">
+                        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        <div className="min-w-0">
+                          <span className="block truncate">{store.store_name}</span>
+                          <span className="inline-flex items-center gap-1 text-emerald-600">
+                            <Package className="h-3 w-3" />
+                            <span className="font-semibold">{store.productsCount || 0}</span>
+                          </span>
+                        </div>
+                      </div>
                     ))}
                     {(!dashboardStats?.stores?.length) && (
-                      <li>{t('no_shops')}</li>
+                      <div>{t('no_shops')}</div>
                     )}
-                  </ul>
+                  </div>
                 )}
               </div>
             </div>
@@ -328,10 +348,16 @@ const UserDashboard = () => {
                     <Skeleton className="h-4 w-1/2" />
                   </div>
                 ) : (
-                  <ul className="list-inside list-disc space-y-1">
-                    <li>{t('total_products')}: <strong>{dashboardStats?.totalProducts || 0}</strong></li>
-                    <li>{t('total_categories')}: <strong>{dashboardStats?.totalCategories || 0}</strong></li>
-                  </ul>
+                  <div className="flex items-center gap-4">
+                    <span className="inline-flex items-center gap-2 text-emerald-600">
+                      <Package className="h-4 w-4" />
+                      <span className="font-semibold">{dashboardStats?.totalProducts || 0}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-2 text-emerald-600">
+                      <List className="h-4 w-4" />
+                      <span className="font-semibold">{dashboardStats?.totalCategories || 0}</span>
+                    </span>
+                  </div>
                 )}
               </div>
             </div>

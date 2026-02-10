@@ -81,17 +81,16 @@ export function ProductsFiltersSheet() {
   }, [lookupsQuery.data]);
 
   const categories = useMemo(() => {
-    const fromLookups = new Map<string, string>();
+    const nameById = new Map<string, string>();
     for (const list of Object.values(supplierCategoriesMap)) {
       for (const c of Array.isArray(list) ? list : []) {
         const id = c?.id == null ? "" : String(c.id);
-        if (!id || fromLookups.has(id)) continue;
+        if (!id || nameById.has(id)) continue;
         const name = c?.name != null ? String(c.name) : (c?.external_id != null ? String(c.external_id) : "");
-        if (name) fromLookups.set(id, name);
+        if (name) nameById.set(id, name);
       }
     }
 
-    const fromItems = new Map<string, string>();
     const ids = new Set<string>();
     for (const p of items || []) {
       const n = Number((p as any)?.category_id);
@@ -99,7 +98,7 @@ export function ProductsFiltersSheet() {
       const id = String(n);
       ids.add(id);
       const name = (p as any)?.categoryName != null ? String((p as any).categoryName) : "";
-      if (name && !fromItems.has(id)) fromItems.set(id, name);
+      if (name && !nameById.has(id)) nameById.set(id, name);
     }
 
     for (const n of serverFilters.categoryIds || []) {
@@ -108,7 +107,19 @@ export function ProductsFiltersSheet() {
       ids.add(String(nn));
     }
 
-    const out = Array.from(ids).map((id) => ({ id, name: fromLookups.get(id) || fromItems.get(id) || id }));
+    const grouped = new Map<string, { name: string; ids: string[] }>();
+    for (const id of Array.from(ids)) {
+      const name = nameById.get(id) || id;
+      const normalized = String(name).trim().toLowerCase();
+      const key = normalized ? `name:${normalized}` : `id:${id}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, { name, ids: [id] });
+      } else {
+        grouped.get(key)!.ids.push(id);
+      }
+    }
+
+    const out = Array.from(grouped.values());
     out.sort((a, b) => a.name.localeCompare(b.name));
     return out;
   }, [items, serverFilters.categoryIds, supplierCategoriesMap]);
@@ -330,21 +341,23 @@ export function ProductsFiltersSheet() {
                 <div className="rounded-md p-2 max-h-56 overflow-auto">
                   <div className="flex flex-col gap-2">
                     {categories.map((c) => {
-                      const idNum = Number(c.id);
-                      const checked = Number.isFinite(idNum) && (serverFilters.categoryIds || []).includes(idNum);
+                      const ids = c.ids.map((id) => Number(id)).filter((n) => Number.isFinite(n));
+                      const checked = ids.some((id) => (serverFilters.categoryIds || []).includes(id));
                       return (
-                        <label key={c.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <label key={`${c.name}:${c.ids.join(",")}`} className="flex items-center gap-2 text-sm cursor-pointer">
                           <Checkbox
                             checked={checked}
                             onCheckedChange={(v) => {
-                              if (!Number.isFinite(idNum)) return;
+                              if (ids.length === 0) return;
                               setServerFilters((prev) => ({
                                 ...prev,
-                                categoryIds: toggleInArray(prev.categoryIds || [], idNum, v === true),
+                                categoryIds: v === true
+                                  ? Array.from(new Set([...(prev.categoryIds || []), ...ids]))
+                                  : (prev.categoryIds || []).filter((id) => !ids.includes(id)),
                               }));
                             }}
                           />
-                          <span className="min-w-0 truncate">{c.name || c.id}</span>
+                          <span className="min-w-0 truncate">{c.name}</span>
                         </label>
                       );
                     })}

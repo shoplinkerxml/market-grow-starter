@@ -62,6 +62,30 @@ export function TemplateListView() {
   });
 
   const title = useMemo(() => t("menu_category_templates"), [t]);
+  const normalizeKey = useCallback((value: string) => value.trim().toLowerCase(), []);
+  const categoriesById = useMemo(
+    () =>
+      new Map(
+        (categories || []).map((c) => [String(c.id), String(c.name || c.external_id || c.id)]),
+      ),
+    [categories],
+  );
+  const templatesView = useMemo(() => {
+    const seen = new Set<string>();
+    const result: CategoryTemplateRow[] = [];
+    for (const tpl of templates || []) {
+      const catName = categoriesById.get(String(tpl.category_id)) || "";
+      const key = `${normalizeKey(catName || String(tpl.category_id))}::${normalizeKey(String(tpl.name || ""))}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(tpl);
+    }
+    return result;
+  }, [categoriesById, normalizeKey, templates]);
+
+  useEffect(() => {
+    setSelectedRowIds((prev) => prev.filter((id) => templatesView.some((tpl) => Number(tpl.id) === Number(id))));
+  }, [templatesView]);
 
   const refreshAll = useCallback(async () => {
     try {
@@ -148,7 +172,7 @@ export function TemplateListView() {
             <div className="flex justify-center items-center h-48">
               <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
             </div>
-          ) : templates.length === 0 ? (
+          ) : templatesView.length === 0 ? (
             <div className="flex justify-center">
               <Empty className="border max-w-md">
                 <EmptyHeader>
@@ -191,7 +215,7 @@ export function TemplateListView() {
                         aria-label={t("edit_template")}
                         onClick={() => {
                           const id = selectedRowIds[0];
-                          const tpl = templates.find((r) => r.id === id);
+                          const tpl = templatesView.find((r) => r.id === id);
                           if (tpl) openEditor(tpl);
                         }}
                         className="text-muted-foreground hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
@@ -210,7 +234,7 @@ export function TemplateListView() {
                         aria-label={t("apply_template")}
                         onClick={() => {
                           const id = selectedRowIds[0];
-                          const tpl = templates.find((r) => r.id === id);
+                          const tpl = templatesView.find((r) => r.id === id);
                           if (tpl) openApply(tpl);
                         }}
                         className="text-muted-foreground hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
@@ -229,7 +253,7 @@ export function TemplateListView() {
                         aria-label={t("duplicate")}
                         onClick={() => {
                           const id = selectedRowIds[0];
-                          const tpl = templates.find((r) => r.id === id);
+                          const tpl = templatesView.find((r) => r.id === id);
                           if (tpl) duplicateTemplate(tpl);
                         }}
                       >
@@ -266,10 +290,10 @@ export function TemplateListView() {
                       <TableHead className="w-[60px]">
                         <div className="flex items-center justify-center">
                           <Checkbox
-                            checked={templates.length > 0 && selectedRowIds.length === templates.length}
+                            checked={templatesView.length > 0 && selectedRowIds.length === templatesView.length}
                             onCheckedChange={(v) => {
                               if (v === true) {
-                                setSelectedRowIds(templates.map((r) => Number(r.id)));
+                                setSelectedRowIds(templatesView.map((r) => Number(r.id)));
                               } else {
                                 setSelectedRowIds([]);
                               }
@@ -286,8 +310,8 @@ export function TemplateListView() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {templates.map((tpl) => {
-                      const catName = categories.find((c) => String(c.id) === String(tpl.category_id))?.name || String(tpl.category_id);
+                    {templatesView.map((tpl) => {
+                      const catName = categoriesById.get(String(tpl.category_id)) || String(tpl.category_id);
                       return (
                         <TableRow key={tpl.id} className={selectedRowIds.includes(Number(tpl.id)) ? "bg-muted/40" : ""}>
                           <TableCell className="p-2 align-middle">

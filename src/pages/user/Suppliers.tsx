@@ -8,6 +8,8 @@ import { useI18n } from '@/i18n';
 import { SuppliersList } from '@/components/user/suppliers';
 import { SupplierForm } from '@/components/user/suppliers';
 import { SupplierService, type Supplier } from '@/lib/supplier-service';
+import { ProductService } from "@/lib/product-service";
+import { ShopCountsService } from "@/lib/shop-counts";
 import { toast } from 'sonner';
 import { useOutletContext } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -74,6 +76,31 @@ export const Suppliers = () => {
     try {
       await SupplierService.deleteSupplier(id);
       toast.success(t('supplier_deleted'));
+      try {
+        ProductService.clearAllProductsCaches();
+      } catch {
+        void 0;
+      }
+      try {
+        queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false, refetchType: "all" });
+      } catch {
+        void 0;
+      }
+      try {
+        queryClient.invalidateQueries({ queryKey: ["user", uid, "lookups"], exact: true });
+      } catch {
+        void 0;
+      }
+      try {
+        queryClient.invalidateQueries({ queryKey: ["user", uid, "dashboard-stats"], exact: true });
+      } catch {
+        void 0;
+      }
+      try {
+        ShopCountsService.invalidate(queryClient, uid, null, "supplier_delete", { refetch: "all" });
+      } catch {
+        void 0;
+      }
     } catch (error: unknown) {
       queryClient.setQueryData(suppliersQueryKey, previous);
       const message = error instanceof Error ? error.message : '';

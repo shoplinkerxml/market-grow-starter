@@ -33,10 +33,10 @@ function countCategoriesInStore(products: ProductRow[], storeId: string): number
   const keys = new Set<string>();
   for (const p of products) {
     if (!Array.isArray(p.linkedStoreIds) || !p.linkedStoreIds.includes(storeId)) continue;
-    const key = p.category_id != null
-      ? `cat:${String(p.category_id)}`
-      : p.category_external_id
-        ? `ext:${String(p.category_external_id)}`
+    const key = p.category_external_id
+      ? `ext:${String(p.category_external_id)}`
+      : p.category_id != null
+        ? `cat:${String(p.category_id)}`
         : null;
     if (key) keys.add(key);
   }

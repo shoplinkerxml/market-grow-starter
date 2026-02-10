@@ -492,7 +492,7 @@ export const commonDictionary: Dictionary = {
   demo_suppliers_catalog: { uk: "Каталог з товарами", en: "Catalog with products" },
   demo_categories_count: { uk: "5 категорій", en: "5 categories" },
   demo_categories_tree: { uk: "Ієрархія та зв’язки", en: "Hierarchy and relationships" },
-  demo_products_count: { uk: "50 товарів", en: "50 products" },
+  demo_products_count: { uk: "25 товарів", en: "25 products" },
   demo_products_images: { uk: "3 фото на кожен товар", en: "3 photos per product" },
   demo_templates_title: { uk: "Шаблони характеристик", en: "Attribute templates" },
   demo_templates_values: { uk: "Значення для фільтрів та форм", en: "Values for filters and forms" },

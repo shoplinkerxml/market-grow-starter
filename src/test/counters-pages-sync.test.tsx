@@ -1,6 +1,6 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { createMemoryRouter, Outlet, RouterProvider } from "react-router-dom";
 
@@ -34,10 +34,12 @@ const supabaseChannel = {
   subscribe: vi.fn(() => supabaseChannel),
 };
 const removeChannel = vi.fn();
+const invokeFunction = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     channel: vi.fn(() => supabaseChannel),
     removeChannel: (...args: any[]) => removeChannel(...args),
+    functions: { invoke: (...args: any[]) => invokeFunction(...args) },
   },
 }));
 
@@ -213,14 +215,18 @@ describe("Counters sync on pages", () => {
     );
 
     await waitFor(() => expect(getDashboardStats).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText("MMA - 0 тов.")).toBeInTheDocument();
+    const storeName = await screen.findByText("MMA");
+    const storeBlock = storeName.parentElement as HTMLElement;
+    expect(within(storeBlock).getByText("0")).toBeInTheDocument();
 
     await act(async () => {
       ShopCountsService.invalidate(queryClient, "u1", ["s1"], "test_sync");
     });
 
     await waitFor(() => expect(getDashboardStats).toHaveBeenCalledTimes(2));
-    expect(await screen.findByText("MMA - 1 тов.")).toBeInTheDocument();
+    const updatedStoreName = await screen.findByText("MMA");
+    const updatedStoreBlock = updatedStoreName.parentElement as HTMLElement;
+    expect(within(updatedStoreBlock).getByText("1")).toBeInTheDocument();
   });
 
   it("/user/products menu: счетчики магазинов обновляются после invalidate shops key", async () => {

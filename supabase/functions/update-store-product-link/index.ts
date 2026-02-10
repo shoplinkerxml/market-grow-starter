@@ -165,6 +165,27 @@ async function recomputeCountsForStore(storeId: string): Promise<ShopCounts> {
     .eq("store_id", sid)
     .eq("is_active", true);
 
+  const customCategoryIds = Array.from(
+    new Set(
+      (links || [])
+        .map((l: any) => Number(l?.custom_category_id))
+        .filter((id: number) => Number.isFinite(id))
+    )
+  );
+  const customCategoryLabelById = new Map<string, string>();
+  if (customCategoryIds.length > 0) {
+    const { data: customRows } = await supabase
+      .from("store_categories")
+      .select("id, external_id, name")
+      .in("id", customCategoryIds);
+    for (const row of customRows || []) {
+      const id = row?.id != null ? String(row.id) : "";
+      if (!id || customCategoryLabelById.has(id)) continue;
+      const label = row?.external_id != null ? String(row.external_id) : (row?.name != null ? String(row.name) : "");
+      if (label) customCategoryLabelById.set(id, label);
+    }
+  }
+
   let productsCount = 0;
   const categories = new Set<string>();
 
@@ -172,14 +193,14 @@ async function recomputeCountsForStore(storeId: string): Promise<ShopCounts> {
     productsCount += 1;
     const base = (link as any)?.store_products || {};
     const customCat = (link as any)?.custom_category_id;
+    const customLabel = customCat != null ? customCategoryLabelById.get(String(customCat)) : null;
+    const normalizedCustom = customLabel ? String(customLabel).trim().toLowerCase() : "";
+    const customKey = normalizedCustom ? `name:${normalizedCustom}` : (customCat != null ? `cat:${String(customCat)}` : null);
+    const normalizedExternal = base?.category_external_id != null ? String(base.category_external_id).trim().toLowerCase() : "";
     const catKey =
-      customCat != null
-        ? `ext:${String(customCat)}`
-        : base?.category_id != null
-          ? `cat:${String(base.category_id)}`
-          : base?.category_external_id != null
-            ? `ext:${String(base.category_external_id)}`
-            : null;
+      customKey ||
+      (normalizedExternal ? `ext:${normalizedExternal}` : null) ||
+      (base?.category_id != null ? `cat:${String(base.category_id)}` : null);
     if (catKey) categories.add(catKey);
   }
 
