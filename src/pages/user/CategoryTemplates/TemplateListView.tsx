@@ -30,13 +30,15 @@ import { ArrowLeft, Loader2, Plus, Pencil, Trash2, Copy, CircleCheckBig, MoreVer
 import type { CategoryTemplateRow } from "./types";
 import { useCategories } from "./hooks/useCategories";
 import { useTemplates } from "./hooks/useTemplates";
+import { RefreshDataButton } from "@/components/RefreshDataButton";
+import { cache } from "@/lib/cache-helper";
 
 export function TemplateListView() {
   const { t } = useI18n();
   const breadcrumbs = useBreadcrumbs();
   const navigate = useNavigate();
   const { categories, loadCategories } = useCategories();
-  const { templates, attributeCounts, loadTemplates, createTemplate, deleteTemplate, duplicateTemplate, toggleTemplateActive } = useTemplates(t);
+  const { templates, attributeCounts, loadTemplates, createTemplate, deleteTemplate, deleteTemplates, duplicateTemplate, toggleTemplateActive } = useTemplates(t);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -64,6 +66,7 @@ export function TemplateListView() {
   const refreshAll = useCallback(async () => {
     try {
       setLoading(true);
+      cache.clearByPrefix("template:");
       await Promise.all([loadCategories(), loadTemplates()]);
     } catch (error: any) {
       toast.error(error?.message || t("failed_load_menu_item"));
@@ -74,6 +77,11 @@ export function TemplateListView() {
 
   useEffect(() => {
     void refreshAll();
+  }, [refreshAll]);
+
+  const handleRefresh = useCallback(async () => {
+    cache.clearByPrefix("template:");
+    await refreshAll();
   }, [refreshAll]);
 
   const onCreateSubmit = useCallback(
@@ -114,15 +122,18 @@ export function TemplateListView() {
         title={title}
         breadcrumbItems={breadcrumbs}
         actions={
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(-1)}
-            className="shrink-0 border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
-            title={t("back")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <RefreshDataButton onRefresh={handleRefresh} />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="shrink-0 border border-border hover:border-emerald-500 hover:text-emerald-600 hover:bg-transparent shadow-none hover:shadow-none"
+              title={t("back")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </div>
         }
       />
       <Card>
@@ -234,11 +245,11 @@ export function TemplateListView() {
                         size="icon"
                         disabled={selectedRowIds.length === 0}
                         aria-label={t("delete")}
-                        onClick={() => {
+                        onClick={async () => {
                           const ids = selectedRowIds;
                           if (ids.length === 0) return;
-                          const tpl = templates.find((r) => r.id === ids[0]);
-                          if (tpl) deleteTemplate(tpl);
+                          const ok = await deleteTemplates(ids);
+                          if (ok) setSelectedRowIds([]);
                         }}
                       >
                         <Trash2 className="h-4 w-4" />

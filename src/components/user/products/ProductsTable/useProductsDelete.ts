@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { ProductService, type Product } from "@/lib/product-service";
+import { ShopCountsService } from "@/lib/shop-counts";
 import type { QueryClient } from "@tanstack/react-query";
 import type { Table as TanTable } from "@tanstack/react-table";
 import type { ProductRow } from "./columns";
@@ -55,6 +56,18 @@ export function useProductsDelete({
           return old;
         });
       };
+      const invalidateAfterMutation = async (storeIds?: string[]) => {
+        try {
+          queryClient.invalidateQueries({ queryKey: productsBaseKey, exact: false });
+        } catch {
+          void 0;
+        }
+        try {
+          ShopCountsService.invalidate(queryClient, uid, storeIds, "products_mutation");
+        } catch {
+          void 0;
+        }
+      };
       try {
         if (productToDelete) {
           const showProgress = !!storeId;
@@ -63,6 +76,7 @@ export function useProductsDelete({
             setProductsCached((prev) => prev.filter((p) => String(p.id) !== String(productToDelete.id)));
             patchTotal(-1);
             await onDelete?.(productToDelete);
+            await invalidateAfterMutation(storeId ? [String(storeId)] : undefined);
           } finally {
             if (showProgress) setDeleteProgress({ open: false });
           }
@@ -80,6 +94,7 @@ export function useProductsDelete({
               const correction = -removedCount - -ids.length;
               if (correction !== 0) patchTotal(correction);
               toast.success(t("product_removed_from_store"));
+              await invalidateAfterMutation([sid]);
             } catch {
               for (const [k, v] of prevQueries) {
                 queryClient.setQueryData(k, v);
@@ -102,6 +117,7 @@ export function useProductsDelete({
                 setDeleteProgress({ open: true });
                 await ProductService.bulkDeleteProducts(ids);
                 toast.success(t("products_deleted_successfully"));
+                await invalidateAfterMutation();
               } catch {
                 for (const [k, v] of prevQueries) {
                   queryClient.setQueryData(k, v);
@@ -121,7 +137,7 @@ export function useProductsDelete({
         console.error("Delete error:", error);
       }
     },
-    [closeDeleteDialog, onDelete, productsBaseKey, queryClient, setDeleteProgress, setProductsCached, storeId, t, table],
+    [closeDeleteDialog, onDelete, productsBaseKey, queryClient, setDeleteProgress, setProductsCached, storeId, t, table, uid],
   );
 
   return { handleConfirmDelete };

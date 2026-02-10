@@ -37,13 +37,23 @@ export class DashboardService {
       return await GlobalRequestDeduplicator.dedupeExpensive(
         { service: "DashboardService", method: "getDashboardStats" },
         async ({ signal }) => {
-          const stats = await EdgeClient.invokeWithRetry<DashboardStats>("get-dashboard-stats", {}, { signal });
+          const stats = await EdgeClient.invokeWithRetry<DashboardStats>("get-dashboard-stats", {}, { signal, log: false });
           this.cache.set(cacheKey, stats);
           return stats;
         },
       );
     } catch (error) {
-      console.error("Failed to fetch dashboard stats:", error);
+      const message = String((error as { message?: unknown } | null)?.message || "");
+      const name = String((error as { name?: unknown } | null)?.name || "");
+      const lowered = message.toLowerCase();
+      const isAbort =
+        name === "AbortError" ||
+        lowered.includes("abort") ||
+        lowered.includes("net::err_aborted") ||
+        lowered.includes("the user aborted a request");
+      if (!isAbort) {
+        console.error("Failed to fetch dashboard stats:", error);
+      }
       // Return empty stats on error to prevent crashing, but do NOT cache it
       return {
         suppliers: [],

@@ -139,6 +139,22 @@ export function useTemplates(t: Translator) {
     [getErrorMessage, loadTemplates, t],
   );
 
+  const deleteTemplates = useCallback(
+    async (ids: number[]) => {
+      if (ids.length === 0) return false;
+      try {
+        await Promise.all(ids.map((id) => deleteTemplateApi(id)));
+        await loadTemplates();
+        toast.success(t("template_deleted"));
+        return true;
+      } catch (error: any) {
+        toast.error(getErrorMessage(error, "failed_delete_template"));
+        return false;
+      }
+    },
+    [getErrorMessage, loadTemplates, t],
+  );
+
   const duplicateTemplate = useCallback(
     async (tpl: CategoryTemplateRow) => {
       try {
@@ -201,6 +217,7 @@ export function useTemplates(t: Translator) {
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    deleteTemplates,
     duplicateTemplate,
     toggleTemplateActive,
     getApplyPreview,

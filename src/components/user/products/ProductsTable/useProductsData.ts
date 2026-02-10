@@ -93,8 +93,8 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
     getNextPageParam: (lastPage) => (lastPage?.page?.nextOffset == null ? undefined : lastPage.page.nextOffset),
     placeholderData: (prev) => prev,
     staleTime: 900_000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const items = useMemo(

@@ -78,6 +78,12 @@ verify_jwt = true
 [functions.user-shops-list]
 verify_jwt = true
 
+[functions.delete-product]
+verify_jwt = true
+
+[functions.get-dashboard-stats]
+verify_jwt = true
+
 [functions.user-activate-tariff]
 verify_jwt = true
 

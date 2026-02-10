@@ -38,8 +38,8 @@ export const SuppliersList = ({
     queryKey: ['user', uid, 'suppliers', 'list'],
     queryFn: async ({ signal }) => await SupplierService.getSuppliers({ signal }),
     staleTime: 900_000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev as Supplier[] | undefined,
   });
   const suppliers: Supplier[] = suppliersData ?? [];

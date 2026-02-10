@@ -4,6 +4,7 @@ import { ProductService } from "@/lib/product-service";
 import { ShopService } from "@/lib/shop-service";
 import { SupplierService } from "@/lib/supplier-service";
 import { DashboardService } from "@/lib/dashboard-service";
+import { cache } from "@/lib/cache-helper";
 import { invalidateCategoriesCache } from "@/lib/category-service";
 import { UserAuthService } from "@/lib/user-auth-service";
 import { R2Storage } from "@/lib/r2-storage";
@@ -35,9 +36,9 @@ const db = supabase as unknown as { rpc: (fn: string, args?: Record<string, unkn
 
 const DEMO_IMAGE_URLS: Record<string, string[]> = {
   electronics: [
-    "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-jILZG4zBAQ4?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-loRyHkB36Jo?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-Fo-HQUlRGkU?auto=format&fit=crop&w=800&q=80",
   ],
   apparel: [
     "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=800&q=80",
@@ -45,19 +46,19 @@ const DEMO_IMAGE_URLS: Record<string, string[]> = {
     "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=800&q=80",
   ],
   groceries: [
-    "https://images.unsplash.com/photo-1481931098730-318b6f776db0?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-o06EnBaHvvE?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-fRD4cRj4PB4?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-y7jUXGIVwSI?auto=format&fit=crop&w=800&q=80",
   ],
   appliances: [
-    "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1586201375761-83865001e31b?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1580915411954-282cb1b0d780?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-pVD5AIpHNhU?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-J4Poo0r0qEk?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-QS8KEidLzcY?auto=format&fit=crop&w=800&q=80",
   ],
   sports: [
-    "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=800&q=80",
-    "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-0zkJ1EsH9dY?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-FSt9r0_SUJ0?auto=format&fit=crop&w=800&q=80",
+    "https://images.unsplash.com/photo-IQ4NmBWvqx0?auto=format&fit=crop&w=800&q=80",
   ],
 };
 
@@ -65,81 +66,33 @@ const ELECTRONICS_IMAGE_URLS: Array<{ keywords: string[]; urls: string[] }> = [
   {
     keywords: ["ноутбук", "laptop", "vivobook", "macbook"],
     urls: [
-      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-jILZG4zBAQ4?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-loRyHkB36Jo?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-Fo-HQUlRGkU?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
     keywords: ["смартфон", "phone", "galaxy", "iphone"],
     urls: [
-      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1509395176047-4a66953fd231?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-m8heo50UKCo?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-bmUa09zy2ZQ?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-Nf5fSqHm-iY?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
     keywords: ["планшет", "tablet", "ipad"],
     urls: [
-      "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-nz7z0rNdvyI?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-fHDS_mR76bQ?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-4FwEuaWFxgE?auto=format&fit=crop&w=800&q=80",
     ],
   },
   {
     keywords: ["наушник", "headphones"],
     urls: [
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1507878866276-a947ef722fee?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1484704849700-f032a568e944?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    keywords: ["монитор", "monitor"],
-    urls: [
-      "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    keywords: ["смарт-часы", "смарт часы", "smartwatch", "watch"],
-    urls: [
-      "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1519750783826-e2420f4d687f?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    keywords: ["книга", "ebook", "e-book", "e book", "e-reader"],
-    urls: [
-      "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    keywords: ["маршрутизатор", "router"],
-    urls: [
-      "https://images.unsplash.com/photo-1590502593747-42a996133562?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1603791452906-bf4d3d22ad6d?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1628539028340-61d2c37c98ab?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    keywords: ["повербанк", "power bank", "powerbank"],
-    urls: [
-      "https://images.unsplash.com/photo-1587825140708-4f0e0d7e8c4b?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1593642532973-d31b6557fa68?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80",
-    ],
-  },
-  {
-    keywords: ["клавиатура", "keyboard"],
-    urls: [
-      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-Q2RIZtBTtaI?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-i1Ex8ENX3rI?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-cJ8YB0InG6k?auto=format&fit=crop&w=800&q=80",
     ],
   },
 ];
@@ -244,6 +197,11 @@ export class DemoDataService {
     }
     try {
       DashboardService.clearCache();
+    } catch {
+      void 0;
+    }
+    try {
+      cache.clearByPrefix("template:");
     } catch {
       void 0;
     }

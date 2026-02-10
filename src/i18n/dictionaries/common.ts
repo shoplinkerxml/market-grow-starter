@@ -711,7 +711,6 @@ export const commonDictionary: Dictionary = {
   no_shops: { uk: "Немає магазинів", en: "No shops" },
   no_suppliers: { uk: "Немає постачальників", en: "No suppliers" },
   payment_systems_title: { uk: "Платіжні системи", en: "Payment Systems" },
-  products_count_suffix: { uk: "тов.", en: "pcs." },
   shops_title: { uk: "Магазини", en: "Shops" },
   suppliers_title: { uk: "Постачальники", en: "Suppliers" },
   total_categories: { uk: "Всього категорій", en: "Total Categories" },

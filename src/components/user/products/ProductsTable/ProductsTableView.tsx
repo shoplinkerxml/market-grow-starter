@@ -125,29 +125,28 @@ export function ProductsTableView({
 
   if (!loading && (pageInfo?.total ?? rows.length) === 0 && !hasActiveServerFilters) {
     return (
-      <div className="p-6 bg-background flex justify-center" data-testid="user_products_empty_wrap">
-        <div className="w-full max-w-[clamp(18rem,50vw,32rem)]">
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia className="text-primary">
-                <Package className="h-[1.5rem] w-[1.5rem]" />
-              </EmptyMedia>
-              <EmptyTitle>{t("no_products")}</EmptyTitle>
-              <EmptyDescription>{t("no_products_description")}</EmptyDescription>
-            </EmptyHeader>
-            {storeId ? null : (
-              <Button
-                onClick={onCreateNew}
-                className="mt-4"
-                data-testid="user_products_create_btn"
-                disabled={canCreate === false}
-                aria-disabled={canCreate === false}
-              >
-                {t("create_product")}
-              </Button>
-            )}
-          </Empty>
-        </div>
+      <div className="flex justify-center" data-testid="user_products_empty_wrap">
+        <Empty className="border max-w-md">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Package className="h-[1.5rem] w-[1.5rem]" />
+            </EmptyMedia>
+            <EmptyTitle>{t("no_products")}</EmptyTitle>
+            <EmptyDescription>{t("no_products_description")}</EmptyDescription>
+          </EmptyHeader>
+          {storeId ? null : (
+            <Button
+              onClick={onCreateNew}
+              className="mt-4"
+              data-testid="user_products_create_btn"
+              disabled={canCreate === false}
+              aria-disabled={canCreate === false}
+            >
+              <Package className="h-4 w-4 mr-2" />
+              {t("create_product")}
+            </Button>
+          )}
+        </Empty>
       </div>
     );
   }

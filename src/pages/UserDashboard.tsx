@@ -1,12 +1,12 @@
 import { useOutletContext } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { UserProfile as UserProfileType } from "@/lib/user-auth-schemas";
 import { UserMenuItem } from "@/lib/user-menu-service";
 import { useI18n } from "@/i18n";
-import { User, Settings, TrendingUp, BarChart3, Activity, Database, Crown, CreditCard, Package, Store } from "lucide-react";
+import { User, Settings, TrendingUp, BarChart3, Activity, Database, Crown, CreditCard, Package, Store, Folder, Layers, Truck, Download, X } from "lucide-react";
 import type { TariffLimit } from "@/lib/tariff-service";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -21,6 +21,8 @@ import { DashboardService } from "@/lib/dashboard-service";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { DemoDataService } from "@/lib/demo-data-service";
+import { RefreshDataButton } from "@/components/RefreshDataButton";
+import { cache } from "@/lib/cache-helper";
 
 type SubscriptionEntity = {
   tariff_id?: number;
@@ -110,6 +112,15 @@ const UserDashboard = () => {
   );
   const isDemoButtonActive = !isStatsLoading && !isDemoLoading && !hasExistingData && hasActiveTariff;
 
+  const refreshUserQueries = useCallback(async () => {
+    const predicate = (q: { queryKey?: unknown }) => {
+      const key = Array.isArray(q.queryKey) ? q.queryKey : [];
+      return key[0] === "user" && String(key[1]) === String(user.id);
+    };
+    await queryClient.invalidateQueries({ predicate, refetchType: "all" });
+    await queryClient.refetchQueries({ predicate, type: "all" });
+  }, [queryClient, user.id]);
+
   const handleLoadDemoData = async () => {
     if (isDemoLoading) return;
     setIsDemoLoading(true);
@@ -137,12 +148,8 @@ const UserDashboard = () => {
         );
       }
       await refetchStats();
-      const predicate = (q: { queryKey?: unknown }) => {
-        const key = Array.isArray(q.queryKey) ? q.queryKey : [];
-        return key[0] === "user" && String(key[1]) === String(user.id);
-      };
-      await queryClient.invalidateQueries({ predicate, refetchType: "all" });
-      await queryClient.refetchQueries({ predicate, type: "all" });
+      cache.clearByPrefix("template:");
+      await refreshUserQueries();
     } catch (error) {
       console.error(error);
       toast.error(t("demo_data_failed") || "Не вдалося завантажити демо-дані");
@@ -156,6 +163,16 @@ const UserDashboard = () => {
       }, 300);
     }
   };
+
+  const handleRefresh = useCallback(async () => {
+    DashboardService.clearCache();
+    ProductService.clearAllCaches();
+    ShopService.clearAllCaches();
+    SupplierService.clearSuppliersCache();
+    cache.clearByPrefix("template:");
+    await refetchStats();
+    await refreshUserQueries();
+  }, [refetchStats, refreshUserQueries]);
   
   useEffect(() => {
     const result = subscription;
@@ -186,6 +203,7 @@ const UserDashboard = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Breadcrumb items={breadcrumbs} />
         <div className="flex items-center gap-2">
+          <RefreshDataButton onRefresh={handleRefresh} />
           <Button
             variant="outline"
             size="sm"
@@ -328,7 +346,7 @@ const UserDashboard = () => {
           setIsDemoDialogOpen(open);
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t("demo_data_title") || "Завантажити демо-дані"}</DialogTitle>
             <DialogDescription>
@@ -336,6 +354,68 @@ const UserDashboard = () => {
                 "Буде створено 3 магазини, 2 постачальники, 5 категорій, 50 товарів та шаблони характеристик."}
             </DialogDescription>
           </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Store className="h-4 w-4" />
+                <span>{t("shops_title")}</span>
+              </div>
+              <div className="text-sm text-muted-foreground pl-6">
+                <ul className="list-inside list-disc space-y-1">
+                  <li>{t("demo_shops_count") || "3 магазини"}</li>
+                  <li>{t("demo_shops_products") || "Товари з фото та описами"}</li>
+                </ul>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Truck className="h-4 w-4" />
+                <span>{t("suppliers_title")}</span>
+              </div>
+              <div className="text-sm text-muted-foreground pl-6">
+                <ul className="list-inside list-disc space-y-1">
+                  <li>{t("demo_suppliers_count") || "2 постачальники"}</li>
+                  <li>{t("demo_suppliers_catalog") || "Каталог з товарами"}</li>
+                </ul>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Folder className="h-4 w-4" />
+                <span>{t("categories_title") || "Категорії"}</span>
+              </div>
+              <div className="text-sm text-muted-foreground pl-6">
+                <ul className="list-inside list-disc space-y-1">
+                  <li>{t("demo_categories_count") || "5 категорій"}</li>
+                  <li>{t("demo_categories_tree") || "Ієрархія та зв’язки"}</li>
+                </ul>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Package className="h-4 w-4" />
+                <span>{t("products_title")}</span>
+              </div>
+              <div className="text-sm text-muted-foreground pl-6">
+                <ul className="list-inside list-disc space-y-1">
+                  <li>{t("demo_products_count") || "50 товарів"}</li>
+                  <li>{t("demo_products_images") || "3 фото на кожен товар"}</li>
+                </ul>
+              </div>
+            </div>
+            <div className="space-y-3 sm:col-span-2">
+              <div className="flex items-center gap-2 font-semibold text-primary">
+                <Layers className="h-4 w-4" />
+                <span>{t("menu_category_templates")}</span>
+              </div>
+              <div className="text-sm text-muted-foreground pl-6">
+                <ul className="list-inside list-disc space-y-1">
+                  <li>{t("demo_templates_title") || "Шаблони характеристик"}</li>
+                  <li>{t("demo_templates_values") || "Значення для фільтрів та форм"}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
           {isDemoLoading ? (
             <div className="space-y-3">
               <Progress value={demoProgress} />
@@ -345,10 +425,12 @@ const UserDashboard = () => {
             </div>
           ) : (
             <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setIsDemoDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsDemoDialogOpen(false)}>
+                <X className="h-4 w-4 mr-2" />
                 {t("btn_cancel") || "Скасувати"}
               </Button>
               <Button onClick={handleLoadDemoData}>
+                <Download className="h-4 w-4 mr-2" />
                 {t("load_demo_data_confirm") || "Почати завантаження"}
               </Button>
             </div>

@@ -9,10 +9,9 @@ export function useShops(userId: string, options?: { enabled?: boolean; force?: 
     fetchFn: async () => await ShopService.getShopsAggregated({ force: options?.force, forceCounts: options?.forceCounts }),
     enabled: options?.enabled ?? true,
     retry: false,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     refetchOnReconnect: false,
     placeholderData: (prev) => prev as any,
   });
 }
-

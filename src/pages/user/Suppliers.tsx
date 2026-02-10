@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, ArrowLeft, Truck, RefreshCw } from 'lucide-react';
+import { Plus, ArrowLeft, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/PageHeader';
 import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useOutletContext } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSuppliers } from "@/hooks/useSuppliers";
+import { RefreshDataButton } from "@/components/RefreshDataButton";
 
 type ViewMode = 'list' | 'create' | 'edit';
 
@@ -39,6 +40,11 @@ export const Suppliers = () => {
 
   const suppliersCount = suppliersData?.length ?? 0;
   const canCreate = suppliersCount < supplierLimit;
+
+  const handleRefresh = async () => {
+    SupplierService.clearSuppliersCache();
+    await queryClient.invalidateQueries({ queryKey: suppliersQueryKey });
+  };
 
   const handleEdit = (supplier: Supplier) => {
     setSelectedSupplier(supplier);
@@ -102,17 +108,7 @@ export const Suppliers = () => {
                   <Truck className="h-4 w-4" />
                   <span>{suppliersCount} / {supplierLimit}</span>
                 </Badge>
-                <Button 
-                  variant="ghost"
-                  size="icon"
-                  title={t('refresh') || 'Оновити'}
-                  onClick={() => {
-                    SupplierService.clearSuppliersCache();
-                    void queryClient.invalidateQueries({ queryKey: suppliersQueryKey });
-                  }}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
+                <RefreshDataButton onRefresh={handleRefresh} />
                 {suppliersCount > 0 && (
                   <Button 
                     onClick={handleCreateNew}
