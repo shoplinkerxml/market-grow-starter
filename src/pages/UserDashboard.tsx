@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { UserProfile as UserProfileType } from "@/lib/user-auth-schemas";
 import { UserMenuItem } from "@/lib/user-menu-service";
 import { useI18n } from "@/i18n";
-import { User, Settings, TrendingUp, BarChart3, Activity, Plus, Crown, CreditCard, Package, Store } from "lucide-react";
+import { User, Settings, TrendingUp, BarChart3, Activity, Database, Crown, CreditCard, Package, Store } from "lucide-react";
 import type { TariffLimit } from "@/lib/tariff-service";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -18,7 +18,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SupplierService } from "@/lib/supplier-service";
 import { ProductLimitService } from "@/lib/product/product-limit-service";
 import { DashboardService } from "@/lib/dashboard-service";
-import { RefreshDataButton } from "@/components/RefreshDataButton";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { DemoDataService } from "@/lib/demo-data-service";
 
 type SubscriptionEntity = {
   tariff_id?: number;
@@ -73,6 +75,9 @@ const UserDashboard = () => {
   const [expired, setExpired] = useState<boolean>(false);
   const [isDemo, setIsDemo] = useState<boolean>(false);
   const [isLifetime, setIsLifetime] = useState<boolean>(false);
+  const [isDemoDialogOpen, setIsDemoDialogOpen] = useState(false);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const [demoProgress, setDemoProgress] = useState(0);
   const [limits, setLimits] = useState<{
     limit_name: string;
     value: number;
@@ -86,12 +91,70 @@ const UserDashboard = () => {
     queryFn: async () => {
       return await DashboardService.getDashboardStats();
     },
-    enabled: !!user.id
+    enabled: !!user.id,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true
   });
 
-  const handleRefresh = async () => {
-    DashboardService.clearCache();
-    await refetchStats();
+  const hasExistingData = !!(
+    dashboardStats?.totalProducts ||
+    dashboardStats?.totalCategories ||
+    (dashboardStats?.suppliers?.length ?? 0) > 0 ||
+    (dashboardStats?.stores?.length ?? 0) > 0
+  );
+  const hasActiveTariff = !!(
+    subscription?.hasValidSubscription &&
+    subscription?.subscription &&
+    subscription.subscription.is_active !== false
+  );
+  const isDemoButtonActive = !isStatsLoading && !isDemoLoading && !hasExistingData && hasActiveTariff;
+
+  const handleLoadDemoData = async () => {
+    if (isDemoLoading) return;
+    setIsDemoLoading(true);
+    setDemoProgress(5);
+    let timer: number | null = null;
+    try {
+      timer = window.setInterval(() => {
+        setDemoProgress((prev) => {
+          if (prev >= 90) return prev;
+          return Math.min(prev + 7, 90);
+        });
+      }, 250);
+      const result = await DemoDataService.loadDemoData();
+      if (result.status === "already_has_data") {
+        toast.info(t("demo_data_already_loaded") || "Демо-дані вже завантажені");
+      } else {
+        const counts = result.counts;
+        const summary = counts
+          ? `${counts.categories} ${t("categories_count_suffix") || "категорій"}, ${counts.products} ${t("products_count_suffix") || "товарів"}, ${counts.stores} ${t("shops_count_suffix") || "магазинів"}, ${counts.suppliers} ${t("suppliers_count_suffix") || "постачальників"}`
+          : "";
+        toast.success(
+          summary
+            ? `${t("demo_data_loaded") || "Демо-дані завантажені"}: ${summary}`
+            : t("demo_data_loaded") || "Демо-дані завантажені"
+        );
+      }
+      await refetchStats();
+      const predicate = (q: { queryKey?: unknown }) => {
+        const key = Array.isArray(q.queryKey) ? q.queryKey : [];
+        return key[0] === "user" && String(key[1]) === String(user.id);
+      };
+      await queryClient.invalidateQueries({ predicate, refetchType: "all" });
+      await queryClient.refetchQueries({ predicate, type: "all" });
+    } catch (error) {
+      console.error(error);
+      toast.error(t("demo_data_failed") || "Не вдалося завантажити демо-дані");
+    } finally {
+      if (timer) window.clearInterval(timer);
+      setDemoProgress(100);
+      window.setTimeout(() => {
+        setIsDemoDialogOpen(false);
+        setIsDemoLoading(false);
+        setDemoProgress(0);
+      }, 300);
+    }
   };
   
   useEffect(() => {
@@ -120,9 +183,21 @@ const UserDashboard = () => {
   }, [tariffLimits]);
   
   return <div className="space-y-6 p-6">
-      
-      {/* Breadcrumb */}
-      <Breadcrumb items={breadcrumbs} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Breadcrumb items={breadcrumbs} />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDemoDialogOpen(true)}
+            disabled={!isDemoButtonActive}
+            className={isDemoButtonActive ? "hover:border-emerald-500 hover:shadow-md active:scale-95 active:shadow-inner" : ""}
+          >
+            <Database className="h-4 w-4" />
+            {t("load_demo_data") || "Завантажити демо-дані"}
+          </Button>
+        </div>
+      </div>
 
       <Card className="w-full">
         <CardHeader className="pb-4">
@@ -131,7 +206,6 @@ const UserDashboard = () => {
               <BarChart3 className="h-5 w-5 text-primary" />
               {t('menu_dashboard') || 'Dashboard'}
             </div>
-            <RefreshDataButton onRefresh={handleRefresh} />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -247,6 +321,40 @@ const UserDashboard = () => {
           </div>
         </CardContent>
       </Card>
+      <Dialog
+        open={isDemoDialogOpen}
+        onOpenChange={(open) => {
+          if (isDemoLoading) return;
+          setIsDemoDialogOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("demo_data_title") || "Завантажити демо-дані"}</DialogTitle>
+            <DialogDescription>
+              {t("demo_data_description") ||
+                "Буде створено 3 магазини, 2 постачальники, 5 категорій, 50 товарів та шаблони характеристик."}
+            </DialogDescription>
+          </DialogHeader>
+          {isDemoLoading ? (
+            <div className="space-y-3">
+              <Progress value={demoProgress} />
+              <div className="text-xs text-muted-foreground">
+                {t("loading") || "Завантаження..."}
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setIsDemoDialogOpen(false)}>
+                {t("btn_cancel") || "Скасувати"}
+              </Button>
+              <Button onClick={handleLoadDemoData}>
+                {t("load_demo_data_confirm") || "Почати завантаження"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>;
 };
 export default UserDashboard;
