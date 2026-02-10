@@ -45,7 +45,7 @@ const ProductThumbnail = React.memo(({
     <HoverCard openDelay={150} closeDelay={80}>
       <HoverCardTrigger asChild>
         <button type="button" onClick={onClick} className="inline-flex">
-          <Avatar className={`${sizeCls} rounded-md cursor-pointer bg-white dark:bg-neutral-900`}>
+          <Avatar className={`${sizeCls} rounded-md cursor-pointer bg-white dark:bg-white`}>
             <AvatarImage
               src={src}
               alt={product.name_ua || product.name || ""}
@@ -59,7 +59,7 @@ const ProductThumbnail = React.memo(({
         </button>
       </HoverCardTrigger>
       <HoverCardContent className="w-[min(22rem,85vw)] p-2" sideOffset={8}>
-        <div className="rounded-md overflow-hidden bg-white dark:bg-neutral-900 dark:border dark:border-emerald-500/40">
+        <div className="rounded-md overflow-hidden bg-white dark:bg-white dark:border dark:border-emerald-500/40">
           {largeSrc ? (
             <img
               src={largeSrc}

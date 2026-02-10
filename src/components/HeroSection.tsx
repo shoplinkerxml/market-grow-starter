@@ -103,7 +103,7 @@ export function HeroSection() {
                 alt="Phone"
                 width={336}
                 height={672}
-                fetchPriority="high"
+                fetchpriority="high"
                 loading="eager"
                 decoding="async"
                 className="relative z-10 w-[12.5rem] drop-shadow-2xl animate-float-slow will-change-transform translate-y-10 mr-0 sm:w-[14.5rem] sm:-mr-[90px] sm:translate-y-12 md:w-[18.5rem] md:-mr-[120px] md:translate-y-16 lg:w-[20rem] xl:w-[21rem]"

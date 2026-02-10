@@ -130,12 +130,12 @@ function ProductCard({
             <img
               src={src}
               alt={name}
-              className="h-full w-full object-contain bg-white dark:bg-neutral-900"
+              className="h-full w-full object-contain bg-white dark:bg-white"
               loading="lazy"
               onError={onError}
             />
           ) : (
-            <div className="h-full w-full flex items-center justify-center text-muted-foreground bg-white dark:bg-neutral-900">
+            <div className="h-full w-full flex items-center justify-center text-muted-foreground bg-white dark:bg-white">
               <ImageIcon className="h-10 w-10 opacity-60" />
             </div>
           )}
