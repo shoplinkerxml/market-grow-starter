@@ -502,9 +502,20 @@ export function ImageSection(props: Props) {
               <Label htmlFor="imageUrl">{t('add_image_by_url')}</Label>
               <div className="flex gap-2 mt-2">
                 <Input id="imageUrl" name="imageUrl" autoComplete="url" value={props.imageUrl} onChange={(e) => props.onSetImageUrl(e.target.value)} placeholder={t('image_url_placeholder')} data-testid="productFormTabs_imageUrlInput" />
-                <Button onClick={props.onAddImageFromUrl} variant="outline" size="icon" data-testid="productFormTabs_addImageUrlButton">
-                  <LinkIcon className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={props.onAddImageFromUrl}
+                      variant="outline"
+                      size="icon"
+                      data-testid="productFormTabs_addImageUrlButton"
+                      aria-label={t('add_image_by_url')}
+                    >
+                      <LinkIcon className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{t('add_image_by_url')}</TooltipContent>
+                </Tooltip>
               </div>
             </>
           )}
