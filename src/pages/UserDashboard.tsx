@@ -346,13 +346,12 @@ const UserDashboard = () => {
           setIsDemoDialogOpen(open);
         }}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl border-emerald-200/70 shadow-lg shadow-emerald-200/40">
           <DialogHeader>
-            <DialogTitle>{t("demo_data_title") || "Завантажити демо-дані"}</DialogTitle>
-            <DialogDescription>
-              {t("demo_data_description") ||
-                "Буде створено 3 магазини, 2 постачальники, 5 категорій, 50 товарів та шаблони характеристик."}
-            </DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-emerald-600" />
+              {t("demo_data_title") || "Завантажити демо-дані"}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-3">
@@ -425,13 +424,9 @@ const UserDashboard = () => {
             </div>
           ) : (
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsDemoDialogOpen(false)}>
-                <X className="h-4 w-4 mr-2" />
-                {t("btn_cancel") || "Скасувати"}
-              </Button>
               <Button onClick={handleLoadDemoData}>
                 <Download className="h-4 w-4 mr-2" />
-                {t("load_demo_data_confirm") || "Почати завантаження"}
+                {t("load_demo_data_confirm") || "Завантажити"}
               </Button>
             </div>
           )}
