@@ -13,9 +13,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
-import { Store, Trash2, Package, List, Copy, Loader2 } from 'lucide-react';
+import { Store, Trash2, Package, List } from 'lucide-react';
 import { useI18n } from "@/i18n";
-import { ShopService, type ShopAggregated, type ShopLimitInfo } from '@/lib/shop-service';
+import { type ShopAggregated, type ShopLimitInfo } from '@/lib/shop-service';
 import { ShopCountsService } from '@/lib/shop-counts';
 import { supabase } from '@/integrations/supabase/client';
 import { SessionValidator } from '@/lib/session-validation';
@@ -50,7 +50,6 @@ export const ShopsList = ({
     shop: null
   });
   const currentUserId = user?.id ? String(user.id) : null;
-  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   // ============================================================================
   // React Query - єдине джерело правди
@@ -250,39 +249,6 @@ export const ShopsList = ({
     }
   };
 
-  const handleDuplicateShop = async (shop: ShopWithMarketplace) => {
-    const shopId = String(shop?.id || "").trim();
-    if (!shopId) return;
-    if (duplicatingId) return;
-    setDuplicatingId(shopId);
-    try {
-      const original = await ShopService.getShop(shopId);
-      const created = await ShopService.createShop({
-        store_name: `${original.store_name} (copy)`,
-        store_company: original.store_company ?? null,
-        store_url: original.store_url ?? null,
-        template_id: original.template_id ?? null,
-        xml_config: original.xml_config ?? null,
-        custom_mapping: original.custom_mapping ?? null,
-        marketplace: original.marketplace ?? null,
-      });
-      queryClient.setQueryData<ShopWithMarketplace[]>(["user", uid, "shops"], (prev) => {
-        const list = Array.isArray(prev) ? prev : [];
-        const exists = list.some((s) => String(s.id) === String(created.id));
-        if (exists) return list;
-        return [{ ...created, productsCount: 0, categoriesCount: 0 }, ...list];
-      });
-      toast.success(t('shop_created'));
-      ShopCountsService.invalidate(queryClient, uid, created.id, "duplicate_shop");
-    } catch (error: unknown) {
-      const message = typeof (error as { message?: string }).message === 'string'
-        ? (error as { message?: string }).message
-        : '';
-      toast.error(message || t('failed_save_shop'));
-    } finally {
-      setDuplicatingId(null);
-    }
-  };
 
   // ============================================================================
   // Render
@@ -334,23 +300,9 @@ export const ShopsList = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 w-8 p-0 rounded-full border border-border text-muted-foreground hover:border-emerald-500 hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-                      onClick={() => handleDuplicateShop(shop)}
-                      disabled={duplicatingId === String(shop.id)}
-                    >
-                      {duplicatingId === String(shop.id) ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  )}
-                  {currentUserId && String(shop.user_id) === String(currentUserId) && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 rounded-full border border-border text-destructive hover:border-emerald-500 hover:text-destructive focus-visible:ring-0 focus-visible:ring-offset-0"
+                      className="h-8 w-8 p-0 rounded-full border border-transparent text-destructive hover:border-destructive hover:text-destructive focus-visible:ring-0 focus-visible:ring-offset-0"
                       onClick={() => setDeleteDialog({ open: true, shop })}
+                      title={t('shop_delete_tooltip')}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

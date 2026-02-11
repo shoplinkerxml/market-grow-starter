@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Loader2, Package, Trash2 } from 'lucide-react';
+import { Gauge, Loader2, Package, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/PageHeader';
 import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { DialogNoOverlay, DialogNoOverlayContent, DialogNoOverlayHeader, DialogNoOverlayTitle } from '@/components/ui/dialog-no-overlay';
 import { useQueryClient } from '@tanstack/react-query';
 import { RefreshDataButton } from '@/components/RefreshDataButton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export const Products = () => {
   const { t } = useI18n();
@@ -105,10 +106,28 @@ export const Products = () => {
         hideTitleOnMobile
         actions={
           <div className="flex gap-1 sm:gap-2 items-center w-full justify-end sm:w-auto flex-nowrap">
-            <Badge variant="outline" className="text-sm flex items-center gap-1.5 border-0">
-              <Package className="h-4 w-4" />
-              <span>{limitInfo.current} / {limitInfo.max}</span>
-            </Badge>
+            <TooltipProvider delayDuration={200}>
+              <Badge variant="outline" className="text-sm flex items-center gap-1.5 border-0">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center">
+                      <Package className="h-4 w-4" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{t('products_title')}</TooltipContent>
+                </Tooltip>
+                <span>{limitInfo.current}</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center">
+                      <Gauge className="h-4 w-4" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{t('limit_tooltip')}</TooltipContent>
+                </Tooltip>
+                <span>{limitInfo.max}</span>
+              </Badge>
+            </TooltipProvider>
             
             <RefreshDataButton onRefresh={handleRefresh} />
           </div>

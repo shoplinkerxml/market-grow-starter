@@ -17,7 +17,9 @@ export const shopsDictionary: Dictionary = {
     en: "Edit shop information",
   },
   add_shop: { uk: "Створити магазин", en: "Create Shop" },
+  shop_add_tooltip: { uk: "Створити магазин", en: "Create shop" },
   back_to_shops: { uk: "Назад до магазинів", en: "Back to Shops" },
+  shop_back_tooltip: { uk: "Назад до магазинів", en: "Back to shops" },
   no_shops: { uk: "Немає магазинів", en: "No Shops" },
   no_shops_description: {
     uk: "Створіть перший магазин для початку роботи",
@@ -111,6 +113,7 @@ export const shopsDictionary: Dictionary = {
     uk: "Видалити магазин?",
     en: "Delete Shop?",
   },
+  shop_delete_tooltip: { uk: "Видалити магазин", en: "Delete shop" },
   shops_limit: { uk: "Магазини", en: "Shops" },
   shop_currencies: { uk: "Валюти магазину", en: "Store Currencies" },
   shop_categories_search_placeholder: { uk: "Пошук категорії", en: "Search category" },

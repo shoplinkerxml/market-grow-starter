@@ -138,7 +138,7 @@ export async function updatePassword(
 
 export async function logout(deps: { mapSupabaseError: (error: any) => string }): Promise<{ success: boolean; error: string | null }> {
   try {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut({ scope: "local" });
 
     if (error) {
       return {

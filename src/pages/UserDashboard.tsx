@@ -6,9 +6,10 @@ import { Separator } from "@/components/ui/separator";
 import { UserProfile as UserProfileType } from "@/lib/user-auth-schemas";
 import { UserMenuItem } from "@/lib/user-menu-service";
 import { useI18n } from "@/i18n";
-import { User, Settings, TrendingUp, BarChart3, Activity, Database, Crown, CreditCard, Package, Store, Folder, Layers, Truck, Download, X, List } from "lucide-react";
+import { User, Users, Settings, TrendingUp, BarChart3, Activity, Database, Crown, CreditCard, Package, Store, Folder, Layers, Truck, Download, X, List, Building2 } from "lucide-react";
 import type { TariffLimit } from "@/lib/tariff-service";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,6 +49,19 @@ const formatDateDdMmYyyy = (value: string) => {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
   return new Intl.DateTimeFormat("uk-UA", { day: "2-digit", month: "2-digit", year: "numeric" }).format(d);
+};
+const getLimitLabelMeta = (label: string) => {
+  const raw = String(label || "");
+  const lower = raw.toLowerCase();
+  const withoutCount = raw.replace(/кількість\s*/i, "").trim();
+  const hasCount = /кількість/i.test(raw);
+  let icon: JSX.Element | null = null;
+
+  if (lower.includes("магазин")) icon = <Store className="h-4 w-4" />;
+  else if (lower.includes("постач")) icon = <Truck className="h-4 w-4" />;
+  else if (lower.includes("товар")) icon = <Package className="h-4 w-4" />;
+
+  return { text: hasCount ? withoutCount : raw, icon };
 };
 const UserDashboard = () => {
   const {
@@ -250,9 +264,15 @@ const UserDashboard = () => {
                       </div>
                     )}
                     <ul className="list-inside list-disc space-y-1">
-                      {limits.map(l => (
-                        <li key={l.id ?? `${l.limit_name}`}>{l.limit_name} - {l.value}</li>
-                      ))}
+                      {limits.map((limit) => {
+                        const { text, icon } = getLimitLabelMeta(limit.limit_name);
+                        return (
+                          <li key={limit.id ?? `${limit.limit_name}`} className="flex items-center gap-2">
+                            {icon}
+                            <span>{text} - <span className="font-semibold text-emerald-600">{limit.value}</span></span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </>
                 ) : (
@@ -264,7 +284,7 @@ const UserDashboard = () => {
             {/* Suppliers Section */}
             <div className="space-y-3">
               <div className="flex items-center gap-2 font-semibold text-primary">
-                <Package className="h-4 w-4" />
+                <Truck className="h-5 w-5" />
                 <span>{t('suppliers_title')}</span>
               </div>
               <div className="text-sm text-muted-foreground pl-6">
@@ -274,29 +294,39 @@ const UserDashboard = () => {
                     <Skeleton className="h-4 w-1/2" />
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {dashboardStats?.suppliers?.map((supplier) => (
-                      <div key={supplier.id} className="flex items-start gap-2">
-                        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <div className="min-w-0 space-y-1">
-                          <span className="block truncate">{supplier.supplier_name}</span>
-                          <span className="inline-flex items-center gap-3 text-emerald-600">
-                            <span className="inline-flex items-center gap-1">
-                              <Package className="h-3 w-3" />
-                              <span className="font-semibold">{supplier.productCount}</span>
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                              <List className="h-3 w-3" />
-                              <span className="font-semibold">{supplier.categoriesCount ?? 0}</span>
-                            </span>
+                  <TooltipProvider delayDuration={200}>
+                    <div className="space-y-2">
+                      {dashboardStats?.suppliers?.map((supplier) => (
+                        <div key={supplier.id} className="flex items-center gap-3">
+                          <Users className="h-4 w-4 shrink-0 text-foreground" />
+                          <span className="truncate max-w-[12rem] sm:max-w-[18rem]">{supplier.supplier_name}</span>
+                          <span className="inline-flex items-center gap-3">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center gap-1">
+                                  <Package className="h-4 w-4 text-foreground" />
+                                  <span className="font-semibold text-emerald-600">{supplier.productCount}</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">{t('dashboard_products_tooltip')}</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center gap-1">
+                                  <List className="h-4 w-4 text-foreground" />
+                                  <span className="font-semibold text-emerald-600">{supplier.categoriesCount ?? 0}</span>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">{t('dashboard_categories_tooltip')}</TooltipContent>
+                            </Tooltip>
                           </span>
                         </div>
-                      </div>
-                    ))}
-                    {(!dashboardStats?.suppliers?.length) && (
-                      <div>{t('no_suppliers')}</div>
-                    )}
-                  </div>
+                      ))}
+                      {(!dashboardStats?.suppliers?.length) && (
+                        <div>{t('no_suppliers')}</div>
+                      )}
+                    </div>
+                  </TooltipProvider>
                 )}
               </div>
             </div>
@@ -304,7 +334,7 @@ const UserDashboard = () => {
             {/* Shops Section */}
             <div className="space-y-3">
               <div className="flex items-center gap-2 font-semibold text-primary">
-                <Store className="h-4 w-4" />
+                <Store className="h-5 w-5" />
                 <span>{t('shops_title')}</span>
               </div>
               <div className="text-sm text-muted-foreground pl-6">
@@ -314,23 +344,28 @@ const UserDashboard = () => {
                     <Skeleton className="h-4 w-1/2" />
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {dashboardStats?.stores?.map((store) => (
-                      <div key={store.id} className="flex items-start gap-2">
-                        <span className="mt-2 h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <div className="min-w-0">
-                          <span className="block truncate">{store.store_name}</span>
-                          <span className="inline-flex items-center gap-1 text-emerald-600">
-                            <Package className="h-3 w-3" />
-                            <span className="font-semibold">{store.productsCount || 0}</span>
-                          </span>
+                  <TooltipProvider delayDuration={200}>
+                    <div className="space-y-2">
+                      {dashboardStats?.stores?.map((store) => (
+                        <div key={store.id} className="flex items-center gap-3">
+                          <Building2 className="h-4 w-4 shrink-0 text-foreground" />
+                          <span className="truncate max-w-[12rem] sm:max-w-[18rem]">{store.store_name}</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-1">
+                                <Package className="h-4 w-4 text-foreground" />
+                                <span className="font-semibold text-emerald-600">{store.productsCount || 0}</span>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">{t('dashboard_products_tooltip')}</TooltipContent>
+                          </Tooltip>
                         </div>
-                      </div>
-                    ))}
-                    {(!dashboardStats?.stores?.length) && (
-                      <div>{t('no_shops')}</div>
-                    )}
-                  </div>
+                      ))}
+                      {(!dashboardStats?.stores?.length) && (
+                        <div>{t('no_shops')}</div>
+                      )}
+                    </div>
+                  </TooltipProvider>
                 )}
               </div>
             </div>
@@ -338,7 +373,7 @@ const UserDashboard = () => {
             {/* Totals Section */}
             <div className="space-y-3">
               <div className="flex items-center gap-2 font-semibold text-primary">
-                <Activity className="h-4 w-4" />
+                <Activity className="h-5 w-5" />
                 <span>{t('totals_title')}</span>
               </div>
               <div className="text-sm text-muted-foreground pl-6">
@@ -348,15 +383,21 @@ const UserDashboard = () => {
                     <Skeleton className="h-4 w-1/2" />
                   </div>
                 ) : (
-                  <div className="flex items-center gap-4">
-                    <span className="inline-flex items-center gap-2 text-emerald-600">
-                      <Package className="h-4 w-4" />
-                      <span className="font-semibold">{dashboardStats?.totalProducts || 0}</span>
-                    </span>
-                    <span className="inline-flex items-center gap-2 text-emerald-600">
-                      <List className="h-4 w-4" />
-                      <span className="font-semibold">{dashboardStats?.totalCategories || 0}</span>
-                    </span>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <span className="inline-flex items-center gap-2 text-foreground">
+                        <Package className="h-4 w-4 text-foreground" />
+                        <span>{t('products_count_suffix') || 'товарів'}</span>
+                      </span>
+                      <span className="block font-semibold text-emerald-600">{dashboardStats?.totalProducts || 0}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="inline-flex items-center gap-2 text-foreground">
+                        <List className="h-4 w-4 text-foreground" />
+                        <span>{t('categories_count_suffix') || 'категорій'}</span>
+                      </span>
+                      <span className="block font-semibold text-emerald-600">{dashboardStats?.totalCategories || 0}</span>
+                    </div>
                   </div>
                 )}
               </div>

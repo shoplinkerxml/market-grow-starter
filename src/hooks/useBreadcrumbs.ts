@@ -56,10 +56,8 @@ const USER_ROUTE_MAPPING: Record<string, { labelKey: string; parentPath?: string
   "/user/directory": { labelKey: "menu_directories", parentPath: "/user" },
   "/user/directories": { labelKey: "menu_directories", parentPath: "/user" },
   "/user/reference": { labelKey: "menu_directories", parentPath: "/user" },
-  "/user/product-templates": { labelKey: "menu_product_templates", parentPath: "/user/directory" },
   "/user/category-templates": { labelKey: "menu_category_templates", parentPath: "/user/directory" },
   "/user/brand-templates": { labelKey: "menu_brand_templates", parentPath: "/user/directory" },
-  "/user/product-colors": { labelKey: "menu_product_colors", parentPath: "/user/directory" },
 };
 
 export function useBreadcrumbs(): BreadcrumbItem[] {
@@ -293,11 +291,6 @@ export function usePageInfo() {
           title: t("menu_directories"),
           description: undefined,
         };
-      case "/user/product-templates":
-        return {
-          title: t("menu_product_templates"),
-          description: undefined,
-        };
       case "/user/category-templates":
         return {
           title: t("menu_category_templates"),
@@ -306,11 +299,6 @@ export function usePageInfo() {
       case "/user/brand-templates":
         return {
           title: t("menu_brand_templates"),
-          description: undefined,
-        };
-      case "/user/product-colors":
-        return {
-          title: t("menu_product_colors"),
           description: undefined,
         };
       case "/user/products":

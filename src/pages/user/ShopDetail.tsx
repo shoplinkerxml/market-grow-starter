@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Edit, Settings, Share2, Package, List, Store as StoreIcon } from 'lucide-react';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/PageHeader';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
@@ -18,6 +19,7 @@ import { ShopService, type ShopAggregated } from '@/lib/shop-service';
 import { ProductService, type Product } from '@/lib/product-service';
 import { useShopRealtimeSync } from "@/hooks/useShopRealtimeSync";
 import { RefreshDataButton } from '@/components/RefreshDataButton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export const ShopDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -183,16 +185,32 @@ export const ShopDetail = () => {
           hideTitleOnMobile
           actions={
             <div className="flex gap-1 sm:gap-2 items-center w-full justify-end sm:w-auto flex-nowrap">
-              <div className="hidden sm:flex items-center gap-2 mr-1">
-                <span className="inline-flex items-center gap-1 text-xs border rounded-md px-3 py-1">
-                  <Package className="h-3 w-3" />
-                  <span>{productsCount}</span>
-                </span>
-                <span className="inline-flex items-center gap-1 text-xs border rounded-md px-3 py-1">
-                  <List className="h-3 w-3" />
-                  <span>{categoriesCount}</span>
-                </span>
-              </div>
+              <TooltipProvider delayDuration={200}>
+                <div className="hidden sm:flex items-center gap-2 mr-1">
+                  <Badge variant="outline" className="text-sm flex items-center gap-1.5 border-0">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center">
+                          <Package className="h-4 w-4" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">{t('products_title')}</TooltipContent>
+                    </Tooltip>
+                    <span>{productsCount}</span>
+                  </Badge>
+                  <Badge variant="outline" className="text-sm flex items-center gap-1.5 border-0">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center">
+                          <List className="h-4 w-4" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">{t('categories_title')}</TooltipContent>
+                    </Tooltip>
+                    <span>{categoriesCount}</span>
+                  </Badge>
+                </div>
+              </TooltipProvider>
               <div id="user_products_header_mobile_controls" className="flex items-center gap-1 sm:hidden" />
 
               <Button

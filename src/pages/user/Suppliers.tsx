@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, ArrowLeft, Truck } from 'lucide-react';
+import { Gauge, Plus, ArrowLeft, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/PageHeader';
 import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
@@ -15,6 +15,7 @@ import { useOutletContext } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { RefreshDataButton } from "@/components/RefreshDataButton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type ViewMode = 'list' | 'create' | 'edit';
 
@@ -131,10 +132,28 @@ export const Suppliers = () => {
           <div className="flex gap-2 items-center">
             {viewMode === 'list' && (
               <>
-                <Badge variant="outline" className="text-sm flex items-center gap-1.5">
-                  <Truck className="h-4 w-4" />
-                  <span>{suppliersCount} / {supplierLimit}</span>
-                </Badge>
+                <TooltipProvider delayDuration={200}>
+                  <Badge variant="outline" className="text-sm flex items-center gap-1.5 border-0">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center">
+                          <Truck className="h-4 w-4" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">{t('suppliers_title')}</TooltipContent>
+                    </Tooltip>
+                    <span>{suppliersCount}</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center">
+                          <Gauge className="h-4 w-4" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">{t('limit_tooltip')}</TooltipContent>
+                    </Tooltip>
+                    <span>{supplierLimit}</span>
+                  </Badge>
+                </TooltipProvider>
                 <RefreshDataButton onRefresh={handleRefresh} />
                 {suppliersCount > 0 && (
                   <Button 

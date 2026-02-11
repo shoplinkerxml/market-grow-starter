@@ -57,8 +57,11 @@ const UserLayout = () => {
     );
   }, [ctxUiUserProfile, user.avatar_url, user.email, user.name, user.role]);
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-    navigate("/user-auth", { replace: true });
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } finally {
+      navigate("/user-auth", { replace: true });
+    }
   }, [navigate]);
   const handleProfileNavigation = useCallback(
     (path: string) => {

@@ -108,7 +108,7 @@ export const SuppliersList = ({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 rounded-full border border-transparent hover:border-emerald-500 hover:text-emerald-600 focus-visible:ring-0 focus-visible:ring-offset-0"
                     onClick={() => onEdit?.(supplier)}
                   >
                     <Edit className="h-4 w-4" />
@@ -116,7 +116,7 @@ export const SuppliersList = ({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    className="h-8 w-8 p-0 rounded-full border border-transparent text-destructive hover:border-destructive hover:text-destructive focus-visible:ring-0 focus-visible:ring-offset-0"
                     onClick={() => setDeleteDialog({ open: true, supplier })}
                   >
                     <Trash2 className="h-4 w-4" />

@@ -34,8 +34,11 @@ const AdminLayoutInner: React.FC<AdminLayoutInnerProps> = ({ userProfile, conten
   const [profileSheetOpen, setProfileSheetOpen] = useState(false);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/admin-auth", { replace: true });
+    try {
+      await supabase.auth.signOut({ scope: "local" });
+    } finally {
+      navigate("/admin-auth", { replace: true });
+    }
   };
 
   const handleProfileNavigation = (path: string) => {

@@ -111,7 +111,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, u
   const signOut = async () => {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
       navigate('/admin-auth', { replace: true });
     } catch (error) {
       console.error('Logout error:', error);

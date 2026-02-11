@@ -18,7 +18,7 @@ import { ShopService, type Shop, type ShopAggregated } from "@/lib/shop-service"
 import { ShopStructureEditor } from "@/components/user/shops";
 import { ExportDialog } from "@/components/user/shops/ExportDialog";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
-import { Layers, Package, Palette, Tag } from "lucide-react";
+import { Layers, Tag } from "lucide-react";
 
 interface UserDashboardContextType {
   user: UserProfile;
@@ -142,22 +142,10 @@ const UserMenuContentByPath = () => {
         href: "/user/category-templates",
       },
       {
-        key: "product-templates",
-        titleKey: "menu_product_templates",
-        icon: Package,
-        href: "/user/product-templates",
-      },
-      {
         key: "brand-templates",
         titleKey: "menu_brand_templates",
         icon: Tag,
         href: "/user/brand-templates",
-      },
-      {
-        key: "product-colors",
-        titleKey: "menu_product_colors",
-        icon: Palette,
-        href: "/user/product-colors",
       },
     ],
     [],
@@ -180,6 +168,10 @@ const UserMenuContentByPath = () => {
   }, [pageMetaForLoader.iconName]);
 
   useEffect(() => {
+    if (["product-templates", "product-colors"].includes(normalizedPath)) {
+      navigate("/user/directory", { replace: true });
+      return;
+    }
     const loadMenuItem = async () => {
       if (shopRoute) {
         setError(null);
