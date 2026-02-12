@@ -140,6 +140,7 @@ const UserDashboard = () => {
     setIsDemoLoading(true);
     setDemoProgress(5);
     let timer: number | null = null;
+    let toastPayload: { type: "success" | "info" | "error"; message: string } | null = null;
     try {
       timer = window.setInterval(() => {
         setDemoProgress((prev) => {
@@ -149,33 +150,44 @@ const UserDashboard = () => {
       }, 250);
       const result = await DemoDataService.loadDemoData();
       if (result.status === "already_has_data") {
-        toast.info(t("demo_data_already_loaded") || "Демо-дані вже завантажені");
+        toastPayload = {
+          type: "info",
+          message: t("demo_data_already_loaded") || "Демо-дані вже завантажені",
+        };
       } else {
         const counts = result.counts;
         const summary = counts
           ? `${counts.categories} ${t("categories_count_suffix") || "категорій"}, ${counts.products} ${t("products_count_suffix") || "товарів"}, ${counts.stores} ${t("shops_count_suffix") || "магазинів"}, ${counts.suppliers} ${t("suppliers_count_suffix") || "постачальників"}`
           : "";
-        toast.success(
-          summary
+        toastPayload = {
+          type: "success",
+          message: summary
             ? `${t("demo_data_loaded") || "Демо-дані завантажені"}: ${summary}`
-            : t("demo_data_loaded") || "Демо-дані завантажені"
-        );
+            : t("demo_data_loaded") || "Демо-дані завантажені",
+        };
       }
       await refetchStats();
       cache.clearByPrefix("template:");
       await refreshUserQueries();
     } catch (error) {
       console.error(error);
-      toast.error(t("demo_data_failed") || "Не вдалося завантажити демо-дані");
+      toastPayload = {
+        type: "error",
+        message: t("demo_data_failed") || "Не вдалося завантажити демо-дані",
+      };
     } finally {
       if (timer) window.clearInterval(timer);
-      setDemoProgress(100);
-      window.setTimeout(() => {
-        setIsDemoDialogOpen(false);
-        setIsDemoLoading(false);
-        setDemoProgress(0);
-      }, 300);
     }
+    setDemoProgress(100);
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+    if (toastPayload) {
+      if (toastPayload.type === "success") toast.success(toastPayload.message);
+      if (toastPayload.type === "info") toast.info(toastPayload.message);
+      if (toastPayload.type === "error") toast.error(toastPayload.message);
+    }
+    setIsDemoDialogOpen(false);
+    setIsDemoLoading(false);
+    setDemoProgress(0);
   };
 
   const handleRefresh = useCallback(async () => {
@@ -383,20 +395,16 @@ const UserDashboard = () => {
                     <Skeleton className="h-4 w-1/2" />
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <span className="inline-flex items-center gap-2 text-foreground">
-                        <Package className="h-4 w-4 text-foreground" />
-                        <span>{t('products_count_suffix') || 'товарів'}</span>
-                      </span>
-                      <span className="block font-semibold text-emerald-600">{dashboardStats?.totalProducts || 0}</span>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2 text-foreground">
+                      <Package className="h-4 w-4 text-foreground" />
+                      <span>{t('products_count_suffix') || 'товарів'}</span>
+                      <span className="font-semibold text-emerald-600">{dashboardStats?.totalProducts || 0}</span>
                     </div>
-                    <div className="space-y-1">
-                      <span className="inline-flex items-center gap-2 text-foreground">
-                        <List className="h-4 w-4 text-foreground" />
-                        <span>{t('categories_count_suffix') || 'категорій'}</span>
-                      </span>
-                      <span className="block font-semibold text-emerald-600">{dashboardStats?.totalCategories || 0}</span>
+                    <div className="flex flex-wrap items-center gap-2 text-foreground">
+                      <List className="h-4 w-4 text-foreground" />
+                      <span>{t('categories_count_suffix') || 'категорій'}</span>
+                      <span className="font-semibold text-emerald-600">{dashboardStats?.totalCategories || 0}</span>
                     </div>
                   </div>
                 )}
