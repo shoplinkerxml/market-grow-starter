@@ -139,7 +139,7 @@ const AdminLayoutInner: React.FC<AdminLayoutInnerProps> = ({ userProfile, conten
 
         {/* Content Workspace */}
         <main className="flex-1 overflow-y-auto bg-admin-page">
-          <div className="p-4 md:p-6 min-h-full">
+          <div className="p-4 pt-3 sm:pt-4 md:p-6 min-h-full">
             <div className="bg-admin-content dark:bg-neutral-800 rounded-lg shadow-md min-h-[calc(100vh-8rem)]">
               {contentBlocked ? (
                 <ProgressiveLoader

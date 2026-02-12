@@ -214,7 +214,7 @@ const UserDashboard = () => {
     if (tariffLimits && tariffLimits.length > 0) setLimits(tariffLimits);
   }, [tariffLimits]);
   
-  return <div className="space-y-6 p-6">
+  return <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <Breadcrumb items={breadcrumbs} />

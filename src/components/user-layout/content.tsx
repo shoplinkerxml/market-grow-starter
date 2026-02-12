@@ -205,7 +205,7 @@ export const UserLayoutContent = ({
         />
 
         <main className="flex-1 min-h-0 overflow-y-auto bg-background dark:bg-neutral-950 scrollbar-unified">
-          <div className="h-full">
+          <div className="h-full -mt-2 sm:mt-0">
             {contentBlocked ? (
               <ProgressiveLoader
                 isLoading={true}
