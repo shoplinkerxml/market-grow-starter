@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +12,13 @@ import { useI18n } from "@/i18n";
 import { ArrowLeft, Save, Upload, User } from "lucide-react";
 import { toast } from "sonner";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
+import { UserProfileAccountService } from "@/lib/user-profile-account-service";
+import { withProfileErrorHandling } from "@/lib/error-handler";
+import { UserAuthService } from "@/lib/user-auth-service";
 
 const UserProfile = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { t } = useI18n();
   const { user, refetch } = useOutletContext<{ user: UserProfileType | null; refetch: () => Promise<void> }>();
   const [saving, setSaving] = useState(false);
@@ -46,9 +51,27 @@ const UserProfile = () => {
 
     setSaving(true);
     try {
-      void name;
-      void phone;
-      toast.error(t("failed_update_profile"));
+      const payload = {
+        name: name.trim(),
+        phone: phone.trim() ? phone.trim() : null,
+      };
+      const { data, error } = await withProfileErrorHandling(
+        () => UserProfileAccountService.updatePersonalProfile(user.id, payload),
+        "profile save"
+      );
+      if (error) {
+        toast.error(error.message || t("failed_update_profile"));
+      } else {
+        if (data) {
+          setName(data.name || "");
+          setPhone(data.phone || "");
+        }
+        UserAuthService.clearAuthMeCache();
+        await queryClient.invalidateQueries({ queryKey: ["auth", "me"], exact: true });
+        await refetch();
+        await queryClient.refetchQueries({ queryKey: ["auth", "me"], exact: true });
+        toast.success(t("profile_updated_success"));
+      }
     } catch (error) {
       console.error("Error updating profile:", error);
       toast.error(t("failed_update_profile"));
