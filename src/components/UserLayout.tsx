@@ -53,9 +53,10 @@ const UserLayout = () => {
         name: user.name,
         role: user.role,
         avatarUrl: user.avatar_url || "",
+        status: user.status,
       }
     );
-  }, [ctxUiUserProfile, user.avatar_url, user.email, user.name, user.role]);
+  }, [ctxUiUserProfile, user.avatar_url, user.email, user.name, user.role, user.status]);
   const signOut = useCallback(async () => {
     try {
       await supabase.auth.signOut({ scope: "local" });

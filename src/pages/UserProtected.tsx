@@ -131,6 +131,7 @@ const UserProtected = () => {
       name: user.name,
       role: user.role,
       avatarUrl: user.avatar_url || "",
+      status: user.status,
     };
   }, [user]);
 

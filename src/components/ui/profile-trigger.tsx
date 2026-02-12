@@ -22,7 +22,8 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
     name: "Administrator",
     email: "admin@example.com", 
     role: "Business",
-    avatarUrl: "/placeholder.svg"
+    avatarUrl: "/placeholder.svg",
+    status: "active",
   };
 
   const getAvatarFallback = () => {
@@ -37,6 +38,7 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
     const url = userInfo.avatarUrl?.trim();
     return url && url !== '' ? url : '/placeholder.svg';
   };
+  const statusRingClass = userInfo.status === "active" ? "ring-emerald-500" : "ring-red-500";
 
   // Header position logic
   if (position === 'header') {
@@ -48,17 +50,13 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
         onClick={onClick}
         data-testid="admin_profileTrigger_header"
       >
-        <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8">
+        <div className="flex items-center">
+          <Avatar className={`h-8 w-8 ring-2 ring-offset-2 ring-offset-background ${statusRingClass}`}>
             <AvatarImage src={getAvatarUrl()} alt="Admin" />
             <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
               {getAvatarFallback()}
             </AvatarFallback>
           </Avatar>
-          <div className="hidden sm:flex flex-col text-left leading-tight">
-            <span className="text-sm font-medium">{userInfo.name}</span>
-            <span className="text-xs text-muted-foreground">{userInfo.role}</span>
-          </div>
         </div>
       </div>
     );
@@ -77,7 +75,7 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
               className="w-10 h-10 p-0 hover:bg-emerald-50 hover:border-emerald-200/30 border border-transparent transition-all duration-200 dark:hover:bg-transparent dark:hover:border-emerald-500/60"
               aria-label="User Profile"
             >
-              <Avatar className="h-6 w-6">
+              <Avatar className={`h-6 w-6 ring-2 ring-offset-2 ring-offset-background ${statusRingClass}`}>
                 <AvatarImage src={getAvatarUrl()} alt="Admin" />
                 <AvatarFallback className="bg-emerald-100 text-emerald-600 text-xs font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
                   {getAvatarFallback()}
@@ -98,18 +96,15 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
     <button
       ref={ref as React.RefObject<HTMLButtonElement>}
       onClick={onClick}
-      className="w-full flex items-center gap-2 pl-2 pr-3 py-1 h-auto rounded-lg transition-colors group cursor-pointer select-none hover:bg-emerald-50 dark:hover:bg-transparent dark:hover:border-emerald-500/50 border border-transparent"
+      className="w-full flex items-center pl-2 pr-3 py-1 h-auto rounded-lg transition-colors group cursor-pointer select-none hover:bg-emerald-50 dark:hover:bg-transparent dark:hover:border-emerald-500/50 border border-transparent"
+      aria-label={userInfo.name}
     >
-      <Avatar className="h-8 w-8">
-        <AvatarImage src={getAvatarUrl()} alt="Admin" />
+      <Avatar className={`h-8 w-8 ring-2 ring-offset-2 ring-offset-background ${statusRingClass}`}>
+        <AvatarImage src={getAvatarUrl()} alt={userInfo.name} />
         <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
           {getAvatarFallback()}
         </AvatarFallback>
       </Avatar>
-      <div className="flex flex-col text-left leading-tight">
-        <span className="text-sm font-medium">{userInfo.name}</span>
-        <span className="text-xs text-muted-foreground">{userInfo.role}</span>
-      </div>
     </button>
   );
 });

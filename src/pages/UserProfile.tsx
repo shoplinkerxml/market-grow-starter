@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+ 
 import { UserProfile as UserProfileType } from "@/lib/user-auth-schemas";
 import { useI18n } from "@/i18n";
 import { ArrowLeft, Save, Upload, User } from "lucide-react";
@@ -143,39 +143,32 @@ const UserProfile = () => {
             <CardContent className="space-y-6">
               {/* Avatar Section */}
               <div className="flex items-center space-x-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage src={avatarUrl} alt={name} />
-                  <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xl dark:bg-emerald-900/40 dark:text-emerald-200">
-                    {name ? getUserInitials(name) : "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200">
-                      {user.role}
-                    </Badge>
-                    <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                      {user.status}
-                    </Badge>
-                  </div>
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarUpload}
-                      className="hidden"
-                      id="avatar-upload"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById('avatar-upload')?.click()}
-                      disabled={uploading}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {uploading ? t("profile_uploading") : t("profile_change_avatar")}
-                    </Button>
-                  </div>
+                <div className="relative group">
+                  <Avatar
+                    className={`h-20 w-20 ring-2 ring-offset-2 ring-offset-background ${
+                      user.status === "active" ? "ring-emerald-500" : "ring-red-500"
+                    }`}
+                  >
+                    <AvatarImage src={avatarUrl} alt={name} />
+                    <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xl dark:bg-emerald-900/40 dark:text-emerald-200">
+                      {name ? getUserInitials(name) : "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <label
+                    htmlFor="avatar-upload"
+                    aria-label={uploading ? t("profile_uploading") : t("profile_change_avatar")}
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-emerald-600/90 text-white opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
+                  >
+                    <Upload className="h-5 w-5" />
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                    id="avatar-upload"
+                    disabled={uploading}
+                  />
                 </div>
               </div>
 

@@ -21,7 +21,8 @@ export const ProfileSheetContent: React.FC<ProfileSheetContentProps> = ({
     name: "Administrator",
     email: "admin@example.com",
     role: "Business",
-    avatarUrl: ""
+    avatarUrl: "",
+    status: "active",
   };
 
   const handleProfileClick = () => {
@@ -50,7 +51,11 @@ export const ProfileSheetContent: React.FC<ProfileSheetContentProps> = ({
     <div className="mt-4 space-y-6">
       {/* User Details Section */}
       <div className="flex items-center gap-3 border-b pb-4 dark:border-emerald-500/30">
-        <Avatar className="h-12 w-12">
+        <Avatar
+          className={`h-12 w-12 ring-2 ring-offset-2 ring-offset-background ${
+            userInfo.status === "active" ? "ring-emerald-500" : "ring-red-500"
+          }`}
+        >
           <AvatarImage src={userInfo.avatarUrl || "/placeholder.svg"} alt="Admin" />
           <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
             {getAvatarFallback()}
@@ -58,7 +63,6 @@ export const ProfileSheetContent: React.FC<ProfileSheetContentProps> = ({
         </Avatar>
         <div className="flex-1">
           <div className="font-semibold">{userInfo.name}</div>
-          <div className="text-sm text-muted-foreground">{userInfo.role}</div>
           <div className="text-sm text-muted-foreground flex items-center gap-2">
             <Mail className="h-4 w-4" />
             {userInfo.email}

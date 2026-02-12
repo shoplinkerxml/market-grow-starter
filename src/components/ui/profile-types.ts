@@ -9,6 +9,7 @@ export interface UserProfile {
   name: string;
   role: string;
   avatarUrl: string;
+  status?: "active" | "inactive";
 }
 
 export interface ProfileSectionProps {

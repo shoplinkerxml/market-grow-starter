@@ -200,6 +200,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             name: profile.name || 'Administrator',
             role: profile.role || 'admin',
             avatarUrl: finalAvatarUrl,
+            status: profile.status,
           });
         } else {
           // If no profile exists, create a default admin profile
@@ -220,6 +221,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 name: defaultProfile.name || 'Administrator',
                 role: defaultProfile.role || 'admin',
                 avatarUrl: defaultProfile.avatar_url || '/placeholder.svg',
+                status: defaultProfile.status,
               });
             }
           } catch (createError) {
@@ -231,6 +233,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               name: user.user_metadata?.name || user.email?.split('@')[0] || 'Administrator',
               role: 'admin',
               avatarUrl: '/placeholder.svg',
+              status: 'active',
             });
           }
         }
@@ -243,6 +246,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           name: 'Administrator',
           role: 'admin',
           avatarUrl: '/placeholder.svg',
+          status: 'active',
         });
       } finally {
         setProfileLoading(false);
