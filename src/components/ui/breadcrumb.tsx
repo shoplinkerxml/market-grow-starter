@@ -27,7 +27,18 @@ const BreadcrumbComponent = React.forwardRef<
             <React.Fragment key={index}>
               <BreadcrumbItem>
                 {item.current || !item.href ? (
-                  <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                  <BreadcrumbPage>
+                    {item.mobileIcon ? (
+                      <>
+                        <span className="sm:hidden flex items-center" aria-label={item.label}>
+                          {item.mobileIcon}
+                        </span>
+                        <span className="hidden sm:inline">{item.label}</span>
+                      </>
+                    ) : (
+                      item.label
+                    )}
+                  </BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink asChild>
                     <Link to={item.href}>

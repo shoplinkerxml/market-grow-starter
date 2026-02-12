@@ -36,8 +36,9 @@ type SubscriptionEntity = {
     is_lifetime?: boolean | null;
   };
 };
-import { Breadcrumb, type BreadcrumbItem } from "@/components/ui/breadcrumb";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { AlertCircle } from "lucide-react";
+import { useBreadcrumbs } from "@/hooks/useBreadcrumbs";
  
 interface UserDashboardContextType {
   user: UserProfileType;
@@ -76,14 +77,7 @@ const UserDashboard = () => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  // Breadcrumb items using shadcn/ui breadcrumb
-  const breadcrumbs: BreadcrumbItem[] = [{
-    label: t('menu_main') || 'Main',
-    href: '/user/dashboard'
-  }, {
-    label: t('menu_dashboard') || 'Dashboard',
-    current: true
-  }];
+  const breadcrumbs = useBreadcrumbs();
 
   const [endDate, setEndDate] = useState<string | null>(null);
   const [tariffName, setTariffName] = useState<string | null>(null);
@@ -113,18 +107,13 @@ const UserDashboard = () => {
     refetchOnWindowFocus: true
   });
 
-  const hasExistingData = !!(
-    dashboardStats?.totalProducts ||
-    dashboardStats?.totalCategories ||
-    (dashboardStats?.suppliers?.length ?? 0) > 0 ||
-    (dashboardStats?.stores?.length ?? 0) > 0
-  );
+  const hasProducts = (dashboardStats?.totalProducts ?? 0) > 0;
   const hasActiveTariff = !!(
     subscription?.hasValidSubscription &&
     subscription?.subscription &&
     subscription.subscription.is_active !== false
   );
-  const isDemoButtonActive = !isStatsLoading && !isDemoLoading && !hasExistingData && hasActiveTariff;
+  const isDemoButtonVisible = !isStatsLoading && !isDemoLoading && !hasProducts && hasActiveTariff;
 
   const refreshUserQueries = useCallback(async () => {
     const predicate = (q: { queryKey?: unknown }) => {
@@ -226,20 +215,24 @@ const UserDashboard = () => {
   }, [tariffLimits]);
   
   return <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Breadcrumb items={breadcrumbs} />
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <Breadcrumb items={breadcrumbs} />
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           <RefreshDataButton onRefresh={handleRefresh} />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsDemoDialogOpen(true)}
-            disabled={!isDemoButtonActive}
-            className={isDemoButtonActive ? "hover:border-emerald-500 hover:shadow-md active:scale-95 active:shadow-inner" : ""}
-          >
-            <Database className="h-4 w-4" />
-            {t("load_demo_data") || "Завантажити демо-дані"}
-          </Button>
+          {isDemoButtonVisible ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDemoDialogOpen(true)}
+              className="h-8 w-8 sm:w-auto sm:px-3 hover:border-emerald-500 hover:shadow-md active:scale-95 active:shadow-inner"
+              aria-label={t("load_demo_data") || "Завантажити демо-дані"}
+            >
+              <Database className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("load_demo_data") || "Завантажити демо-дані"}</span>
+            </Button>
+          ) : null}
         </div>
       </div>
 

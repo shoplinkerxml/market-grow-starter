@@ -181,7 +181,7 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
           label: t(currentRoute.labelKey as any),
           href: currentPath === path ? undefined : currentPath,
           current: currentPath === path,
-          mobileIcon: currentPath !== path ? MOBILE_ICON_MAP[currentRoute.labelKey] : undefined,
+          mobileIcon: MOBILE_ICON_MAP[currentRoute.labelKey],
         });
       }
     };
