@@ -2,12 +2,12 @@ import React, { useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { useI18n } from "@/i18n";
 import { BreadcrumbItem } from "@/components/ui/breadcrumb";
-import { Home, Store, Package, Truck, BookOpen, CreditCard, Settings, User } from "lucide-react";
+import { Home, Store, Package, Truck, BookOpen, CreditCard, Settings, User, LayoutDashboard } from "lucide-react";
 
 /** Map route label keys to mobile icons */
 const MOBILE_ICON_MAP: Record<string, React.ReactElement> = {
   breadcrumb_home: React.createElement(Home, { className: "h-3.5 w-3.5" }),
-  breadcrumb_dashboard: React.createElement(Home, { className: "h-3.5 w-3.5" }),
+  breadcrumb_dashboard: React.createElement(LayoutDashboard, { className: "h-3.5 w-3.5" }),
   shops_title: React.createElement(Store, { className: "h-3.5 w-3.5" }),
   products_title: React.createElement(Package, { className: "h-3.5 w-3.5" }),
   menu_suppliers: React.createElement(Truck, { className: "h-3.5 w-3.5" }),

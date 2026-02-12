@@ -26,7 +26,7 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "space-y-1 sm:space-y-2",
+        hideTitleOnMobile ? "space-y-0 sm:space-y-2" : "space-y-1 sm:space-y-2",
         className
       )}
     >
@@ -35,7 +35,9 @@ export function PageHeader({
         "flex items-center gap-2",
         hideTitleOnMobile ? "justify-between" : ""
       )}>
-        <Breadcrumb items={breadcrumbItems} />
+        <div className="min-w-0 flex-1">
+          <Breadcrumb items={breadcrumbItems} />
+        </div>
         {hideTitleOnMobile && actions && (
           <div className="flex items-center gap-2 shrink-0 sm:hidden">
             {actions}
@@ -44,7 +46,7 @@ export function PageHeader({
       </div>
       
       {/* Title row with actions (desktop) */}
-      <div className="space-y-1">
+      <div className={cn("space-y-1", hideTitleOnMobile ? "hidden sm:block" : "")}>
         <div className={cn(
           mobileActionsInline
             ? "flex items-center gap-2 flex-nowrap"

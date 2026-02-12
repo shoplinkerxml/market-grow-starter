@@ -283,7 +283,7 @@ const UserMenuContentByPath = () => {
   if (isDirectoriesPage) {
     return (
       <div className="p-6 space-y-6">
-        <PageHeader title={t("menu_directories")} breadcrumbItems={breadcrumbs} />
+        <PageHeader title={t("menu_directories")} breadcrumbItems={breadcrumbs} hideTitleOnMobile />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {directoriesConfig.map((item) => {
             const Icon = item.icon;
@@ -313,7 +313,7 @@ const UserMenuContentByPath = () => {
     return (
       <div className="p-6 space-y-6">
         <div className="space-y-2">
-          <PageHeader title={t(placeholderConfig.titleKey as "menu_product_templates")} breadcrumbItems={breadcrumbs} />
+          <PageHeader title={t(placeholderConfig.titleKey as "menu_product_templates")} breadcrumbItems={breadcrumbs} hideTitleOnMobile />
         </div>
         <div className="flex justify-center">
           <Empty className="border max-w-md">

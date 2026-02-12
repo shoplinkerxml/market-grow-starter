@@ -127,6 +127,7 @@ export const Suppliers = () => {
             : t('edit_supplier_description')
         }
         breadcrumbItems={breadcrumbs}
+        hideTitleOnMobile
         mobileActionsInline
         actions={
           <div className="flex gap-2 items-center">

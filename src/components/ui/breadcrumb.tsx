@@ -2,6 +2,7 @@ import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cn } from "@/lib/utils"
 import { ChevronRight, MoreHorizontal } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Link } from "react-router-dom"
 
 export interface BreadcrumbItem {
@@ -30,9 +31,16 @@ const BreadcrumbComponent = React.forwardRef<
                   <BreadcrumbPage>
                     {item.mobileIcon ? (
                       <>
-                        <span className="sm:hidden flex items-center" aria-label={item.label}>
-                          {item.mobileIcon}
-                        </span>
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="sm:hidden flex items-center" aria-label={item.label}>
+                                {item.mobileIcon}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">{item.label}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                         <span className="hidden sm:inline">{item.label}</span>
                       </>
                     ) : (
@@ -44,7 +52,16 @@ const BreadcrumbComponent = React.forwardRef<
                     <Link to={item.href}>
                       {item.mobileIcon ? (
                         <>
-                          <span className="sm:hidden flex items-center" aria-label={item.label}>{item.mobileIcon}</span>
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="sm:hidden flex items-center" aria-label={item.label}>
+                                  {item.mobileIcon}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">{item.label}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <span className="hidden sm:inline">{item.label}</span>
                         </>
                       ) : (

@@ -227,6 +227,7 @@ const TariffPage = () => {
           title={t("menu_pricing")}
           description={t("choose_your_plan_description")}
           breadcrumbItems={breadcrumbs}
+          hideTitleOnMobile
         />
         <Card>
           <CardContent className="p-6 text-muted-foreground">
@@ -243,6 +244,7 @@ const TariffPage = () => {
         title={t('menu_pricing')}
         description={t('choose_your_plan_description')}
         breadcrumbItems={breadcrumbs}
+        hideTitleOnMobile
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
