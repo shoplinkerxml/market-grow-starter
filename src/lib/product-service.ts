@@ -523,6 +523,15 @@ export class ProductService {
 
   /** Обновление товара через функцию update-product */
   static async updateProduct(id: string, productData: Types.UpdateProductData): Promise<void> {
+    // Before updating, clean up R2 images that were removed by the user
+    if (productData.images) {
+      try {
+        await ProductImageService.cleanupRemovedImages(String(id), (productData.images || []) as any);
+      } catch (error) {
+        console.error("ProductService.updateProduct cleanupRemovedImages failed", error);
+      }
+    }
+
     const productId = await ProductCoreService.updateProduct(id, productData);
 
     // Upload images missing R2 keys (e.g. demo product images from external URLs)
@@ -559,6 +568,13 @@ export class ProductService {
 
   /** Удаление товара */
   static async deleteProduct(id: string): Promise<void> {
+    // Delete R2 images before deleting the product (we need product data to find R2 keys)
+    try {
+      await ProductImageService.deleteAllProductImages(String(id));
+    } catch (error) {
+      console.error("ProductService.deleteProduct deleteAllProductImages failed", error);
+    }
+
     await ProductCoreService.deleteProduct(id);
     try {
       ProductService.clearMasterProductsCaches();
@@ -575,6 +591,13 @@ export class ProductService {
   }
 
   static async bulkDeleteProducts(ids: string[]): Promise<{ deleted: number }> {
+    // Delete R2 images for all products before bulk delete
+    try {
+      await Promise.all(ids.map((id) => ProductImageService.deleteAllProductImages(String(id)).catch(() => {})));
+    } catch (error) {
+      console.error("ProductService.bulkDeleteProducts deleteAllProductImages failed", error);
+    }
+
     const out = await ProductCoreService.bulkDeleteProducts(ids);
     try {
       ProductService.clearMasterProductsCaches();
