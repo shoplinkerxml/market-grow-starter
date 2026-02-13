@@ -524,6 +524,23 @@ export class ProductService {
   /** Обновление товара через функцию update-product */
   static async updateProduct(id: string, productData: Types.UpdateProductData): Promise<void> {
     const productId = await ProductCoreService.updateProduct(id, productData);
+
+    // Upload images missing R2 keys (e.g. demo product images from external URLs)
+    if (productData.images && productData.images.length > 0) {
+      try {
+        const { processed, changed } = await ProductImageService.uploadMissingObjectKeysFromUrls(
+          String(productId),
+          (productData.images || []) as any,
+        );
+        if (changed) {
+          // Re-save with updated R2 keys (without triggering this upload again since keys are now set)
+          await ProductCoreService.updateProduct(String(productId), { images: processed as unknown as Types.ProductImage[] });
+        }
+      } catch (error) {
+        console.error("ProductService.updateProduct upload missing R2 keys failed", error);
+      }
+    }
+
     try {
       ProductService.clearMasterProductsCaches();
       ProductService.clearAllProductsCaches();

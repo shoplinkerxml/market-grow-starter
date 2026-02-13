@@ -1694,6 +1694,7 @@ export type Database = {
       get_user_product_limit: { Args: { p_user_id: string }; Returns: number }
       is_admin: { Args: never; Returns: boolean }
       is_owner_supplier: { Args: { p_supplier_id: number }; Returns: boolean }
+      load_demo_data: { Args: { p_user_id: string }; Returns: Json }
       recompute_category_counters_for_store: {
         Args: { p_store_id: string }
         Returns: undefined
