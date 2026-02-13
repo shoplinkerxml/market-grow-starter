@@ -4,7 +4,7 @@ import { SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
 import { EdgeClient } from "@/lib/request-handler";
 
-type ImageInput = ProductImage & { object_key?: string };
+type ImageInput = ProductImage & { object_key?: string; r2_key_original?: string | null };
 
 export class ProductImageService {
   private static edgeError(
@@ -120,5 +120,96 @@ export class ProductImageService {
 
     const changed = processed.some((p, idx) => !!p.object_key && !origImages[idx]?.object_key);
     return { processed, changed };
+  }
+
+  /**
+   * Extracts R2 object key from an image record (from object_key, r2_key_original, or URL).
+   */
+  private static extractR2Key(img: ImageInput): string | null {
+    if (img.object_key) return img.object_key;
+    if (img.r2_key_original) return img.r2_key_original;
+    const url = String(img.url || "").trim();
+    if (!url) return null;
+    try {
+      const u = new URL(url);
+      const host = String(u.host || "");
+      if (host.includes("r2.dev") || host.includes("cloudflarestorage.com")) {
+        return R2Storage.extractObjectKeyFromUrl(url);
+      }
+    } catch {}
+    return null;
+  }
+
+  /**
+   * Deletes R2 objects that were removed during product update.
+   * Compares old images (from DB) with new images being saved,
+   * and deletes any R2 keys that are no longer referenced.
+   */
+  static async cleanupRemovedImages(
+    productId: string,
+    newImages: Array<ImageInput>,
+  ): Promise<void> {
+    try {
+      // Get current images from DB
+      const oldImages = await ProductImageService.getProductImages(productId);
+
+      // Collect R2 keys from new images
+      const newKeys = new Set<string>();
+      for (const img of newImages || []) {
+        const key = ProductImageService.extractR2Key(img as ImageInput);
+        if (key) newKeys.add(key);
+      }
+
+      // Find R2 keys in old images that are not in new images
+      const keysToDelete: string[] = [];
+      for (const img of oldImages) {
+        const key = ProductImageService.extractR2Key(img as ImageInput);
+        if (key && !newKeys.has(key)) {
+          keysToDelete.push(key);
+        }
+      }
+
+      // Delete orphaned R2 objects
+      if (keysToDelete.length > 0) {
+        await Promise.all(
+          keysToDelete.map(async (key) => {
+            try {
+              await R2Storage.deleteFile(key);
+            } catch (e) {
+              console.warn("Failed to delete R2 key:", key, e);
+            }
+          }),
+        );
+      }
+    } catch (e) {
+      console.error("ProductImageService.cleanupRemovedImages failed", e);
+    }
+  }
+
+  /**
+   * Deletes all R2 images for a product (used when deleting the product).
+   */
+  static async deleteAllProductImages(productId: string): Promise<void> {
+    try {
+      const images = await ProductImageService.getProductImages(productId);
+      const keysToDelete: string[] = [];
+      for (const img of images) {
+        const key = ProductImageService.extractR2Key(img as ImageInput);
+        if (key) keysToDelete.push(key);
+      }
+      if (keysToDelete.length > 0) {
+        await Promise.all(
+          keysToDelete.map(async (key) => {
+            try {
+              await R2Storage.deleteFile(key);
+            } catch (e) {
+              console.warn("Failed to delete R2 key on product delete:", key, e);
+            }
+          }),
+        );
+      }
+    } catch (e) {
+      console.error("ProductImageService.deleteAllProductImages failed", e);
+    }
   }
 }
