@@ -523,7 +523,7 @@ export class ProductService {
 
   /** Обновление товара через функцию update-product */
   static async updateProduct(id: string, productData: Types.UpdateProductData): Promise<void> {
-    // Before updating, clean up R2 images that were removed by the user
+    // 1. Clean up R2 images that were removed by the user
     if (productData.images) {
       try {
         await ProductImageService.cleanupRemovedImages(String(id), (productData.images || []) as any);
@@ -532,23 +532,27 @@ export class ProductService {
       }
     }
 
-    const productId = await ProductCoreService.updateProduct(id, productData);
-
-    // Upload images missing R2 keys (e.g. demo product images from external URLs)
+    // 2. Upload external URLs to R2 BEFORE saving — so we save only once with final R2 keys
+    let finalImages = productData.images;
     if (productData.images && productData.images.length > 0) {
       try {
         const { processed, changed } = await ProductImageService.uploadMissingObjectKeysFromUrls(
-          String(productId),
+          String(id),
           (productData.images || []) as any,
         );
         if (changed) {
-          // Re-save with updated R2 keys (without triggering this upload again since keys are now set)
-          await ProductCoreService.updateProduct(String(productId), { images: processed as unknown as Types.ProductImage[] });
+          finalImages = processed as unknown as Types.ProductImage[];
         }
       } catch (error) {
         console.error("ProductService.updateProduct upload missing R2 keys failed", error);
       }
     }
+
+    // 3. Save once with final data (R2 keys already set)
+    const productId = await ProductCoreService.updateProduct(id, {
+      ...productData,
+      ...(finalImages ? { images: finalImages } : {}),
+    });
 
     try {
       ProductService.clearMasterProductsCaches();
