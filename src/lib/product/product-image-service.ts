@@ -108,7 +108,8 @@ export class ProductImageService {
           try {
             const res = await R2Storage.uploadProductImageFromUrl(String(productId), u);
             const nextKey = res.r2KeyOriginal || undefined;
-            const nextUrl = res.originalUrl || u;
+            // Build proper public URL from R2 key (matches format: https://pub-xxx.r2.dev/products/…/original.webp)
+            const nextUrl = nextKey ? R2Storage.makePublicUrl(nextKey) : (res.originalUrl || u);
             return { object_key: nextKey, url: nextUrl, order_index: i.order_index, is_main: i.is_main };
           } catch {
             return { object_key: undefined, url: u, order_index: i.order_index, is_main: i.is_main };
