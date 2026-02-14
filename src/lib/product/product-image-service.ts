@@ -104,11 +104,26 @@ export class ProductImageService {
         const u = String(i.url || "").trim();
         if (key) return { object_key: key, url: u, order_index: i.order_index, is_main: i.is_main };
         if (!u) return { object_key: undefined, url: u, order_index: i.order_index, is_main: i.is_main };
+
+        // If URL is already an R2 URL, extract key from it — don't re-upload
+        if (/^https?:\/\//i.test(u)) {
+          try {
+            const parsed = new URL(u);
+            const host = String(parsed.host || "");
+            if (host.includes("r2.dev") || host.includes("cloudflarestorage.com")) {
+              const extractedKey = R2Storage.extractObjectKeyFromUrl(u);
+              if (extractedKey) {
+                return { object_key: extractedKey, url: R2Storage.makePublicUrl(extractedKey), order_index: i.order_index, is_main: i.is_main };
+              }
+            }
+          } catch {}
+        }
+
+        // External URL or data: — upload to R2
         if (/^(https?:\/\/|data:)/i.test(u)) {
           try {
             const res = await R2Storage.uploadProductImageFromUrl(String(productId), u);
             const nextKey = res.r2KeyOriginal || undefined;
-            // Build proper public URL from R2 key (matches format: https://pub-xxx.r2.dev/products/…/original.webp)
             const nextUrl = nextKey ? R2Storage.makePublicUrl(nextKey) : (res.originalUrl || u);
             return { object_key: nextKey, url: nextUrl, order_index: i.order_index, is_main: i.is_main };
           } catch {
