@@ -174,41 +174,46 @@ Deno.serve(async (req) => {
       productsData = pData || []
       storeLinksData = lData || []
 
-      const categoryIds = Array.from(
-        new Set(
-          (storeCategoryRows || [])
-            .map((r: any) => Number(r?.category_id))
-            .filter((id: number) => Number.isFinite(id))
-        )
-      )
-      const customCategoryIds = Array.from(
-        new Set(
-          (storeLinksData || [])
-            .map((l: any) => Number(l?.custom_category_id))
-            .filter((id: number) => Number.isFinite(id))
-        )
-      )
-      const allCategoryIds = Array.from(new Set([...categoryIds, ...customCategoryIds]))
-
-      if (allCategoryIds.length > 0) {
-        const { data: categoryRows, error: categoriesError } = await supabaseClient
-          .from('store_categories')
-          .select('id, external_id, name')
-          .in('id', allCategoryIds)
-        if (categoriesError) console.error('Categories resolve error:', categoriesError)
-        const keys = new Set<string>()
-        for (const row of categoryRows || []) {
-          const raw = row?.external_id != null ? String(row.external_id) : (row?.name != null ? String(row.name) : '')
-          const key = raw.trim().toLowerCase()
-          if (key) keys.add(key)
-          if (row?.id != null) {
-            const label = row?.name != null ? String(row.name) : (row?.external_id != null ? String(row.external_id) : '')
-            if (label) categoryNameById.set(String(row.id), label)
-          }
-        }
-        totalCategories = keys.size
-      } else {
+      // If there are no products at all, totalCategories must be 0
+      if (totalProducts === 0) {
         totalCategories = 0
+      } else {
+        const categoryIds = Array.from(
+          new Set(
+            (storeCategoryRows || [])
+              .map((r: any) => Number(r?.category_id))
+              .filter((id: number) => Number.isFinite(id))
+          )
+        )
+        const customCategoryIds = Array.from(
+          new Set(
+            (storeLinksData || [])
+              .map((l: any) => Number(l?.custom_category_id))
+              .filter((id: number) => Number.isFinite(id))
+          )
+        )
+        const allCategoryIds = Array.from(new Set([...categoryIds, ...customCategoryIds]))
+
+        if (allCategoryIds.length > 0) {
+          const { data: categoryRows, error: categoriesError } = await supabaseClient
+            .from('store_categories')
+            .select('id, external_id, name')
+            .in('id', allCategoryIds)
+          if (categoriesError) console.error('Categories resolve error:', categoriesError)
+          const keys = new Set<string>()
+          for (const row of categoryRows || []) {
+            const raw = row?.external_id != null ? String(row.external_id) : (row?.name != null ? String(row.name) : '')
+            const key = raw.trim().toLowerCase()
+            if (key) keys.add(key)
+            if (row?.id != null) {
+              const label = row?.name != null ? String(row.name) : (row?.external_id != null ? String(row.external_id) : '')
+              if (label) categoryNameById.set(String(row.id), label)
+            }
+          }
+          totalCategories = keys.size
+        } else {
+          totalCategories = 0
+        }
       }
     }
 
