@@ -311,9 +311,9 @@ Deno.serve(async (req) => {
           categories: []
         }
       }
-      const primary = categoriesBySupplier.get(sid)
+      // Always use fallback (categories derived from actual products), not all supplier categories
       const fallback = fallbackCategoriesBySupplier.get(sid)
-      const list = Array.from((primary && primary.size > 0 ? primary : fallback)?.values() || [])
+      const list = Array.from(fallback?.values() || [])
       list.sort((a, b) => a.localeCompare(b))
       return {
         id: s.id,
