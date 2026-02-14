@@ -19,6 +19,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SupplierService } from "@/lib/supplier-service";
 import { ProductLimitService } from "@/lib/product/product-limit-service";
 import { DashboardService } from "@/lib/dashboard-service";
+import { listTemplates } from "@/lib/category-template";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { DemoDataService } from "@/lib/demo-data-service";
@@ -107,13 +108,26 @@ const UserDashboard = () => {
     refetchOnWindowFocus: true
   });
 
-  const hasProducts = (dashboardStats?.totalProducts ?? 0) > 0;
+  const { data: templatesList, isLoading: isTemplatesLoading } = useQuery({
+    queryKey: ["user", user.id, "category-templates"],
+    queryFn: async () => await listTemplates(),
+    enabled: !!user.id,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true
+  });
+
+  const hasSuppliers = (dashboardStats?.suppliers?.length ?? 0) > 0;
+  const hasShops = (dashboardStats?.stores?.length ?? 0) > 0;
+  const hasTemplates = (templatesList?.length ?? 0) > 0;
   const hasActiveTariff = !!(
     subscription?.hasValidSubscription &&
     subscription?.subscription &&
     subscription.subscription.is_active !== false
   );
-  const isDemoButtonVisible = !isStatsLoading && !isDemoLoading && !hasProducts && hasActiveTariff;
+  const isEmptyCabinet = !hasSuppliers && !hasShops && !hasTemplates;
+  const canLoadDemoData = !isStatsLoading && !isDemoLoading && !isTemplatesLoading && isEmptyCabinet && hasActiveTariff;
+  const isDemoButtonVisible = canLoadDemoData;
 
   const refreshUserQueries = useCallback(async () => {
     const predicate = (q: { queryKey?: unknown }) => {
