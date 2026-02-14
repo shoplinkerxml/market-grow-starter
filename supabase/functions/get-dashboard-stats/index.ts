@@ -295,6 +295,17 @@ Deno.serve(async (req) => {
 
     const transformedSuppliers = suppliers?.map(s => {
       const sid = String(s.id)
+      const productCount = supplierCounts[String(s.id)] || 0
+      // If supplier has 0 products, categories count should be 0
+      if (productCount === 0) {
+        return {
+          id: s.id,
+          supplier_name: s.supplier_name,
+          productCount: 0,
+          categoriesCount: 0,
+          categories: []
+        }
+      }
       const primary = categoriesBySupplier.get(sid)
       const fallback = fallbackCategoriesBySupplier.get(sid)
       const list = Array.from((primary && primary.size > 0 ? primary : fallback)?.values() || [])
@@ -302,7 +313,7 @@ Deno.serve(async (req) => {
       return {
         id: s.id,
         supplier_name: s.supplier_name,
-        productCount: supplierCounts[String(s.id)] || 0,
+        productCount,
         categoriesCount: list.length,
         categories: list
       }
