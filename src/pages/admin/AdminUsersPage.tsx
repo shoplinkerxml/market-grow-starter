@@ -22,6 +22,7 @@ import { useBreadcrumbs, usePageInfo } from "@/hooks/useBreadcrumbs";
 import { useUsers, useToggleUserStatus, usePrefetchUsers } from "@/hooks/useUsers";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
 import { Users } from "lucide-react";
+import { cleanupDialogArtifacts } from "@/lib/utils";
 
 interface UserFilters {
   search: string;
@@ -75,7 +76,7 @@ export default function AdminUsersPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
+
   // Data fetching
   const { data: usersData, isLoading, error, refetch } = useUsers(filters, pagination);
   const toggleUserStatusMutation = useToggleUserStatus();
@@ -105,6 +106,14 @@ export default function AdminUsersPage() {
   const handleDeleteUser = (user: UserProfile) => {
     setSelectedUser(user);
     setShowDeleteDialog(true);
+  };
+
+  const handleDeleteDialogChange = (open: boolean) => {
+    setShowDeleteDialog(open);
+    if (!open) {
+      setSelectedUser(null);
+      cleanupDialogArtifacts();
+    }
   };
   
   const handleViewUserDetails = (user: UserProfile) => {
@@ -156,8 +165,7 @@ export default function AdminUsersPage() {
   };
   
   const handleDeleteSuccess = () => {
-    setShowDeleteDialog(false);
-    setSelectedUser(null);
+    handleDeleteDialogChange(false);
     refetch();
   };
 
@@ -343,7 +351,7 @@ export default function AdminUsersPage() {
       {selectedUser && (
         <DeleteUserDialog
           open={showDeleteDialog}
-          onOpenChange={setShowDeleteDialog}
+          onOpenChange={handleDeleteDialogChange}
           user={selectedUser}
           onSuccess={handleDeleteSuccess}
         />

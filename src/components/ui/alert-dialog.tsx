@@ -1,10 +1,21 @@
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 
-import { cn } from "@/lib/utils"
+import { cleanupDialogArtifacts, cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button-variants"
 
-const AlertDialog = AlertDialogPrimitive.Root
+const AlertDialog = ({
+  onOpenChange,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Root>) => (
+  <AlertDialogPrimitive.Root
+    {...props}
+    onOpenChange={(open) => {
+      if (!open) cleanupDialogArtifacts();
+      onOpenChange?.(open);
+    }}
+  />
+)
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 
@@ -33,19 +44,10 @@ type AlertDialogContentProps = React.ComponentPropsWithoutRef<typeof AlertDialog
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   AlertDialogContentProps
->(({ className, overlayClassName, noOverlay, ...props }, ref) => {
+>(({ className, overlayClassName, noOverlay, onCloseAutoFocus, ...props }, ref) => {
   React.useEffect(() => {
     return () => {
-      document.querySelectorAll('[inert]').forEach((el) => {
-        el.removeAttribute('inert');
-      });
-      document.querySelectorAll('[aria-hidden="true"]').forEach((el) => {
-        el.removeAttribute('aria-hidden');
-      });
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.documentElement.classList.remove('react-remove-scroll');
-      document.body.classList.remove('react-remove-scroll');
+      cleanupDialogArtifacts();
     };
   }, []);
   return (
@@ -57,6 +59,10 @@ const AlertDialogContent = React.forwardRef<
           "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] data-[state=closed]:pointer-events-none sm:rounded-lg",
           className
         )}
+        onCloseAutoFocus={(event) => {
+          cleanupDialogArtifacts();
+          onCloseAutoFocus?.(event);
+        }}
         {...props}
       />
     </AlertDialogPortal>

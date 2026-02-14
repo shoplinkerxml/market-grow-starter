@@ -217,10 +217,14 @@ export async function ensureProfile(
       return profile;
     }
 
+    const email = String(profileData.email || "").trim();
+    const nameSource = String(profileData.name || "").trim();
+    const fallbackName = email ? email.split("@")[0] : "";
+    const resolvedName = nameSource || fallbackName || "Administrator";
     profile = await upsertProfile({
       id: userId,
-      email: profileData.email,
-      name: profileData.name,
+      email,
+      name: resolvedName,
       role: "admin",
       status: "active",
     } as any);

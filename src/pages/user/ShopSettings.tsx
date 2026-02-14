@@ -25,6 +25,7 @@ import { ProgressiveLoader, FullPageLoader } from "@/components/LoadingSkeletons
 import { toast } from "sonner";
 import { ShopCountsService } from "@/lib/shop-counts";
 import { EdgeClient } from "@/lib/request-handler";
+import { cleanupDialogArtifacts } from "@/lib/utils";
 type StoreCategoryRow = {
   store_category_id: number;
   store_id: string;
@@ -61,17 +62,6 @@ export default function ShopSettings() {
   const [selectedRowIds, setSelectedRowIds] = useState<number[]>([]);
   const [editRow, setEditRow] = useState<StoreCategoryRow | null>(null);
   const [editOpen, setEditOpen] = useState<boolean>(false);
-  const cleanupDialogArtifacts = () => {
-    try {
-      document.querySelectorAll('[inert]').forEach(el => {
-        el.removeAttribute('inert');
-        el.removeAttribute('aria-hidden');
-      });
-      document.querySelectorAll('[aria-hidden="true"]').forEach(el => {
-        el.removeAttribute('aria-hidden');
-      });
-    } catch { void 0; }
-  };
   const [editExternalId, setEditExternalId] = useState<string>("");
   const [editRzIdValue, setEditRzIdValue] = useState<string>("");
   const [editActive, setEditActive] = useState<boolean>(true);

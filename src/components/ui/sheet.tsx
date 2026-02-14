@@ -3,7 +3,7 @@
 import * as React from "react"
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+import { cleanupDialogArtifacts, cn } from "@/lib/utils"
 import { X } from "lucide-react"
 
 const Sheet = (
@@ -57,19 +57,10 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => {
+>(({ side = "right", className, children, onCloseAutoFocus, ...props }, ref) => {
   React.useEffect(() => {
     return () => {
-      document.querySelectorAll('[inert]').forEach((el) => {
-        el.removeAttribute('inert');
-      });
-      document.querySelectorAll('[aria-hidden="true"]').forEach((el) => {
-        el.removeAttribute('aria-hidden');
-      });
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.documentElement.classList.remove('react-remove-scroll');
-      document.body.classList.remove('react-remove-scroll');
+      cleanupDialogArtifacts();
     };
   }, []);
   return (
@@ -79,22 +70,15 @@ const SheetContent = React.forwardRef<
         ref={ref}
         className={cn(sheetVariants({ side }), className)}
         onInteractOutside={(e) => e.preventDefault()}
+        onCloseAutoFocus={(event) => {
+          cleanupDialogArtifacts();
+          onCloseAutoFocus?.(event);
+        }}
         {...props}
       >
         <SheetPrimitive.Close
           className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary"
-          onClick={() => {
-            document.querySelectorAll('[inert]').forEach((el) => {
-              el.removeAttribute('inert');
-            });
-            document.querySelectorAll('[aria-hidden="true"]').forEach((el) => {
-              el.removeAttribute('aria-hidden');
-            });
-            document.documentElement.style.overflow = '';
-            document.body.style.overflow = '';
-            document.documentElement.classList.remove('react-remove-scroll');
-            document.body.classList.remove('react-remove-scroll');
-          }}
+          onClick={() => cleanupDialogArtifacts()}
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>

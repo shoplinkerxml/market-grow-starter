@@ -31,9 +31,12 @@ const AdminAuth = () => {
         // Ensure profile exists and has default avatar if missing
         try {
           const userId = data.session.user.id;
+          const emailValue = data.session.user.email || '';
+          const metaName = data.session.user.user_metadata?.name || '';
+          const resolvedName = metaName || (emailValue ? emailValue.split('@')[0] : 'Administrator');
           const profile = await ProfileService.ensureProfile(userId, {
-            email: data.session.user.email || '',
-            name: data.session.user.user_metadata?.name || ''
+            email: emailValue,
+            name: resolvedName
           });
           
           if (!profile) {

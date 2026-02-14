@@ -1,19 +1,18 @@
 import React from "react";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useI18n } from "@/i18n";
 import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
 import { useDeleteUser } from "@/hooks/useUsers";
+import { cleanupDialogArtifacts } from "@/lib/utils";
 
 interface UserProfile {
   id: string;
@@ -43,9 +42,15 @@ export function DeleteUserDialog({
   const { t } = useI18n();
   const deleteUserMutation = useDeleteUser();
 
+  React.useEffect(() => {
+    if (!open) cleanupDialogArtifacts();
+  }, [open]);
+
   const handleDelete = async () => {
     try {
       await deleteUserMutation.mutateAsync(user.id);
+      onOpenChange(false);
+      cleanupDialogArtifacts();
       onSuccess();
     } catch (error) {
       console.error("Failed to delete user:", error);
@@ -61,26 +66,26 @@ export function DeleteUserDialog({
     .slice(0, 2);
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-lg" noOverlay>
-        <AlertDialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg" noOverlay>
+        <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
             <div>
-              <AlertDialogTitle className="text-left">
+              <DialogTitle className="text-left">
                 <span className="flex items-center gap-2">
                   <Trash2 className="h-4 w-4 text-muted-foreground" />
                   {t("delete_user_title")}
                 </span>
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-left">
+              </DialogTitle>
+              <DialogDescription className="text-left">
                 {t("delete_user_desc")}
-              </AlertDialogDescription>
+              </DialogDescription>
             </div>
           </div>
-        </AlertDialogHeader>
+        </DialogHeader>
 
         <div className="my-4">
           <div className="flex items-center gap-3 rounded-lg border p-4">
@@ -110,14 +115,20 @@ export function DeleteUserDialog({
           </div>
         </div>
 
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleteUserMutation.isPending}>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={deleteUserMutation.isPending}
+          >
             {t("btn_cancel")}
-          </AlertDialogCancel>
-          <AlertDialogAction
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
             onClick={handleDelete}
             disabled={deleteUserMutation.isPending}
-            className="bg-destructive hover:bg-destructive/90 focus:ring-destructive"
           >
             {deleteUserMutation.isPending ? (
               <>
@@ -127,9 +138,9 @@ export function DeleteUserDialog({
             ) : (
               t("btn_delete")
             )}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

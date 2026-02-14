@@ -2,7 +2,7 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cleanupDialogArtifacts, cn } from "@/lib/utils"
 
 const Dialog = (
   props: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>
@@ -38,19 +38,10 @@ type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, hideClose = false, overlayClassName, noOverlay, ...props }, ref) => {
+>(({ className, children, hideClose = false, overlayClassName, noOverlay, onCloseAutoFocus, ...props }, ref) => {
   React.useEffect(() => {
     return () => {
-      document.querySelectorAll('[inert]').forEach((el) => {
-        el.removeAttribute('inert');
-      });
-      document.querySelectorAll('[aria-hidden="true"]').forEach((el) => {
-        el.removeAttribute('aria-hidden');
-      });
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.documentElement.classList.remove('react-remove-scroll');
-      document.body.classList.remove('react-remove-scroll');
+      cleanupDialogArtifacts();
     };
   }, []);
   return (
@@ -63,24 +54,17 @@ const DialogContent = React.forwardRef<
           className
         )}
         onInteractOutside={(e) => e.preventDefault()}
+        onCloseAutoFocus={(event) => {
+          cleanupDialogArtifacts();
+          onCloseAutoFocus?.(event);
+        }}
         {...props}
       >
         {children}
         {!hideClose && (
           <DialogPrimitive.Close
             className="absolute right-3 top-3 z-20 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-            onClick={() => {
-              document.querySelectorAll('[inert]').forEach((el) => {
-                el.removeAttribute('inert');
-              });
-              document.querySelectorAll('[aria-hidden="true"]').forEach((el) => {
-                el.removeAttribute('aria-hidden');
-              });
-              document.documentElement.style.overflow = '';
-              document.body.style.overflow = '';
-              document.documentElement.classList.remove('react-remove-scroll');
-              document.body.classList.remove('react-remove-scroll');
-            }}
+            onClick={() => cleanupDialogArtifacts()}
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
