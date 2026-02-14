@@ -235,7 +235,7 @@ const UserMenuContentByPath = () => {
     };
 
     loadMenuItem();
-  }, [path, fullPath, user.id, t, menuItems, shopRoute]);
+  }, [path, fullPath, user.id, t, menuItems, shopRoute, navigate, normalizedPath]);
 
   if (shopRoute) {
     const handleClose = (open: boolean) => {

@@ -86,25 +86,11 @@ const AdminProtected = () => {
   }, []);
 
   if (!ready) {
-    if (isHardReload && hardReloadCover) {
-      return (
-        <PageLoadingModal
-          title="Завантаження…"
-          subtitle="Перевіряємо доступ адміністратора"
-          icon={LayoutDashboard}
-        />
-      );
-    }
     return (
-      <Outlet
-        context={{
-          adminAuthLoading: true,
-          adminAuthLoader: {
-            title: "Завантаження…",
-            subtitle: "Перевіряємо доступ адміністратора",
-            icon: LayoutDashboard,
-          },
-        }}
+      <PageLoadingModal
+        title="Завантаження…"
+        subtitle="Перевіряємо доступ адміністратора"
+        icon={LayoutDashboard}
       />
     );
   }
