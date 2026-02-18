@@ -105,16 +105,20 @@ export class ProductImageService {
         if (key) return { object_key: key, url: u, order_index: i.order_index, is_main: i.is_main };
         if (!u) return { object_key: undefined, url: u, order_index: i.order_index, is_main: i.is_main };
 
-        // If URL is already an R2 URL, extract key from it — don't re-upload
+        // If URL is already a properly structured R2 product URL (products/...), extract key — don't re-upload
+        // But if the key doesn't start with "products/", it's a demo/external image hosted on r2.dev
+        // and needs to be re-uploaded to the correct products/ path structure
         if (/^https?:\/\//i.test(u)) {
           try {
             const parsed = new URL(u);
             const host = String(parsed.host || "");
             if (host.includes("r2.dev") || host.includes("cloudflarestorage.com")) {
               const extractedKey = R2Storage.extractObjectKeyFromUrl(u);
-              if (extractedKey) {
+              // Only skip re-upload if key is in the correct products/ format
+              if (extractedKey && extractedKey.startsWith("products/")) {
                 return { object_key: extractedKey, url: R2Storage.makePublicUrl(extractedKey), order_index: i.order_index, is_main: i.is_main };
               }
+              // Key doesn't have proper products/ structure — fall through to re-upload
             }
           } catch {}
         }
@@ -140,8 +144,14 @@ export class ProductImageService {
 
   /**
    * Extracts R2 object key from an image record (from object_key, r2_key_original, or URL).
+   * Only returns keys in products/ path format to avoid treating demo/external
+   * images hosted on r2.dev as owned product images.
    */
   private static extractR2Key(img: ImageInput): string | null {
+    // object_key and r2_key_original are authoritative — use them directly
+    if (img.object_key && img.object_key.startsWith("products/")) return img.object_key;
+    if (img.r2_key_original && img.r2_key_original.startsWith("products/")) return img.r2_key_original;
+    // Fallback: any non-products/ key (legacy data)
     if (img.object_key) return img.object_key;
     if (img.r2_key_original) return img.r2_key_original;
     const url = String(img.url || "").trim();
@@ -150,7 +160,9 @@ export class ProductImageService {
       const u = new URL(url);
       const host = String(u.host || "");
       if (host.includes("r2.dev") || host.includes("cloudflarestorage.com")) {
-        return R2Storage.extractObjectKeyFromUrl(url);
+        const key = R2Storage.extractObjectKeyFromUrl(url);
+        // Only treat as owned product key if it's in products/ format
+        if (key && key.startsWith("products/")) return key;
       }
     } catch {}
     return null;
