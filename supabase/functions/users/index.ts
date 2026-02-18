@@ -434,6 +434,48 @@ Deno.serve(async (req) => {
       let deletedProfile = false;
 
       try {
+        const { data: storeRows, error: storesError } = await serviceClient
+          .from('user_stores')
+          .select('id')
+          .eq('user_id', userId);
+        if (storesError) {
+          console.warn("User stores fetch error:", storesError.message);
+        }
+
+        const { data: supplierRows, error: suppliersError } = await serviceClient
+          .from('user_suppliers')
+          .select('id')
+          .eq('user_id', userId);
+        if (suppliersError) {
+          console.warn("User suppliers fetch error:", suppliersError.message);
+        }
+
+        const entityIds = new Set<string>();
+        entityIds.add(String(userId));
+        for (const row of storeRows || []) {
+          const storeId = String((row as any)?.id || '').trim();
+          if (!storeId) continue;
+          entityIds.add(storeId);
+          entityIds.add(`store:${storeId}:products`);
+          entityIds.add(`store:${storeId}:categories`);
+        }
+        for (const row of supplierRows || []) {
+          const supplierId = String((row as any)?.id || '').trim();
+          if (!supplierId) continue;
+          entityIds.add(supplierId);
+        }
+
+        if (entityIds.size > 0) {
+          const ids = Array.from(entityIds);
+          const { error: countersError } = await serviceClient
+            .from('counters')
+            .delete()
+            .in('entity_id', ids);
+          if (countersError) {
+            console.warn("Counters cleanup error:", countersError.message);
+          }
+        }
+
         // Удаление из Auth
         const { error: authError } = await serviceClient.auth.admin.deleteUser(userId);
         if (!authError) {
