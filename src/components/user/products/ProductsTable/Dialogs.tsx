@@ -17,7 +17,7 @@ export function CopyProgressDialog({ open, name, t }: { open: boolean; name: str
       <DialogNoOverlayContent
         position="top-right"
         variant="info"
-        className="p-4 w-[min(24rem,92vw)] border-0"
+        className="p-4 w-[min(24rem,92vw)] border border-success/60 dark:border-success/70"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         data-testid="user_products_copy_progress"
@@ -51,7 +51,7 @@ export function DeleteProgressDialog({ open, t }: { open: boolean; t: (k: string
       <DialogNoOverlayContent
         position="top-right"
         variant="info"
-        className="p-4 w-[min(24rem,92vw)] border-0"
+        className="p-4 w-[min(24rem,92vw)] border border-success/60 dark:border-success/70"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         data-testid="user_products_delete_progress"
@@ -85,7 +85,7 @@ export function ProductImageDeleteProgressDialog({
       <DialogNoOverlayContent
         position="top-right"
         variant="info"
-        className="p-4 w-[min(24rem,92vw)] border-0"
+        className="p-4 w-[min(24rem,92vw)] border border-success/60 dark:border-success/70"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         data-testid="user_products_image_delete_progress"
@@ -125,7 +125,7 @@ export function ProductSaveProgressDialog({
       <DialogNoOverlayContent
         position="top-right"
         variant="info"
-        className="p-4 w-[min(24rem,92vw)] border-0"
+        className="p-4 w-[min(24rem,92vw)] border border-success/60 dark:border-success/70"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         data-testid="user_products_save_progress"
@@ -168,7 +168,7 @@ export function ExportProgressDialog({
       <DialogNoOverlayContent
         position="top-right"
         variant="info"
-        className="p-4 w-[min(24rem,92vw)] border border-emerald-200"
+        className="p-4 w-[min(24rem,92vw)] border border-success/60 dark:border-success/70"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         data-testid="user_products_export_progress"
@@ -229,7 +229,7 @@ export function ImportUpdateProgressDialog({
       <DialogNoOverlayContent
         position="top-right"
         variant="info"
-        className="p-4 w-[min(26rem,92vw)] border border-sky-200 bg-gradient-to-b from-sky-50 to-background"
+        className="p-4 w-[min(26rem,92vw)] border border-success/60 dark:border-success/70 bg-gradient-to-b from-sky-50 to-background"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         data-testid="user_products_import_progress"
@@ -313,24 +313,15 @@ export function DeleteDialog({
     <DialogNoOverlay open={open} onOpenChange={onOpenChange} modal={false}>
       <DialogNoOverlayContent
         position="center"
-        className="p-6 w-[min(28rem,92vw)]"
+        className="p-6 w-[min(28rem,92vw)] border border-destructive/60 dark:border-destructive/70"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <DialogNoOverlayHeader>
-          <DialogNoOverlayTitle className="text-sm flex items-center gap-2 text-destructive">
+          <DialogNoOverlayTitle className="text-sm flex items-center gap-2 text-white">
             <Trash2 className="h-4 w-4 text-destructive" />
             {t("delete_product_confirm")}
           </DialogNoOverlayTitle>
-          <DialogNoOverlayDescription>
-            {product?.name ? (
-              <span>
-                {t("delete")}: "{product?.name}". {t("cancel")}? 
-              </span>
-            ) : (
-              <span>{t("delete_product_confirm")}</span>
-            )}
-          </DialogNoOverlayDescription>
         </DialogNoOverlayHeader>
         <DialogNoOverlayFooter>
           <Button variant="outline" data-testid="user_products_delete_cancel" onClick={() => onOpenChange(false)}>
@@ -339,7 +330,7 @@ export function DeleteDialog({
           <Button
             data-testid="user_products_delete_confirm"
             onClick={onConfirm}
-            className="bg-destructive hover:bg-destructive/90"
+            className="bg-destructive text-white hover:bg-destructive/90"
           >
             {t("delete")}
           </Button>

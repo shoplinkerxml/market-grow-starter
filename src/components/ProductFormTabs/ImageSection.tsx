@@ -271,7 +271,7 @@ export function ImageSection(props: Props) {
                         variant="ghost"
                         aria-label={t('reorder')}
                         onClick={() => { setReorderList(props.images.slice()); setReorderOpen(true) }}
-                        className="h-7 w-7"
+                        className="h-7 w-7 text-emerald-500 hover:text-emerald-400"
                       >
                         <ListOrdered className="h-3 w-3" />
                       </Button>
@@ -287,7 +287,7 @@ export function ImageSection(props: Props) {
                           variant="ghost"
                           onClick={() => props.onSetMainImage(props.activeIndex)}
                           aria-label={t('set_as_main_photo')}
-                          className="h-7 w-7"
+                          className="h-7 w-7 text-emerald-500 hover:text-emerald-400"
                         >
                           <Check className="h-3 w-3" />
                         </Button>
@@ -303,7 +303,7 @@ export function ImageSection(props: Props) {
                         variant="ghost"
                         onClick={() => props.onRemoveImage(props.activeIndex)}
                         aria-label={t('delete_image')}
-                        className="h-7 w-7"
+                        className="h-7 w-7 text-emerald-500 hover:text-emerald-400"
                       >
                         <X className="h-3 w-3" />
                       </Button>
@@ -318,7 +318,7 @@ export function ImageSection(props: Props) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute top-1/2 -translate-y-1/2"
+                  className="absolute top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-400"
                   style={{ left: 'min(1.75%, 0.5rem)' }}
                   onClick={props.onPrev}
                 >
@@ -327,7 +327,7 @@ export function ImageSection(props: Props) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute top-1/2 -translate-y-1/2"
+                  className="absolute top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-400"
                   style={{ right: 'min(1.75%, 0.5rem)' }}
                   onClick={props.onNext}
                 >

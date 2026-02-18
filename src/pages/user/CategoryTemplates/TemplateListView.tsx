@@ -174,7 +174,7 @@ export function TemplateListView() {
             </div>
           ) : templatesView.length === 0 ? (
             <div className="flex justify-center">
-              <Empty className="border max-w-md">
+              <Empty className="border max-w-md bg-muted/40 dark:bg-muted/30">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <Layers />

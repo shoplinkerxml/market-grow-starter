@@ -147,7 +147,12 @@ export const Products = () => {
 
       {/* Non-modal delete progress indicator */}
       <DialogNoOverlay modal={false} open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogNoOverlayContent position="top-right" variant="info" className="p-[0.75rem] w-[min(22rem,90vw)] border-0" data-testid="user_products_delete_progress">
+        <DialogNoOverlayContent
+          position="top-right"
+          variant="info"
+          className="p-[0.75rem] w-[min(22rem,90vw)] border border-success/60 dark:border-success/70"
+          data-testid="user_products_delete_progress"
+        >
           <DialogNoOverlayHeader>
             <DialogNoOverlayTitle className="flex items-center gap-2 text-destructive">
               <Loader2 className="h-4 w-4 animate-spin text-destructive" />

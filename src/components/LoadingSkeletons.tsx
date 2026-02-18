@@ -1,4 +1,5 @@
 import React from 'react';
+import { Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 export const MenuSkeleton = () => (
   <div className="space-y-2">
@@ -25,7 +26,7 @@ const LoaderCard = ({
       </div>
       <div className="relative p-8 text-center">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-200">
-          {GlowIcon ? <GlowIcon className="h-6 w-6" /> : <div className="h-6 w-6 rounded-full bg-emerald-400" />}
+          {GlowIcon ? <GlowIcon className="h-6 w-6" /> : <Loader2 className="h-6 w-6 animate-spin text-emerald-600 dark:text-emerald-200" />}
         </div>
         <div className="text-lg sm:text-xl font-semibold text-emerald-700 dark:text-emerald-200">{title}</div>
         {subtitle ? (

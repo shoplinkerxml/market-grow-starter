@@ -220,7 +220,12 @@ export const Shops = () => {
         />
       )}
 
-      {isRefreshing && <PageLoadingModal title={t('refreshing_shops')} />}
+      {isRefreshing && (
+        <PageLoadingModal
+          title={t('refreshing_shops')}
+          icon={() => <Store className="h-6 w-6 animate-float-slow text-emerald-600 dark:text-emerald-200" />}
+        />
+      )}
     </div>
   );
 };
