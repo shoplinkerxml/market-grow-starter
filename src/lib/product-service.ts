@@ -523,36 +523,9 @@ export class ProductService {
 
   /** Обновление товара через функцию update-product */
   static async updateProduct(id: string, productData: Types.UpdateProductData): Promise<void> {
-    // 1. Clean up R2 images that were removed by the user
-    if (productData.images) {
-      try {
-        await ProductImageService.cleanupRemovedImages(String(id), (productData.images || []) as any);
-      } catch (error) {
-        console.error("ProductService.updateProduct cleanupRemovedImages failed", error);
-      }
-    }
-
-    // 2. Upload external URLs to R2 BEFORE saving — so we save only once with final R2 keys
-    let finalImages = productData.images;
-    if (productData.images && productData.images.length > 0) {
-      try {
-        const { processed, changed } = await ProductImageService.uploadMissingObjectKeysFromUrls(
-          String(id),
-          (productData.images || []) as any,
-        );
-        if (changed) {
-          finalImages = processed as unknown as Types.ProductImage[];
-        }
-      } catch (error) {
-        console.error("ProductService.updateProduct upload missing R2 keys failed", error);
-      }
-    }
-
-    // 3. Save once with final data (R2 keys already set)
-    const productId = await ProductCoreService.updateProduct(id, {
-      ...productData,
-      ...(finalImages ? { images: finalImages } : {}),
-    });
+    // R2 upload and cleanup is handled entirely by the edge function update-product.
+    // Frontend just passes the current image list (URLs + keys) as-is.
+    const productId = await ProductCoreService.updateProduct(id, productData);
 
     try {
       ProductService.clearMasterProductsCaches();
