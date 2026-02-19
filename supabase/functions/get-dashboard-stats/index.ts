@@ -35,29 +35,6 @@ async function redisPipeline(commands: any[]): Promise<any[] | null> {
   }
 }
 
-function uniqStrings(list: string[]): string[] {
-  const out: string[] = []
-  const seen = new Set<string>()
-  for (const v of list || []) {
-    const s = String(v || '').trim()
-    if (!s) continue
-    if (seen.has(s)) continue
-    seen.add(s)
-    out.push(s)
-  }
-  return out
-}
-
-function counterKey(counterType: unknown, entityId: unknown): string {
-  return `${String(counterType || '')}:${String(entityId || '')}`
-}
-
-function toCount(value: unknown): number {
-  const n = Number(value)
-  if (!Number.isFinite(n)) return 0
-  return Math.max(0, Math.trunc(n))
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -124,37 +101,47 @@ Deno.serve(async (req) => {
     if (shopsError) console.error('Shops fetch error:', shopsError)
 
     const storeIds = shops?.map(s => s.id) || []
-    const supplierIds = (suppliers || [])
-      .map((s: any) => Number(s?.id))
-      .filter((sid: number) => Number.isFinite(sid))
 
     let totalProducts = 0
     let totalCategories = 0
     let productsData: any[] = []
+    let storeLinksData: any[] = []
 
     if (storeIds.length > 0) {
       const [
         { count: pCount, error: pError },
         { data: pData, error: pDataError },
+        { data: lData, error: lError },
       ] = await Promise.all([
+        // Total count of products across all user stores
         supabaseClient
           .from('store_products')
           .select('*', { count: 'exact', head: true })
           .in('store_id', storeIds),
         
+        // Products with category info (for supplier stats and totalCategories)
         supabaseClient
           .from('store_products')
           .select('id, supplier_id, store_id, category_id, category_external_id')
           .in('store_id', storeIds),
+
+        // Store product links (for per-store product counts — original behavior)
+        supabaseClient
+          .from('store_product_links')
+          .select('store_id, product_id')
+          .in('store_id', storeIds)
+          .eq('is_active', true),
       ])
 
       if (pError) console.error('Products count error:', pError)
       if (pDataError) console.error('Products data error:', pDataError)
+      if (lError) console.error('Links error:', lError)
 
       totalProducts = pCount || 0
       productsData = pData || []
+      storeLinksData = lData || []
 
-      // Count totalCategories based on actual category_id of products (most reliable source)
+      // totalCategories: count unique categories from actual products
       if (totalProducts === 0) {
         totalCategories = 0
       } else {
@@ -170,46 +157,31 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Per-supplier: count from store_products (products belong to supplier)
     const supplierCounts: Record<string, number> = {}
-    const shopCounts: Record<string, number> = {}
-    const shopCategorySets = new Map<string, Set<string>>()
-
-    if (productsData) {
-      for (const p of productsData) {
-        // Count per supplier
-        if (p.supplier_id) {
-          const sid = String(p.supplier_id)
-          supplierCounts[sid] = (supplierCounts[sid] || 0) + 1
-        }
-        // Count per store (using store_products directly, not store_product_links)
-        if (p.store_id) {
-          const storeId = String(p.store_id)
-          shopCounts[storeId] = (shopCounts[storeId] || 0) + 1
-          // Track category per store
-          const catKey = p.category_id != null
-            ? `id:${String(p.category_id)}`
-            : (p.category_external_id != null ? `ext:${String(p.category_external_id).trim().toLowerCase()}` : null)
-          if (catKey) {
-            if (!shopCategorySets.has(storeId)) shopCategorySets.set(storeId, new Set<string>())
-            shopCategorySets.get(storeId)!.add(catKey)
-          }
+    const categoriesBySupplier = new Map<string, Set<string>>()
+    for (const p of productsData) {
+      if (p.supplier_id) {
+        const sid = String(p.supplier_id)
+        supplierCounts[sid] = (supplierCounts[sid] || 0) + 1
+        // Track unique categories per supplier
+        const catKey = p.category_id != null
+          ? `id:${String(p.category_id)}`
+          : (p.category_external_id != null ? `ext:${String(p.category_external_id).trim().toLowerCase()}` : null)
+        if (catKey) {
+          if (!categoriesBySupplier.has(sid)) categoriesBySupplier.set(sid, new Set())
+          categoriesBySupplier.get(sid)!.add(catKey)
         }
       }
     }
 
-    // Build categories per supplier based on actual products (category_id or category_external_id)
-    const categoriesBySupplier = new Map<string, Set<string>>()
-    for (const p of productsData || []) {
-      const sid = p?.supplier_id
-      if (sid == null) continue
-      const key = String(sid)
-      // Use category_id as the most reliable unique identifier
-      const catKey = p?.category_id != null
-        ? `id:${String(p.category_id)}`
-        : (p?.category_external_id != null ? `ext:${String(p.category_external_id).trim().toLowerCase()}` : null)
-      if (!catKey) continue
-      if (!categoriesBySupplier.has(key)) categoriesBySupplier.set(key, new Set())
-      categoriesBySupplier.get(key)!.add(catKey)
+    // Per-store: count from store_product_links (original behavior — products linked to store)
+    const shopCounts: Record<string, number> = {}
+    const shopCategorySets = new Map<string, Set<string>>()
+    for (const l of storeLinksData) {
+      if (!l?.store_id) continue
+      const storeId = String(l.store_id)
+      shopCounts[storeId] = (shopCounts[storeId] || 0) + 1
     }
 
     const transformedSuppliers = suppliers?.map((s: any) => {
