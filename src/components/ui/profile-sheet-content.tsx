@@ -16,12 +16,13 @@ export const ProfileSheetContent: React.FC<ProfileSheetContentProps> = ({
   onClose,
 }) => {
   const { t } = useI18n();
+  const defaultAdminAvatarUrl = "https://ehznqzaumsnjkrntaiox.supabase.co/storage/v1/object/public/admin/admin.webp";
 
   const userInfo = userProfile || {
     name: "Administrator",
     email: "admin@example.com",
     role: "Business",
-    avatarUrl: "",
+    avatarUrl: defaultAdminAvatarUrl,
     status: "active",
   };
 
@@ -56,7 +57,7 @@ export const ProfileSheetContent: React.FC<ProfileSheetContentProps> = ({
             userInfo.status === "active" ? "ring-emerald-500" : "ring-red-500"
           }`}
         >
-          <AvatarImage src={userInfo.avatarUrl || "/placeholder.svg"} alt="Admin" />
+          <AvatarImage src={userInfo.avatarUrl || defaultAdminAvatarUrl} alt="Admin" />
           <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
             {getAvatarFallback()}
           </AvatarFallback>

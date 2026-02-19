@@ -18,11 +18,12 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
   },
   ref
 ) => {
+  const defaultAdminAvatarUrl = "https://ehznqzaumsnjkrntaiox.supabase.co/storage/v1/object/public/admin/admin.webp";
   const userInfo = userProfile || {
     name: "Administrator",
     email: "admin@example.com", 
     role: "Business",
-    avatarUrl: "/placeholder.svg",
+    avatarUrl: defaultAdminAvatarUrl,
     status: "active",
   };
 
@@ -36,7 +37,7 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
   // Ensure avatar URL is valid or use placeholder
   const getAvatarUrl = () => {
     const url = userInfo.avatarUrl?.trim();
-    return url && url !== '' ? url : '/placeholder.svg';
+    return url && url !== '' ? url : defaultAdminAvatarUrl;
   };
   const statusRingClass = userInfo.status === "active" ? "ring-emerald-500" : "ring-red-500";
 

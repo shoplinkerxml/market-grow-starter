@@ -450,18 +450,334 @@ Deno.serve(async (req) => {
           console.warn("User suppliers fetch error:", suppliersError.message);
         }
 
+        const storeIds = (storeRows || [])
+          .map((row: any) => String(row?.id || '').trim())
+          .filter(Boolean);
+        const supplierIds = (supplierRows || [])
+          .map((row: any) => String(row?.id || '').trim())
+          .filter(Boolean);
+
+        const categoryIds = new Set<number>();
+        if (storeIds.length > 0) {
+          const { data: categoriesByStore, error: categoriesStoreError } = await serviceClient
+            .from('store_categories')
+            .select('id')
+            .in('store_id', storeIds);
+          if (categoriesStoreError) {
+            console.warn("Store categories fetch error:", categoriesStoreError.message);
+          }
+          for (const row of categoriesByStore || []) {
+            if ((row as any)?.id != null) categoryIds.add(Number((row as any).id));
+          }
+        }
+        if (supplierIds.length > 0) {
+          const { data: categoriesBySupplier, error: categoriesSupplierError } = await serviceClient
+            .from('store_categories')
+            .select('id')
+            .in('supplier_id', supplierIds);
+          if (categoriesSupplierError) {
+            console.warn("Supplier categories fetch error:", categoriesSupplierError.message);
+          }
+          for (const row of categoriesBySupplier || []) {
+            if ((row as any)?.id != null) categoryIds.add(Number((row as any).id));
+          }
+        }
+
+        const productIds = new Set<string>();
+        if (storeIds.length > 0) {
+          const { data: productsByStore, error: productsStoreError } = await serviceClient
+            .from('store_products')
+            .select('id')
+            .in('store_id', storeIds);
+          if (productsStoreError) {
+            console.warn("Store products fetch error:", productsStoreError.message);
+          }
+          for (const row of productsByStore || []) {
+            const pid = String((row as any)?.id || '').trim();
+            if (pid) productIds.add(pid);
+          }
+        }
+        if (supplierIds.length > 0) {
+          const { data: productsBySupplier, error: productsSupplierError } = await serviceClient
+            .from('store_products')
+            .select('id')
+            .in('supplier_id', supplierIds);
+          if (productsSupplierError) {
+            console.warn("Supplier products fetch error:", productsSupplierError.message);
+          }
+          for (const row of productsBySupplier || []) {
+            const pid = String((row as any)?.id || '').trim();
+            if (pid) productIds.add(pid);
+          }
+        }
+
+        const templateIds = new Set<number>();
+        if (categoryIds.size > 0) {
+          const { data: templatesRows, error: templatesError } = await serviceClient
+            .from('category_templates')
+            .select('id')
+            .in('category_id', Array.from(categoryIds));
+          if (templatesError) {
+            console.warn("Category templates fetch error:", templatesError.message);
+          }
+          for (const row of templatesRows || []) {
+            if ((row as any)?.id != null) templateIds.add(Number((row as any).id));
+          }
+        }
+
+        const attributeIds = new Set<number>();
+        if (templateIds.size > 0) {
+          const { data: attributeRows, error: attributesError } = await serviceClient
+            .from('template_attributes')
+            .select('id')
+            .in('template_id', Array.from(templateIds));
+          if (attributesError) {
+            console.warn("Template attributes fetch error:", attributesError.message);
+          }
+          for (const row of attributeRows || []) {
+            if ((row as any)?.id != null) attributeIds.add(Number((row as any).id));
+          }
+        }
+
+        const paramIds = new Set<number>();
+        if (productIds.size > 0) {
+          const { data: paramsRows, error: paramsError } = await serviceClient
+            .from('store_product_params')
+            .select('id')
+            .in('product_id', Array.from(productIds));
+          if (paramsError) {
+            console.warn("Store product params fetch error:", paramsError.message);
+          }
+          for (const row of paramsRows || []) {
+            if ((row as any)?.id != null) paramIds.add(Number((row as any).id));
+          }
+        }
+
+        if (attributeIds.size > 0) {
+          const { error: deleteAttributeValuesError } = await serviceClient
+            .from('attribute_values')
+            .delete()
+            .in('attribute_id', Array.from(attributeIds));
+          if (deleteAttributeValuesError) {
+            console.warn("Attribute values delete error:", deleteAttributeValuesError.message);
+          }
+        }
+
+        if (templateIds.size > 0) {
+          const { error: deleteTemplateAttributesError } = await serviceClient
+            .from('template_attributes')
+            .delete()
+            .in('template_id', Array.from(templateIds));
+          if (deleteTemplateAttributesError) {
+            console.warn("Template attributes delete error:", deleteTemplateAttributesError.message);
+          }
+        }
+
+        if (categoryIds.size > 0) {
+          const { error: deleteCategoryTemplatesError } = await serviceClient
+            .from('category_templates')
+            .delete()
+            .in('category_id', Array.from(categoryIds));
+          if (deleteCategoryTemplatesError) {
+            console.warn("Category templates delete error:", deleteCategoryTemplatesError.message);
+          }
+        }
+
+        if (storeIds.length > 0) {
+          const { error: deleteStoreCategoriesLinksError } = await serviceClient
+            .from('store_store_categories')
+            .delete()
+            .in('store_id', storeIds);
+          if (deleteStoreCategoriesLinksError) {
+            console.warn("Store categories links delete error:", deleteStoreCategoriesLinksError.message);
+          }
+        }
+        if (categoryIds.size > 0) {
+          const { error: deleteCategoryLinksError } = await serviceClient
+            .from('store_store_categories')
+            .delete()
+            .in('category_id', Array.from(categoryIds));
+          if (deleteCategoryLinksError) {
+            console.warn("Category links delete error:", deleteCategoryLinksError.message);
+          }
+        }
+
+        if (paramIds.size > 0) {
+          const { error: deleteParamTemplatesError } = await serviceClient
+            .from('product_param_templates')
+            .delete()
+            .in('product_param_id', Array.from(paramIds));
+          if (deleteParamTemplatesError) {
+            console.warn("Product param templates delete error:", deleteParamTemplatesError.message);
+          }
+        }
+
+        if (productIds.size > 0) {
+          const { error: deleteImagesError } = await serviceClient
+            .from('store_product_images')
+            .delete()
+            .in('product_id', Array.from(productIds));
+          if (deleteImagesError) {
+            console.warn("Store product images delete error:", deleteImagesError.message);
+          }
+
+          const { error: deleteParamsError } = await serviceClient
+            .from('store_product_params')
+            .delete()
+            .in('product_id', Array.from(productIds));
+          if (deleteParamsError) {
+            console.warn("Store product params delete error:", deleteParamsError.message);
+          }
+
+          const { error: deleteLinksError } = await serviceClient
+            .from('store_product_links')
+            .delete()
+            .in('product_id', Array.from(productIds));
+          if (deleteLinksError) {
+            console.warn("Store product links delete error:", deleteLinksError.message);
+          }
+        }
+
+        if (storeIds.length > 0) {
+          const { error: deleteLinksByStoreError } = await serviceClient
+            .from('store_product_links')
+            .delete()
+            .in('store_id', storeIds);
+          if (deleteLinksByStoreError) {
+            console.warn("Store product links by store delete error:", deleteLinksByStoreError.message);
+          }
+        }
+
+        if (storeIds.length > 0) {
+          const { error: deleteStoreProductsError } = await serviceClient
+            .from('store_products')
+            .delete()
+            .in('store_id', storeIds);
+          if (deleteStoreProductsError) {
+            console.warn("Store products delete error:", deleteStoreProductsError.message);
+          }
+        }
+        if (supplierIds.length > 0) {
+          const { error: deleteSupplierProductsError } = await serviceClient
+            .from('store_products')
+            .delete()
+            .in('supplier_id', supplierIds);
+          if (deleteSupplierProductsError) {
+            console.warn("Supplier products delete error:", deleteSupplierProductsError.message);
+          }
+        }
+
+        if (categoryIds.size > 0) {
+          const { error: deleteCategoriesByIdError } = await serviceClient
+            .from('store_categories')
+            .delete()
+            .in('id', Array.from(categoryIds));
+          if (deleteCategoriesByIdError) {
+            console.warn("Store categories delete error:", deleteCategoriesByIdError.message);
+          }
+        }
+        if (storeIds.length > 0) {
+          const { error: deleteCategoriesByStoreError } = await serviceClient
+            .from('store_categories')
+            .delete()
+            .in('store_id', storeIds);
+          if (deleteCategoriesByStoreError) {
+            console.warn("Store categories by store delete error:", deleteCategoriesByStoreError.message);
+          }
+        }
+        if (supplierIds.length > 0) {
+          const { error: deleteCategoriesBySupplierError } = await serviceClient
+            .from('store_categories')
+            .delete()
+            .in('supplier_id', supplierIds);
+          if (deleteCategoriesBySupplierError) {
+            console.warn("Store categories by supplier delete error:", deleteCategoriesBySupplierError.message);
+          }
+        }
+
+        if (storeIds.length > 0) {
+          const { error: deleteCurrenciesError } = await serviceClient
+            .from('store_currencies')
+            .delete()
+            .in('store_id', storeIds);
+          if (deleteCurrenciesError) {
+            console.warn("Store currencies delete error:", deleteCurrenciesError.message);
+          }
+
+          const { error: deleteExportLinksError } = await serviceClient
+            .from('store_export_links')
+            .delete()
+            .in('store_id', storeIds);
+          if (deleteExportLinksError) {
+            console.warn("Store export links delete error:", deleteExportLinksError.message);
+          }
+        }
+
+        const { error: deleteImportJobsError } = await serviceClient
+          .from('product_import_jobs')
+          .delete()
+          .eq('user_id', userId);
+        if (deleteImportJobsError) {
+          console.warn("Product import jobs delete error:", deleteImportJobsError.message);
+        }
+        if (storeIds.length > 0) {
+          const { error: deleteImportJobsByStoreError } = await serviceClient
+            .from('product_import_jobs')
+            .delete()
+            .in('store_id', storeIds);
+          if (deleteImportJobsByStoreError) {
+            console.warn("Product import jobs by store delete error:", deleteImportJobsByStoreError.message);
+          }
+        }
+
+        const { error: deleteMenuItemsError } = await serviceClient
+          .from('user_menu_items')
+          .delete()
+          .eq('user_id', userId);
+        if (deleteMenuItemsError) {
+          console.warn("User menu items delete error:", deleteMenuItemsError.message);
+        }
+
+        const { error: deletePermissionsError } = await serviceClient
+          .from('user_permissions')
+          .delete()
+          .eq('user_id', userId);
+        if (deletePermissionsError) {
+          console.warn("User permissions delete error:", deletePermissionsError.message);
+        }
+
+        const { error: deleteSubscriptionsError } = await serviceClient
+          .from('user_subscriptions')
+          .delete()
+          .eq('user_id', userId);
+        if (deleteSubscriptionsError) {
+          console.warn("User subscriptions delete error:", deleteSubscriptionsError.message);
+        }
+
+        const { error: deleteUserSuppliersError } = await serviceClient
+          .from('user_suppliers')
+          .delete()
+          .eq('user_id', userId);
+        if (deleteUserSuppliersError) {
+          console.warn("User suppliers delete error:", deleteUserSuppliersError.message);
+        }
+
+        const { error: deleteUserStoresError } = await serviceClient
+          .from('user_stores')
+          .delete()
+          .eq('user_id', userId);
+        if (deleteUserStoresError) {
+          console.warn("User stores delete error:", deleteUserStoresError.message);
+        }
+
         const entityIds = new Set<string>();
         entityIds.add(String(userId));
-        for (const row of storeRows || []) {
-          const storeId = String((row as any)?.id || '').trim();
-          if (!storeId) continue;
+        for (const storeId of storeIds) {
           entityIds.add(storeId);
           entityIds.add(`store:${storeId}:products`);
           entityIds.add(`store:${storeId}:categories`);
         }
-        for (const row of supplierRows || []) {
-          const supplierId = String((row as any)?.id || '').trim();
-          if (!supplierId) continue;
+        for (const supplierId of supplierIds) {
           entityIds.add(supplierId);
         }
 
@@ -477,12 +793,30 @@ Deno.serve(async (req) => {
         }
 
         // Удаление из Auth
+        const { data: authUserBefore, error: authUserBeforeError } = await serviceClient.auth.admin.getUserById(userId);
+        if (authUserBeforeError) {
+          console.warn("Auth get user error:", authUserBeforeError.message);
+        }
+        const authUserExistsBefore = !!authUserBefore?.user;
+
         const { error: authError } = await serviceClient.auth.admin.deleteUser(userId);
         if (!authError) {
           deletedAuth = true;
           console.log(`Successfully deleted user from auth: ${userId}`);
         } else {
           console.warn("Auth delete error:", authError.message);
+        }
+
+        const { data: authUserAfter, error: authUserAfterError } = await serviceClient.auth.admin.getUserById(userId);
+        if (authUserAfterError) {
+          console.warn("Auth get user after error:", authUserAfterError.message);
+        }
+        const authUserExistsAfter = !!authUserAfter?.user;
+        if (authUserExistsBefore && (authError || authUserExistsAfter)) {
+          throw new Error("Failed to delete user from auth");
+        }
+        if (!authUserExistsAfter) {
+          deletedAuth = true;
         }
 
         // Удаление из profiles
@@ -505,12 +839,14 @@ Deno.serve(async (req) => {
             deletedAuth,
             deletedProfile
           }), { headers: corsHeaders, status: 200 });
-        } else {
-          return new Response(JSON.stringify({
-            success: false,
-            error: "User not found in auth and profiles"
-          }), { headers: corsHeaders, status: 500 });
         }
+
+        return new Response(JSON.stringify({
+          success: true,
+          deletedAuth,
+          deletedProfile,
+          alreadyDeleted: true
+        }), { headers: corsHeaders, status: 200 });
 
       } catch (err) {
         console.error("Unexpected error in DELETE /users:", err);

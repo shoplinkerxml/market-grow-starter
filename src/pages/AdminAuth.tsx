@@ -16,6 +16,7 @@ const AdminAuth = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const defaultAdminAvatarUrl = "https://ehznqzaumsnjkrntaiox.supabase.co/storage/v1/object/public/admin/admin.webp";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +46,7 @@ const AdminAuth = () => {
           }
           
           if (!profile.avatar_url || profile.avatar_url.trim() === '') {
-            const defaultUrl = '/placeholder.svg';
+            const defaultUrl = defaultAdminAvatarUrl;
             try {
               await ProfileService.updateProfile(userId, { avatar_url: defaultUrl });
             } catch (avatarError) {

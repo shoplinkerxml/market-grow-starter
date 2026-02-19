@@ -26,6 +26,7 @@ const AdminPersonal = () => {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const defaultAdminAvatarUrl = "https://ehznqzaumsnjkrntaiox.supabase.co/storage/v1/object/public/admin/admin.webp";
 
   useEffect(() => {
     const load = async () => {
@@ -144,7 +145,7 @@ const AdminPersonal = () => {
                 onClick={handleAvatarClick}
               >
                 <Avatar className="h-28 w-28 transition-all duration-200 group-hover:brightness-75">
-                  <AvatarImage src={avatarUrl || "/placeholder.svg"} />
+                  <AvatarImage src={avatarUrl || defaultAdminAvatarUrl} />
                   <AvatarFallback>AD</AvatarFallback>
                 </Avatar>
                 <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-full">

@@ -172,6 +172,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const { t } = useI18n();
   const [profileLoading, setProfileLoading] = useState(true);
+  const defaultAdminAvatarUrl = "https://ehznqzaumsnjkrntaiox.supabase.co/storage/v1/object/public/admin/admin.webp";
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -192,7 +193,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           // Use existing profile data
           const finalAvatarUrl = profile.avatar_url && profile.avatar_url.trim() !== '' 
             ? profile.avatar_url 
-            : '/placeholder.svg';
+            : defaultAdminAvatarUrl;
           
           setUserProfile({
             id: user.id,
@@ -220,7 +221,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 email: defaultProfile.email,
                 name: defaultProfile.name || 'Administrator',
                 role: defaultProfile.role || 'admin',
-                avatarUrl: defaultProfile.avatar_url || '/placeholder.svg',
+                avatarUrl: defaultProfile.avatar_url || defaultAdminAvatarUrl,
                 status: defaultProfile.status,
               });
             }
@@ -232,7 +233,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               email: user.email || '',
               name: user.user_metadata?.name || user.email?.split('@')[0] || 'Administrator',
               role: 'admin',
-              avatarUrl: '/placeholder.svg',
+              avatarUrl: defaultAdminAvatarUrl,
               status: 'active',
             });
           }
@@ -245,7 +246,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           email: '',
           name: 'Administrator',
           role: 'admin',
-          avatarUrl: '/placeholder.svg',
+          avatarUrl: defaultAdminAvatarUrl,
           status: 'active',
         });
       } finally {
