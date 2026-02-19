@@ -131,16 +131,11 @@ Deno.serve(async (req) => {
     let totalProducts = 0
     let totalCategories = 0
     let productsData: any[] = []
-    let storeLinksData: any[] = []
-    let supplierCategoriesRows: any[] = []
-    const categoryNameById = new Map<string, string>()
 
     if (storeIds.length > 0) {
       const [
         { count: pCount, error: pError },
-        { data: storeCategoryRows, error: cError },
         { data: pData, error: pDataError },
-        { data: lData, error: lError }
       ] = await Promise.all([
         supabaseClient
           .from('store_products')
@@ -148,160 +143,78 @@ Deno.serve(async (req) => {
           .in('store_id', storeIds),
         
         supabaseClient
-          .from('store_store_categories')
-          .select('category_id')
-          .in('store_id', storeIds)
-          .eq('is_active', true),
-        
-        supabaseClient
           .from('store_products')
-          .select('id, supplier_id')
+          .select('id, supplier_id, store_id, category_id, category_external_id')
           .in('store_id', storeIds),
-
-        supabaseClient
-          .from('store_product_links')
-          .select('store_id, custom_category_id, store_products!inner(category_id,category_external_id)')
-          .in('store_id', storeIds)
-          .eq('is_active', true)
       ])
 
       if (pError) console.error('Products count error:', pError)
-      if (cError) console.error('Categories count error:', cError)
       if (pDataError) console.error('Products data error:', pDataError)
-      if (lError) console.error('Links error:', lError)
 
       totalProducts = pCount || 0
       productsData = pData || []
-      storeLinksData = lData || []
 
-      // If there are no products at all, totalCategories must be 0
+      // Count totalCategories based on actual category_id of products (most reliable source)
       if (totalProducts === 0) {
         totalCategories = 0
       } else {
-        const categoryIds = Array.from(
-          new Set(
-            (storeCategoryRows || [])
-              .map((r: any) => Number(r?.category_id))
-              .filter((id: number) => Number.isFinite(id))
-          )
-        )
-        const customCategoryIds = Array.from(
-          new Set(
-            (storeLinksData || [])
-              .map((l: any) => Number(l?.custom_category_id))
-              .filter((id: number) => Number.isFinite(id))
-          )
-        )
-        const allCategoryIds = Array.from(new Set([...categoryIds, ...customCategoryIds]))
-
-        if (allCategoryIds.length > 0) {
-          const { data: categoryRows, error: categoriesError } = await supabaseClient
-            .from('store_categories')
-            .select('id, external_id, name')
-            .in('id', allCategoryIds)
-          if (categoriesError) console.error('Categories resolve error:', categoriesError)
-          const keys = new Set<string>()
-          for (const row of categoryRows || []) {
-            const raw = row?.external_id != null ? String(row.external_id) : (row?.name != null ? String(row.name) : '')
-            const key = raw.trim().toLowerCase()
-            if (key) keys.add(key)
-            if (row?.id != null) {
-              const label = row?.name != null ? String(row.name) : (row?.external_id != null ? String(row.external_id) : '')
-              if (label) categoryNameById.set(String(row.id), label)
-            }
+        const uniqueCategoryKeys = new Set<string>()
+        for (const p of productsData) {
+          if (p?.category_id != null) {
+            uniqueCategoryKeys.add(`id:${String(p.category_id)}`)
+          } else if (p?.category_external_id != null) {
+            uniqueCategoryKeys.add(`ext:${String(p.category_external_id).trim().toLowerCase()}`)
           }
-          totalCategories = keys.size
-        } else {
-          totalCategories = 0
         }
+        totalCategories = uniqueCategoryKeys.size
       }
-    }
-
-    if (supplierIds.length > 0) {
-      const { data: categoriesData, error: categoriesError } = await supabaseClient
-        .from('store_categories')
-        .select('id, name, external_id, supplier_id')
-        .in('supplier_id', supplierIds)
-      if (categoriesError) console.error('Supplier categories fetch error:', categoriesError)
-      supplierCategoriesRows = categoriesData || []
     }
 
     const supplierCounts: Record<string, number> = {}
+    const shopCounts: Record<string, number> = {}
+    const shopCategorySets = new Map<string, Set<string>>()
+
     if (productsData) {
       for (const p of productsData) {
+        // Count per supplier
         if (p.supplier_id) {
-            const sid = String(p.supplier_id)
-            supplierCounts[sid] = (supplierCounts[sid] || 0) + 1
+          const sid = String(p.supplier_id)
+          supplierCounts[sid] = (supplierCounts[sid] || 0) + 1
+        }
+        // Count per store (using store_products directly, not store_product_links)
+        if (p.store_id) {
+          const storeId = String(p.store_id)
+          shopCounts[storeId] = (shopCounts[storeId] || 0) + 1
+          // Track category per store
+          const catKey = p.category_id != null
+            ? `id:${String(p.category_id)}`
+            : (p.category_external_id != null ? `ext:${String(p.category_external_id).trim().toLowerCase()}` : null)
+          if (catKey) {
+            if (!shopCategorySets.has(storeId)) shopCategorySets.set(storeId, new Set<string>())
+            shopCategorySets.get(storeId)!.add(catKey)
+          }
         }
       }
     }
 
-    const shopCounts: Record<string, number> = {}
-    const shopCategorySets = new Map<string, Set<string>>()
-    for (const l of storeLinksData) {
-      if (!l?.store_id) continue
-      const sid = String(l.store_id)
-      shopCounts[sid] = (shopCounts[sid] || 0) + 1
-
-      const base = (l as any)?.store_products || {}
-      const customCat = (l as any)?.custom_category_id
-      const customLabel = customCat != null ? categoryNameById.get(String(customCat)) : null
-      const normalizedCustom = customLabel ? String(customLabel).trim().toLowerCase() : ''
-      const customKey = normalizedCustom ? `name:${normalizedCustom}` : (customCat != null ? `cat:${String(customCat)}` : null)
-      const normalizedExternal = base?.category_external_id != null ? String(base.category_external_id).trim().toLowerCase() : ''
-      const catKey =
-        customKey ||
-        (normalizedExternal ? `ext:${normalizedExternal}` : null) ||
-        (base?.category_id != null ? `cat:${String(base.category_id)}` : null)
-
-      if (catKey) {
-        if (!shopCategorySets.has(sid)) shopCategorySets.set(sid, new Set<string>())
-        shopCategorySets.get(sid)!.add(catKey)
-      }
-    }
-
-    const categoriesBySupplier = new Map<string, Map<string, string>>()
-    for (const row of supplierCategoriesRows || []) {
-      const sid = row?.supplier_id
-      if (sid == null) continue
-      const key = String(sid)
-      const nameRaw = row?.name != null ? String(row.name) : (row?.external_id != null ? String(row.external_id) : '')
-      const normalized = nameRaw.trim().toLowerCase()
-      if (!normalized) continue
-      const uniqueKey =
-        row?.external_id != null
-          ? `ext:${String(row.external_id).trim().toLowerCase()}`
-          : `name:${normalized}`
-      if (!categoriesBySupplier.has(key)) categoriesBySupplier.set(key, new Map())
-      const map = categoriesBySupplier.get(key)!
-      if (!map.has(uniqueKey)) map.set(uniqueKey, nameRaw.trim())
-    }
-
-    const fallbackCategoriesBySupplier = new Map<string, Map<string, string>>()
+    // Build categories per supplier based on actual products (category_id or category_external_id)
+    const categoriesBySupplier = new Map<string, Set<string>>()
     for (const p of productsData || []) {
       const sid = p?.supplier_id
       if (sid == null) continue
       const key = String(sid)
-      const catId = p?.category_id
-      const catExt = p?.category_external_id
-      const nameRaw =
-        catId != null
-          ? categoryNameById.get(String(catId)) || ''
-          : catExt != null
-            ? String(catExt)
-            : ''
-      const normalized = String(nameRaw || '').trim().toLowerCase()
-      if (!normalized) continue
-      const uniqueKey = catId != null ? `id:${String(catId)}` : `ext:${normalized}`
-      if (!fallbackCategoriesBySupplier.has(key)) fallbackCategoriesBySupplier.set(key, new Map())
-      const map = fallbackCategoriesBySupplier.get(key)!
-      if (!map.has(uniqueKey)) map.set(uniqueKey, String(nameRaw).trim())
+      // Use category_id as the most reliable unique identifier
+      const catKey = p?.category_id != null
+        ? `id:${String(p.category_id)}`
+        : (p?.category_external_id != null ? `ext:${String(p.category_external_id).trim().toLowerCase()}` : null)
+      if (!catKey) continue
+      if (!categoriesBySupplier.has(key)) categoriesBySupplier.set(key, new Set())
+      categoriesBySupplier.get(key)!.add(catKey)
     }
 
-    const transformedSuppliers = suppliers?.map(s => {
+    const transformedSuppliers = suppliers?.map((s: any) => {
       const sid = String(s.id)
-      const productCount = supplierCounts[String(s.id)] || 0
-      // If supplier has 0 products, categories count should be 0
+      const productCount = supplierCounts[sid] || 0
       if (productCount === 0) {
         return {
           id: s.id,
@@ -311,16 +224,14 @@ Deno.serve(async (req) => {
           categories: []
         }
       }
-      // Always use fallback (categories derived from actual products), not all supplier categories
-      const fallback = fallbackCategoriesBySupplier.get(sid)
-      const list = Array.from(fallback?.values() || [])
-      list.sort((a, b) => a.localeCompare(b))
+      const catSet = categoriesBySupplier.get(sid)
+      const categoriesCount = catSet?.size || 0
       return {
         id: s.id,
         supplier_name: s.supplier_name,
         productCount,
-        categoriesCount: list.length,
-        categories: list
+        categoriesCount,
+        categories: []
       }
     }) || []
 
