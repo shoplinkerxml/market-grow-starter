@@ -19,7 +19,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SupplierService } from "@/lib/supplier-service";
 import { ProductLimitService } from "@/lib/product/product-limit-service";
 import { DashboardService } from "@/lib/dashboard-service";
-import { listTemplates } from "@/lib/category-template";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { DemoDataService } from "@/lib/demo-data-service";
@@ -108,15 +107,8 @@ const UserDashboard = () => {
     refetchOnWindowFocus: true
   });
 
-  const { data: templatesList, isLoading: isTemplatesLoading } = useQuery({
-    queryKey: ["user", user.id, "category-templates"],
-    queryFn: async () => await listTemplates(),
-    enabled: !!user.id,
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true
-  });
-
+  const templatesList = cache.get<unknown[]>("template:list") || [];
+  const isTemplatesLoading = false;
   const hasSuppliers = (dashboardStats?.suppliers?.length ?? 0) > 0;
   const hasShops = (dashboardStats?.stores?.length ?? 0) > 0;
   const hasTemplates = (templatesList?.length ?? 0) > 0;
@@ -134,8 +126,8 @@ const UserDashboard = () => {
       const key = Array.isArray(q.queryKey) ? q.queryKey : [];
       return key[0] === "user" && String(key[1]) === String(user.id);
     };
-    await queryClient.invalidateQueries({ predicate, refetchType: "all" });
-    await queryClient.refetchQueries({ predicate, type: "all" });
+    await queryClient.invalidateQueries({ predicate, refetchType: "active" });
+    await queryClient.refetchQueries({ predicate, type: "active" });
   }, [queryClient, user.id]);
 
   const handleLoadDemoData = async () => {
