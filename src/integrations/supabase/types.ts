@@ -127,6 +127,7 @@ export type Database = {
           entity_id: string
           id: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           count?: number
@@ -134,6 +135,7 @@ export type Database = {
           entity_id: string
           id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           count?: number
@@ -141,6 +143,7 @@ export type Database = {
           entity_id?: string
           id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

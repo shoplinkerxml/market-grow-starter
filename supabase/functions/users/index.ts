@@ -450,13 +450,29 @@ Deno.serve(async (req) => {
           console.warn("User suppliers fetch error:", suppliersError.message);
         }
 
-        const storeIds = (storeRows || [])
-          .map((row: any) => String(row?.id || '').trim())
-          .filter(Boolean);
+        const storeIdSet = new Set<string>(
+          (storeRows || [])
+            .map((row: any) => String(row?.id || '').trim())
+            .filter(Boolean)
+        );
         const supplierIds = (supplierRows || [])
           .map((row: any) => String(row?.id || '').trim())
           .filter(Boolean);
 
+        const { data: importJobRows, error: importJobsStoreError } = await serviceClient
+          .from('product_import_jobs')
+          .select('store_id')
+          .eq('user_id', userId)
+          .not('store_id', 'is', null);
+        if (importJobsStoreError) {
+          console.warn("Product import jobs store fetch error:", importJobsStoreError.message);
+        }
+        for (const row of importJobRows || []) {
+          const storeId = String((row as any)?.store_id || '').trim();
+          if (storeId) storeIdSet.add(storeId);
+        }
+
+        const storeIds = Array.from(storeIdSet);
         const categoryIds = new Set<number>();
         if (storeIds.length > 0) {
           const { data: categoriesByStore, error: categoriesStoreError } = await serviceClient
@@ -768,6 +784,14 @@ Deno.serve(async (req) => {
           .eq('user_id', userId);
         if (deleteUserStoresError) {
           console.warn("User stores delete error:", deleteUserStoresError.message);
+        }
+
+        const { error: deleteCountersByUserError } = await serviceClient
+          .from('counters')
+          .delete()
+          .eq('user_id', userId);
+        if (deleteCountersByUserError) {
+          console.warn("Counters delete by user error:", deleteCountersByUserError.message);
         }
 
         const entityIds = new Set<string>();

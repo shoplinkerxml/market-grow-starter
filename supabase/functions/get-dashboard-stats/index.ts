@@ -233,8 +233,8 @@ Deno.serve(async (req) => {
           existingByEntity.set(String((r as any).entity_id), { id: String((r as any).id), counter_type: String((r as any).counter_type || 'store') })
         }
 
-        const updates: Array<{ id: string; count: number }> = []
-        const inserts: Array<{ entity_id: string; counter_type: string; count: number }> = []
+        const updates: Array<{ id: string; count: number; user_id: string }> = []
+        const inserts: Array<{ entity_id: string; counter_type: string; count: number; user_id: string }> = []
 
         for (const sid of storeIds) {
           const storeId = String(sid)
@@ -246,16 +246,16 @@ Deno.serve(async (req) => {
           const categoriesCount = productsCount === 0 ? 0 : Math.max(0, Number(categoriesCountRaw) || 0)
 
           const exP = existingByEntity.get(productsEntityId)
-          if (exP) updates.push({ id: exP.id, count: productsCount })
-          else inserts.push({ entity_id: productsEntityId, counter_type: 'store', count: productsCount })
+          if (exP) updates.push({ id: exP.id, count: productsCount, user_id: userId })
+          else inserts.push({ entity_id: productsEntityId, counter_type: 'store', count: productsCount, user_id: userId })
 
           const exC = existingByEntity.get(categoriesEntityId)
-          if (exC) updates.push({ id: exC.id, count: categoriesCount })
-          else inserts.push({ entity_id: categoriesEntityId, counter_type: 'store', count: categoriesCount })
+          if (exC) updates.push({ id: exC.id, count: categoriesCount, user_id: userId })
+          else inserts.push({ entity_id: categoriesEntityId, counter_type: 'store', count: categoriesCount, user_id: userId })
         }
 
         await Promise.all([
-          ...updates.map((u) => supabaseClient.from('counters').update({ count: u.count }).eq('id', u.id)),
+          ...updates.map((u) => supabaseClient.from('counters').update({ count: u.count, user_id: u.user_id }).eq('id', u.id)),
           inserts.length > 0 ? supabaseClient.from('counters').insert(inserts) : Promise.resolve(null),
         ])
       } catch (e) {
