@@ -545,13 +545,6 @@ export class ProductService {
 
   /** Удаление товара */
   static async deleteProduct(id: string): Promise<void> {
-    // Delete R2 images before deleting the product (we need product data to find R2 keys)
-    try {
-      await ProductImageService.deleteAllProductImages(String(id));
-    } catch (error) {
-      console.error("ProductService.deleteProduct deleteAllProductImages failed", error);
-    }
-
     await ProductCoreService.deleteProduct(id);
     try {
       ProductService.clearMasterProductsCaches();
@@ -568,13 +561,6 @@ export class ProductService {
   }
 
   static async bulkDeleteProducts(ids: string[]): Promise<{ deleted: number }> {
-    // Delete R2 images for all products before bulk delete
-    try {
-      await Promise.all(ids.map((id) => ProductImageService.deleteAllProductImages(String(id)).catch(() => {})));
-    } catch (error) {
-      console.error("ProductService.bulkDeleteProducts deleteAllProductImages failed", error);
-    }
-
     const out = await ProductCoreService.bulkDeleteProducts(ids);
     try {
       ProductService.clearMasterProductsCaches();
