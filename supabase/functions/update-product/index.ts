@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "npm:@supabase/supabase-js"
-import { S3Client, PutObjectCommand } from "npm:@aws-sdk/client-s3"
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "npm:@aws-sdk/client-s3"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,7 +118,7 @@ function isValidStock(value: unknown): boolean {
   return Number.isFinite(n) && n >= 0 && n <= 10000
 }
 
-// ENV и клиенты один раз
+// ENV і клієнти один раз
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? ""
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 const REDIS_REST_URL =
@@ -129,6 +129,7 @@ const SHOP_COUNTS_KEY_PREFIX =
   Deno.env.get("SHOP_COUNTS_KEY_PREFIX") || "shop:counts:"
 const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID") ?? ""
 const bucket = Deno.env.get("R2_BUCKET_NAME") ?? ""
+
 function resolvePublicBase(): string {
   const host = Deno.env.get("R2_PUBLIC_HOST") || ""
   if (host) {
@@ -151,6 +152,7 @@ function resolvePublicBase(): string {
     return raw
   }
 }
+
 const IMAGE_BASE_URL = resolvePublicBase()
 const accessKeyId = Deno.env.get("R2_ACCESS_KEY_ID") ?? ""
 const secretAccessKey = Deno.env.get("R2_SECRET_ACCESS_KEY") ?? ""
@@ -160,6 +162,18 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY)
+
+function getS3Client(): S3Client {
+  return new S3Client({
+    region: "auto",
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId, secretAccessKey },
+  })
+}
+
+function canUseR2(): boolean {
+  return !!(accountId && bucket && accessKeyId && secretAccessKey && IMAGE_BASE_URL)
+}
 
 async function redisPipeline(commands: any[]): Promise<any[] | null> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
@@ -191,66 +205,60 @@ async function invalidateCounts(storeId: string): Promise<void> {
   await redisPipeline([["DEL", buildCountsKey(sid)]])
 }
 
-//
-
-async function toPreferredUrl(img: ImageInput): Promise<{ url: string; r2_original?: string }> {
-  // Priority: explicit key provided by client
-  const explicitKey = img.key ? String(img.key).trim() : null
-
-  // If explicit key is in correct products/ format — use it directly
-  if (explicitKey && explicitKey.startsWith("products/")) {
-    const base = IMAGE_BASE_URL || ""
-    const url = base ? `${base}/${explicitKey}` : String(img.url || "").trim()
-    return { url, r2_original: explicitKey }
+/**
+ * Returns true if a URL points to our own R2 storage with a correct products/ key.
+ */
+function isOwnR2ProductUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    const host = String(u.host || "")
+    if (!host.includes("r2.dev") && !host.includes("cloudflarestorage.com")) return false
+    const key = extractObjectKeyFromUrl(url)
+    return !!(key && key.startsWith("products/"))
+  } catch {
+    return false
   }
-
-  // Try to extract key from URL, but ONLY if it's already in products/ format
-  const rawUrl = String(img.url || "").trim()
-  if (rawUrl) {
-    try {
-      const u = new URL(rawUrl)
-      const host = String(u.host || "")
-      if (host.includes("r2.dev") || host.includes("cloudflarestorage.com")) {
-        const extractedKey = extractObjectKeyFromUrl(rawUrl)
-        // Only accept keys that follow the correct products/{id}/{imgId}/original.webp structure
-        if (extractedKey && extractedKey.startsWith("products/")) {
-          const base = IMAGE_BASE_URL || ""
-          const url = base ? `${base}/${extractedKey}` : rawUrl
-          return { url, r2_original: extractedKey }
-        }
-        // Key does NOT follow products/ structure (e.g. "photo-1629...")
-        // Return original URL as-is without constructing wrong r2_key_original
-        return { url: rawUrl }
-      }
-    } catch {}
-  }
-
-  // External URL (Unsplash, etc.) — return as-is, no r2_key_original
-  return { url: rawUrl }
 }
 
 /**
- * Upload image bytes to R2 and return the correct URL + key.
- * Used when an image doesn't have a proper products/ key yet.
+ * Extracts the R2 key from a URL or explicit key field.
+ * Only accepts keys in products/ format.
+ */
+function extractProductsKey(img: { key?: string; url?: string }): string | null {
+  const explicitKey = img.key ? String(img.key).trim() : null
+  if (explicitKey && explicitKey.startsWith("products/")) return explicitKey
+
+  const rawUrl = String(img.url || "").trim()
+  if (!rawUrl) return null
+
+  try {
+    const u = new URL(rawUrl)
+    const host = String(u.host || "")
+    if (host.includes("r2.dev") || host.includes("cloudflarestorage.com")) {
+      const key = extractObjectKeyFromUrl(rawUrl)
+      if (key && key.startsWith("products/")) return key
+    }
+  } catch {}
+  return null
+}
+
+/**
+ * Upload image bytes from an external URL to R2.
+ * Returns { url, r2_original } on success, null on failure.
  */
 async function uploadExternalImageToR2(
   productId: string,
   imageId: number | string,
   srcUrl: string,
 ): Promise<{ url: string; r2_original: string } | null> {
-  if (!accountId || !bucket || !accessKeyId || !secretAccessKey || !IMAGE_BASE_URL) return null
+  if (!canUseR2()) return null
   try {
     const imgRes = await fetch(srcUrl)
     if (!imgRes.ok) return null
     const imageBytes = new Uint8Array(await imgRes.arrayBuffer())
     const contentType = imgRes.headers.get("content-type") || "image/webp"
 
-    const s3 = new S3Client({
-      region: "auto",
-      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-      credentials: { accessKeyId, secretAccessKey },
-    })
-
+    const s3 = getS3Client()
     const r2Key = `products/${productId}/${imageId}/original.webp`
     await s3.send(new PutObjectCommand({
       Bucket: bucket,
@@ -262,30 +270,75 @@ async function uploadExternalImageToR2(
     const publicUrl = `${IMAGE_BASE_URL}/${r2Key}`
     return { url: publicUrl, r2_original: r2Key }
   } catch (e) {
-    console.warn("[handleImages] uploadExternalImageToR2 failed:", e)
+    console.warn("[uploadExternalImageToR2] failed:", e)
     return null
   }
 }
 
+/**
+ * Delete a single R2 object by key. Silent failure.
+ */
+async function deleteR2Object(key: string): Promise<void> {
+  if (!canUseR2() || !key) return
+  try {
+    const s3 = getS3Client()
+    await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
+    console.log("[deleteR2Object] deleted:", key)
+  } catch (e) {
+    console.warn("[deleteR2Object] failed to delete:", key, e)
+  }
+}
+
+/**
+ * Main image handler.
+ * 
+ * Steps:
+ * 1. Load existing DB images to know which R2 keys to clean up
+ * 2. Delete DB rows for this product
+ * 3. For each new image:
+ *    - If already has valid products/ key → insert directly with correct URL
+ *    - If external URL → insert placeholder → upload to R2 → update row
+ * 4. Delete R2 objects that were removed (keys in old but not in new)
+ */
 async function handleImages(
   productId: string,
   images: ImageInput[] | undefined,
 ): Promise<void> {
-  if (!Array.isArray(images)) {
-    return
+  if (!Array.isArray(images)) return
+
+  // Step 1: Load existing images BEFORE deleting them
+  const { data: existingRows } = await supabase
+    .from("store_product_images")
+    .select("id, url, r2_key_original")
+    .eq("product_id", productId)
+
+  // Collect existing R2 keys (to later figure out which ones to delete)
+  const existingR2Keys = new Set<string>()
+  for (const row of existingRows || []) {
+    const key = row.r2_key_original || extractObjectKeyFromUrl(String(row.url || ""))
+    if (key && key.startsWith("products/")) {
+      existingR2Keys.add(key)
+    }
   }
 
-  // Delete existing images first
+  // Step 2: Delete all existing DB rows for this product
   await supabase.from("store_product_images").delete().eq("product_id", productId)
 
-  if (images.length === 0) return
+  if (images.length === 0) {
+    // No new images — delete all old R2 objects
+    await Promise.all(Array.from(existingR2Keys).map(deleteR2Object))
+    return
+  }
 
   let hasMain = images.some((i) => i.is_main === true)
   let assigned = false
 
+  // Track which R2 keys are being kept in the new image set
+  const keptR2Keys = new Set<string>()
+
+  // Step 3: Insert new images
   for (let index = 0; index < images.length; index++) {
     const raw = images[index]
-    const preferred = await toPreferredUrl(raw)
     let isMain = raw.is_main === true && !assigned
     if (hasMain) {
       if (raw.is_main === true && !assigned) assigned = true
@@ -295,31 +348,34 @@ async function handleImages(
     }
     const oi = typeof raw.order_index === "number" ? raw.order_index : index
 
-    let finalUrl = preferred.url
-    let finalKey = preferred.r2_original ?? null
+    const rawUrl = String(raw.url || "").trim()
+    if (!rawUrl) continue
 
-    if (!finalUrl || finalUrl.trim() === "") continue
+    // Check if this image already has a valid products/ key
+    const existingKey = extractProductsKey(raw)
 
-    // Case 1: already has correct products/ key — insert directly
-    if (finalKey) {
+    if (existingKey) {
+      // Already uploaded correctly — insert with correct URL and key
+      keptR2Keys.add(existingKey)
+      const correctUrl = `${IMAGE_BASE_URL}/${existingKey}`
       await supabase.from("store_product_images").insert({
         product_id: productId,
-        url: finalUrl,
+        url: correctUrl,
         is_main: isMain,
         order_index: oi,
-        r2_key_original: finalKey,
+        r2_key_original: existingKey,
       })
       continue
     }
 
-    // Case 2: external/demo URL without proper R2 key
-    // Insert a placeholder row first to get the real DB id
-    if (/^https?:\/\//i.test(finalUrl)) {
+    // External / demo URL — needs to be uploaded to R2
+    if (/^https?:\/\//i.test(rawUrl)) {
+      // Insert placeholder row to get a real DB id
       const { data: inserted, error: insertErr } = await supabase
         .from("store_product_images")
         .insert({
           product_id: productId,
-          url: "#processing",
+          url: rawUrl, // save original URL as fallback
           is_main: isMain,
           order_index: oi,
           r2_key_original: null,
@@ -328,27 +384,31 @@ async function handleImages(
         .single()
 
       if (insertErr || !inserted) {
-        console.error(`[handleImages] Insert placeholder failed:`, insertErr)
+        console.error("[handleImages] Insert placeholder failed:", insertErr)
         continue
       }
 
       const imageId = (inserted as any).id
 
-      // Now upload to R2 with real DB id
-      const uploaded = await uploadExternalImageToR2(productId, imageId, finalUrl)
+      // Upload to R2 using the real DB id → correct path
+      const uploaded = await uploadExternalImageToR2(productId, imageId, rawUrl)
       if (uploaded) {
+        // Update row with proper R2 URL and key
         await supabase
           .from("store_product_images")
           .update({ url: uploaded.url, r2_key_original: uploaded.r2_original })
           .eq("id", imageId)
-      } else {
-        // Upload failed — keep original URL at least
-        await supabase
-          .from("store_product_images")
-          .update({ url: finalUrl })
-          .eq("id", imageId)
+        keptR2Keys.add(uploaded.r2_original)
       }
+      // If upload failed — row already has original URL as fallback, that's fine
     }
+  }
+
+  // Step 4: Delete R2 objects that existed before but are NOT in the new set
+  const keysToDelete = Array.from(existingR2Keys).filter((k) => !keptR2Keys.has(k))
+  if (keysToDelete.length > 0) {
+    console.log("[handleImages] Deleting removed R2 keys:", keysToDelete)
+    await Promise.all(keysToDelete.map(deleteR2Object))
   }
 }
 
@@ -451,7 +511,6 @@ serve(async (req) => {
         { status: 400, headers: jsonHeaders },
       )
     }
-
 
     const { data: productRow } = await supabase
       .from("store_products")
