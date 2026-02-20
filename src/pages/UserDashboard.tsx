@@ -242,7 +242,7 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      <Card className="w-full">
+      <Card className="w-full bg-transparent border-transparent shadow-none">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center justify-between text-xl">
             <div className="flex items-center gap-2">

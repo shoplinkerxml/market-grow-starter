@@ -160,7 +160,7 @@ export function TemplateListView() {
           </div>
         }
       />
-      <Card>
+      <Card className="bg-transparent border-transparent shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Layers className="h-6 w-6 text-emerald-600" />
@@ -174,7 +174,7 @@ export function TemplateListView() {
             </div>
           ) : templatesView.length === 0 ? (
             <div className="flex justify-center">
-              <Empty className="border max-w-md bg-muted/40 dark:bg-muted/30">
+              <Empty className="border max-w-md bg-transparent">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
                     <Layers />
