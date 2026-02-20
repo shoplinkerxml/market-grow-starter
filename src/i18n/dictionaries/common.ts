@@ -19,6 +19,10 @@ export const commonDictionary: Dictionary = {
     uk: "Створіть перший XML шаблон для маркетплейсу",
     en: "Create the first XML template for a marketplace",
   },
+  no_templates_add_products: {
+    uk: "Додайте товари, щоб створювати XML шаблони",
+    en: "Add products to create XML templates",
+  },
   template_deleted: { uk: "Шаблон видалено", en: "Template deleted" },
   failed_delete_template: {
     uk: "Помилка видалення шаблону",

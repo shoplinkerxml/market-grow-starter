@@ -32,6 +32,7 @@ import { useCategories } from "./hooks/useCategories";
 import { useTemplates } from "./hooks/useTemplates";
 import { RefreshDataButton } from "@/components/RefreshDataButton";
 import { cache } from "@/lib/cache-helper";
+import { createAuthenticatedClient } from "@/lib/session-validation";
 
 export function TemplateListView() {
   const { t } = useI18n();
@@ -43,6 +44,7 @@ export function TemplateListView() {
   const [creating, setCreating] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedRowIds, setSelectedRowIds] = useState<number[]>([]);
+  const [productsCount, setProductsCount] = useState(0);
 
   const createTemplateSchema = z.object({
     category_id: z.string().min(1),
@@ -87,17 +89,24 @@ export function TemplateListView() {
     setSelectedRowIds((prev) => prev.filter((id) => templatesView.some((tpl) => Number(tpl.id) === Number(id))));
   }, [templatesView]);
 
+  const loadProductsCount = useCallback(async () => {
+    const client = await createAuthenticatedClient();
+    const { count, error } = await client.from("store_products").select("id", { count: "exact", head: true });
+    if (error) throw new Error(error.message);
+    setProductsCount(Math.max(0, Number(count ?? 0)));
+  }, []);
+
   const refreshAll = useCallback(async () => {
     try {
       setLoading(true);
       cache.clearByPrefix("template:");
-      await Promise.all([loadCategories(), loadTemplates()]);
+      await Promise.all([loadCategories(), loadTemplates(), loadProductsCount()]);
     } catch (error: any) {
       toast.error(error?.message || t("failed_load_menu_item"));
     } finally {
       setLoading(false);
     }
-  }, [loadCategories, loadTemplates, t]);
+  }, [loadCategories, loadProductsCount, loadTemplates, t]);
 
   useEffect(() => {
     void refreshAll();
@@ -180,9 +189,17 @@ export function TemplateListView() {
                     <Layers />
                   </EmptyMedia>
                   <EmptyTitle>{t("no_templates")}</EmptyTitle>
-                  <EmptyDescription>{t("no_templates_description")}</EmptyDescription>
+                  <EmptyDescription>
+                    {productsCount === 0 && categories.length === 0
+                      ? t("no_templates_add_products")
+                      : t("no_templates_description")}
+                  </EmptyDescription>
                 </EmptyHeader>
-                <Button onClick={() => setCreateDialogOpen(true)} className="mt-4">
+                <Button
+                  onClick={() => setCreateDialogOpen(true)}
+                  className="mt-4"
+                  disabled={productsCount === 0 && categories.length === 0}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   {t("create_template")}
                 </Button>
