@@ -14,6 +14,7 @@ import { DialogNoOverlay, DialogNoOverlayContent, DialogNoOverlayHeader, DialogN
 import { useQueryClient } from '@tanstack/react-query';
 import { RefreshDataButton } from '@/components/RefreshDataButton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useSuppliers } from '@/hooks/useSuppliers';
 
 export const Products = () => {
   const { t } = useI18n();
@@ -27,6 +28,8 @@ export const Products = () => {
   const { tariffLimits, user } = useOutletContext<{ tariffLimits: Array<{ limit_name: string; value: number }>; user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
   const pageSize = 50; // Default page size
+  const suppliersQuery = useSuppliers(uid);
+  const suppliersEmpty = suppliersQuery.isSuccess ? (suppliersQuery.data?.length ?? 0) === 0 : false;
 
   const queryClient = useQueryClient();
   useEffect(() => {
@@ -142,6 +145,7 @@ export const Products = () => {
           onProductsLoaded={handleProductsLoaded}
           refreshTrigger={refreshTrigger}
           canCreate={limitInfo.canCreate}
+          suppliersEmpty={suppliersEmpty}
         />
       </div>
 

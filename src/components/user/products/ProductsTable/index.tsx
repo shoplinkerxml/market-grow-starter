@@ -47,7 +47,7 @@ import {
   type ProductsViewMode,
 } from "./state";
 
-type ProductsTableProps = { onEdit?: (product: Product) => void; onDelete?: (product: Product) => Promise<void> | void; onCreateNew?: () => void; onProductsLoaded?: (count: number) => void; onLoadingChange?: (loading: boolean) => void; refreshTrigger?: number; canCreate?: boolean; storeId?: string; hideDuplicate?: boolean };
+type ProductsTableProps = { onEdit?: (product: Product) => void; onDelete?: (product: Product) => Promise<void> | void; onCreateNew?: () => void; onProductsLoaded?: (count: number) => void; onLoadingChange?: (loading: boolean) => void; refreshTrigger?: number; canCreate?: boolean; suppliersEmpty?: boolean; storeId?: string; hideDuplicate?: boolean };
 type PageInfo = { limit: number; offset: number; hasMore: boolean; nextOffset: number | null; total: number };
 
 function applyRowOrder(items: ProductRow[], order: string[]): ProductRow[] {
@@ -90,7 +90,7 @@ function initState(storeId?: string): ProductsTableState {
   };
 }
 
-export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded, onLoadingChange, refreshTrigger, canCreate, storeId, hideDuplicate }: ProductsTableProps) => {
+export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded, onLoadingChange, refreshTrigger, canCreate, suppliersEmpty, storeId, hideDuplicate }: ProductsTableProps) => {
   const { t } = useI18n();
   const { user } = useOutletContext<{ user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
@@ -247,6 +247,7 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       onCreateNew,
       onEdit: onEdit as any,
       canCreate,
+      suppliersEmpty,
       hideDuplicate,
       loading,
       duplicating: state.copyDialog.open,
@@ -284,6 +285,7 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       loading,
       onCreateNew,
       onEdit,
+      suppliersEmpty,
       queryClient,
       setViewMode,
       setAddingStores,

@@ -15,6 +15,7 @@ export type ProductsTableContextValue = {
   onCreateNew?: () => void;
   onEdit?: (p: ProductRow) => void;
   canCreate?: boolean;
+  suppliersEmpty?: boolean;
   hideDuplicate?: boolean;
   loading: boolean;
   duplicating: boolean;

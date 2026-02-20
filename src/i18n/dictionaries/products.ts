@@ -26,6 +26,10 @@ export const productsDictionary: Dictionary = {
     uk: "Додайте товар до магазину",
     en: "Add a product to the store",
   },
+  no_products_add_supplier: {
+    uk: "Додайте постачальника",
+    en: "Add a supplier",
+  },
   description_placeholder: {
     uk: "Введіть опис товару",
     en: "Enter product description",

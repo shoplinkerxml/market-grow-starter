@@ -59,7 +59,7 @@ export function ProductsTableView({
   onToggleRowReorder: () => void;
   onRowDragEnd: (e: DragEndEvent) => void;
 }) {
-  const { t, table, storeId, onCreateNew, canCreate, loading, serverFilters, viewMode } = useProductsTableContext();
+  const { t, table, storeId, onCreateNew, canCreate, suppliersEmpty, loading, serverFilters, viewMode } = useProductsTableContext();
   const tableElRef = useRef<HTMLTableElement | null>(null);
   const activeDragTypeRef = useRef<"row" | "column" | null>(null);
   const rowHeight = 72;
@@ -124,6 +124,8 @@ export function ProductsTableView({
     serverFilters.stockMax !== null;
 
   if (!loading && (pageInfo?.total ?? rows.length) === 0 && !hasActiveServerFilters) {
+    const showNeedSuppliersText = !storeId && suppliersEmpty === true;
+    const createDisabled = canCreate === false || suppliersEmpty === true;
     return (
       <div className="flex justify-center" data-testid="user_products_empty_wrap">
         <Empty className="border max-w-md">
@@ -132,15 +134,15 @@ export function ProductsTableView({
               <Package className="h-[1.5rem] w-[1.5rem]" />
             </EmptyMedia>
             <EmptyTitle>{t("no_products")}</EmptyTitle>
-            <EmptyDescription>{t("no_products_description")}</EmptyDescription>
+            <EmptyDescription>{showNeedSuppliersText ? t("no_products_add_supplier") : t("no_products_description")}</EmptyDescription>
           </EmptyHeader>
           {storeId ? null : (
             <Button
               onClick={onCreateNew}
               className="mt-4"
               data-testid="user_products_create_btn"
-              disabled={canCreate === false}
-              aria-disabled={canCreate === false}
+              disabled={createDisabled}
+              aria-disabled={createDisabled}
             >
               <Package className="h-4 w-4 mr-2" />
               {t("create_product")}

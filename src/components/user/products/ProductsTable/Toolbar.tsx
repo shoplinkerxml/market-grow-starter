@@ -27,6 +27,7 @@ export function Toolbar({
   onCreateNew,
   onEdit,
   canCreate,
+  suppliersEmpty,
   hideDuplicate,
   viewMode,
   setViewMode,
@@ -59,6 +60,7 @@ export function Toolbar({
   onCreateNew?: () => void;
   onEdit?: (p: ProductRow) => void;
   canCreate?: boolean;
+  suppliersEmpty?: boolean;
   hideDuplicate?: boolean;
   viewMode: ProductsViewMode;
   setViewMode: (next: ProductsViewMode) => void;
@@ -95,7 +97,7 @@ export function Toolbar({
   const canDuplicate = selectedCount === 1 && canCreate !== false && hideDuplicate !== true && !duplicating && !isDupPending;
   const canEditSelected = selectedCount === 1 && !duplicating;
   const canDeleteSelected = selectedCount >= 1 && !duplicating;
-  const createDisabled = (canCreate === false) || !!duplicating;
+  const createDisabled = (canCreate === false) || suppliersEmpty === true || !!duplicating;
   const iconButtonCls = "h-8 w-8 hover:bg-transparent";
   const controlsDisabled = !!loading || !!duplicating;
   const viewToggleLabel = viewMode === "table" ? t("view_cards") : t("view_table");
@@ -276,6 +278,7 @@ export function ToolbarFromContext() {
     onCreateNew,
     onEdit,
     canCreate,
+    suppliersEmpty,
     hideDuplicate,
     viewMode,
     setViewMode,
@@ -311,6 +314,7 @@ export function ToolbarFromContext() {
       onCreateNew={onCreateNew}
       onEdit={onEdit}
       canCreate={canCreate}
+      suppliersEmpty={suppliersEmpty}
       hideDuplicate={hideDuplicate}
       viewMode={viewMode}
       setViewMode={setViewMode}
