@@ -47,17 +47,19 @@ export const ProfileTrigger = React.forwardRef<HTMLElement, ProfileTriggerProps>
       <div 
         ref={ref as React.RefObject<HTMLDivElement>}
         role="button" 
-        className="pl-2 pr-3 py-1 h-auto rounded-lg select-none cursor-pointer hover:bg-emerald-50 transition-colors dark:hover:bg-transparent dark:hover:border-emerald-500/50 dark:border dark:border-transparent"
+        className="group pl-2 pr-3 py-1 h-auto rounded-lg select-none cursor-pointer transition-colors"
         onClick={onClick}
         data-testid="admin_profileTrigger_header"
       >
         <div className="flex items-center">
-          <Avatar className={`h-8 w-8 ring-2 ring-offset-2 ring-offset-background ${statusRingClass}`}>
-            <AvatarImage src={getAvatarUrl()} alt="Admin" />
-            <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
-              {getAvatarFallback()}
-            </AvatarFallback>
-          </Avatar>
+          <div className="rounded-full transition-shadow group-hover:shadow-[0_0_0_3px_rgba(16,185,129,0.6)]">
+            <Avatar className={`h-8 w-8 ring-2 ring-offset-2 ring-offset-background ${statusRingClass}`}>
+              <AvatarImage src={getAvatarUrl()} alt="Admin" />
+              <AvatarFallback className="bg-emerald-100 text-emerald-600 font-medium dark:bg-emerald-900/40 dark:text-emerald-200">
+                {getAvatarFallback()}
+              </AvatarFallback>
+            </Avatar>
+          </div>
         </div>
       </div>
     );
