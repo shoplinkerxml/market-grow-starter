@@ -252,13 +252,13 @@ export class SupplierService {
     return row;
   }
 
-  /** Видалення постачальника */
-  static async deleteSupplier(id: number): Promise<void> {
+  /** Видалення постачальника. Returns linkedStoreIds for cache invalidation. */
+  static async deleteSupplier(id: number): Promise<{ linkedStoreIds?: string[] }> {
     if (!id) throw new Error("Supplier ID is required");
 
     const sessionValidation = await requireValidSession({ requireAccessToken: false });
     const userId = sessionValidation.user?.id ? String(sessionValidation.user.id) : "";
-    await EdgeClient.invokeWithRetry<{ ok?: boolean }>('suppliers-delete', { id });
+    const result = await EdgeClient.invokeWithRetry<{ ok?: boolean; linkedStoreIds?: string[] }>('suppliers-delete', { id });
     if (userId) {
       const cached = SupplierService.getCachedSuppliers(userId);
       const prev = cached?.rows || [];
@@ -279,5 +279,7 @@ export class SupplierService {
     } catch {
       void 0;
     }
+
+    return { linkedStoreIds: result?.linkedStoreIds };
   }
 }

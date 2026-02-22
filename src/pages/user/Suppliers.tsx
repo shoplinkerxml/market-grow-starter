@@ -75,7 +75,7 @@ export const Suppliers = () => {
       return list.filter((s) => Number(s.id) !== Number(id));
     });
     try {
-      await SupplierService.deleteSupplier(id);
+      const { linkedStoreIds } = await SupplierService.deleteSupplier(id);
       toast.success(t('supplier_deleted'));
       try {
         ProductService.clearAllProductsCaches();
@@ -98,7 +98,7 @@ export const Suppliers = () => {
         void 0;
       }
       try {
-        ShopCountsService.invalidate(queryClient, uid, null, "supplier_delete", { refetch: "all" });
+        ShopCountsService.invalidate(queryClient, uid, linkedStoreIds || null, "supplier_delete", { refetch: "all" });
       } catch {
         void 0;
       }
