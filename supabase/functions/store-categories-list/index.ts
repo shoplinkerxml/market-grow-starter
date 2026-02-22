@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { applyExternalRefsToDesiredMap, diffStoreCategoryRows, extractCategoryRefsFromLinks } from '../_shared/store-category-sync.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,6 +53,53 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return json({ error: 'forbidden' }, { status: 403 })
     }
 
+    const { data: links, error: linksErr } = await supabase
+      .from('store_product_links')
+      .select('store_id, is_active, custom_category_id, store_products!inner(category_id,category_external_id,supplier_id)')
+      .eq('store_id', storeId)
+      .eq('is_active', true)
+    if (linksErr) return json({ error: 'db_error' }, { status: 500 })
+
+    const { desiredByStore, externalRefs, externalIdList } = extractCategoryRefsFromLinks((links || []) as any[])
+    let categories: any[] = []
+    if (externalIdList.length > 0) {
+      const supplierIds = Array.from(
+        new Set((externalRefs || []).map((r) => Number((r as any)?.supplierId)).filter((v) => Number.isFinite(v))),
+      )
+      const [{ data: storeCats }, { data: supplierCats }] = await Promise.all([
+        supabase
+          .from('store_categories')
+          .select('id, external_id, supplier_id, store_id')
+          .in('external_id', externalIdList)
+          .eq('store_id', storeId),
+        supplierIds.length > 0
+          ? supabase
+              .from('store_categories')
+              .select('id, external_id, supplier_id, store_id')
+              .in('external_id', externalIdList)
+              .in('supplier_id', supplierIds)
+          : Promise.resolve({ data: [] }),
+      ])
+      categories = [...(storeCats || []), ...(supplierCats || [])]
+    }
+    applyExternalRefsToDesiredMap(desiredByStore, externalRefs, categories as any[])
+
+    const { data: existingRows, error: existingErr } = await supabase
+      .from('store_store_categories')
+      .select('id, store_id, category_id')
+      .eq('store_id', storeId)
+    if (existingErr) return json({ error: 'db_error' }, { status: 500 })
+
+    const { toInsert, toDeleteIds } = diffStoreCategoryRows(desiredByStore, (existingRows || []) as any[])
+    if (toInsert.length > 0) {
+      const { error: insertErr } = await supabase.from('store_store_categories').insert(toInsert)
+      if (insertErr) return json({ error: 'db_error' }, { status: 500 })
+    }
+    if (toDeleteIds.length > 0) {
+      const { error: deleteErr } = await supabase.from('store_store_categories').delete().in('id', toDeleteIds)
+      if (deleteErr) return json({ error: 'db_error' }, { status: 500 })
+    }
+
     const { data: sscRows, error: sscErr } = await supabase
       .from('store_store_categories')
       .select('id, store_id, category_id, custom_name, external_id, rz_id_value, is_active')
@@ -94,4 +142,3 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return json({ error: (e as any)?.message || 'failed' }, { status: 500 })
   }
 })
-

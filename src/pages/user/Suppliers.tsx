@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Gauge, Plus, ArrowLeft, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +38,11 @@ export const Suppliers = () => {
   }, [tariffLimits]);
 
   const suppliersQueryKey = useMemo(() => ["user", uid, "suppliers", "list"] as const, [uid]);
+
+  useEffect(() => {
+    SupplierService.clearSuppliersCache();
+    void queryClient.invalidateQueries({ queryKey: suppliersQueryKey, exact: true, refetchType: "active" });
+  }, [queryClient, suppliersQueryKey]);
 
   const { data: suppliersData } = useSuppliers(uid);
 

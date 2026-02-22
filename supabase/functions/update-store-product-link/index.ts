@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "npm:@supabase/supabase-js"
+import { applyExternalRefsToDesiredMap, diffStoreCategoryRows, extractCategoryRefsFromLinks } from "../_shared/store-category-sync.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -116,6 +117,58 @@ function normalizeCounts(input: any): ShopCounts {
   const productsCount = Math.max(0, Number(input?.productsCount ?? input?.products_count ?? 0) || 0);
   const categoriesRaw = Math.max(0, Number(input?.categoriesCount ?? input?.categories_count ?? 0) || 0);
   return { productsCount, categoriesCount: productsCount === 0 ? 0 : categoriesRaw };
+}
+
+async function syncStoreCategoriesForStore(storeId: string): Promise<void> {
+  const sid = String(storeId || "").trim();
+  if (!sid) return;
+
+  const { data: links, error: linksErr } = await supabase
+    .from("store_product_links")
+    .select("store_id, is_active, custom_category_id, store_products!inner(category_id,category_external_id,supplier_id)")
+    .eq("store_id", sid)
+    .eq("is_active", true);
+  if (linksErr) return;
+
+  const { desiredByStore, externalRefs, externalIdList } = extractCategoryRefsFromLinks((links || []) as any[]);
+
+  let categories: any[] = [];
+  if (externalIdList.length > 0) {
+    const supplierIds = Array.from(
+      new Set((externalRefs || []).map((r) => Number((r as any)?.supplierId)).filter((v) => Number.isFinite(v))),
+    );
+    const [{ data: storeCats }, { data: supplierCats }] = await Promise.all([
+      supabase
+        .from("store_categories")
+        .select("id, external_id, supplier_id, store_id")
+        .in("external_id", externalIdList)
+        .eq("store_id", sid),
+      supplierIds.length > 0
+        ? supabase
+            .from("store_categories")
+            .select("id, external_id, supplier_id, store_id")
+            .in("external_id", externalIdList)
+            .in("supplier_id", supplierIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+    categories = [...(storeCats || []), ...(supplierCats || [])];
+  }
+
+  applyExternalRefsToDesiredMap(desiredByStore, externalRefs, categories as any[]);
+
+  const { data: existingRows, error: existingErr } = await supabase
+    .from("store_store_categories")
+    .select("id, store_id, category_id")
+    .eq("store_id", sid);
+  if (existingErr) return;
+
+  const { toInsert, toDeleteIds } = diffStoreCategoryRows(desiredByStore, (existingRows || []) as any[]);
+  if (toInsert.length > 0) {
+    await supabase.from("store_store_categories").insert(toInsert);
+  }
+  if (toDeleteIds.length > 0) {
+    await supabase.from("store_store_categories").delete().in("id", toDeleteIds);
+  }
 }
 
 async function setCountsToRedis(storeId: string, counts: ShopCounts): Promise<void> {
@@ -328,6 +381,11 @@ serve(async (req) => {
       }
 
       await invalidateAndRecomputeCounts(storeId)
+      try {
+        await syncStoreCategoriesForStore(storeId)
+      } catch {
+        void 0
+      }
       await invalidateShopsList(userId)
       await invalidateProductStores(productId)
       return new Response(JSON.stringify({ link: inserted }), {
@@ -355,6 +413,11 @@ serve(async (req) => {
     }
 
     await invalidateAndRecomputeCounts(storeId)
+    try {
+      await syncStoreCategoriesForStore(storeId)
+    } catch {
+      void 0
+    }
     await invalidateShopsList(userId)
     await invalidateProductStores(productId)
     return new Response(JSON.stringify({ link: updated }), {

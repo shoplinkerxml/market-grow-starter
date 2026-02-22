@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js";
 import { S3Client, CopyObjectCommand } from "npm:@aws-sdk/client-s3";
+import { applyExternalRefsToDesiredMap, diffStoreCategoryRows, extractCategoryRefsFromLinks } from "../_shared/store-category-sync.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -132,6 +133,59 @@ async function invalidateProductStores(productIds: string[]): Promise<void> {
   await redisPipeline(ids.map((id) => ["DEL", buildProductStoresKey(id)]));
 }
 
+async function syncStoreCategoriesForStores(supabase: any, storeIds: string[]): Promise<void> {
+  const ids = Array.from(new Set((storeIds || []).map((v) => String(v || "").trim()).filter(Boolean)));
+  if (ids.length === 0) return;
+
+  const { data: links, error: linksErr } = await supabase
+    .from("store_product_links")
+    .select("store_id, is_active, custom_category_id, store_products!inner(category_id,category_external_id,supplier_id)")
+    .in("store_id", ids)
+    .eq("is_active", true);
+  if (linksErr) return;
+
+  const { desiredByStore, externalRefs, externalIdList } = extractCategoryRefsFromLinks((links || []) as any[]);
+
+  let categories: any[] = [];
+  if (externalIdList.length > 0) {
+    const supplierIds = Array.from(
+      new Set((externalRefs || []).map((r) => Number((r as any)?.supplierId)).filter((v) => Number.isFinite(v))),
+    );
+    const [{ data: storeCats }, { data: supplierCats }] = await Promise.all([
+      supabase
+        .from("store_categories")
+        .select("id, external_id, supplier_id, store_id")
+        .in("external_id", externalIdList)
+        .in("store_id", ids),
+      supplierIds.length > 0
+        ? supabase
+            .from("store_categories")
+            .select("id, external_id, supplier_id, store_id")
+            .in("external_id", externalIdList)
+            .in("supplier_id", supplierIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+    categories = [...(storeCats || []), ...(supplierCats || [])];
+  }
+  applyExternalRefsToDesiredMap(desiredByStore, externalRefs, categories as any[]);
+
+  const { data: existingRows, error: existingErr } = await supabase
+    .from("store_store_categories")
+    .select("id, store_id, category_id")
+    .in("store_id", ids);
+  if (existingErr) return;
+
+  const { toInsert, toDeleteIds } = diffStoreCategoryRows(desiredByStore, (existingRows || []) as any[]);
+  if (toInsert.length > 0) {
+    const { error: insertErr } = await supabase.from("store_store_categories").insert(toInsert);
+    if (insertErr) return;
+  }
+  if (toDeleteIds.length > 0) {
+    const { error: deleteErr } = await supabase.from("store_store_categories").delete().in("id", toDeleteIds);
+    if (deleteErr) return;
+  }
+}
+
 function extractObjectKeyFromUrl(url: string): string | null {
   try {
     const u = new URL(url);
@@ -174,6 +228,7 @@ serve(async (req) => {
     if (!storeId) {
       return new Response(JSON.stringify({ error: "invalid_body", message: "store_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    console.info("create-product.request", JSON.stringify({ userId, storeId, external_id: body?.external_id, linksCount: Array.isArray(body.links) ? body.links.length : 0 }));
 
     const currencyCode = String(body?.currency_code || "").trim();
     if (!currencyCode) {
@@ -328,6 +383,7 @@ serve(async (req) => {
     if (!created || createErr) {
       return new Response(JSON.stringify({ error: "create_failed", message: createErr?.message || "Create failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    console.info("create-product.created", JSON.stringify({ userId, storeId, productId: String((created as any)?.id || "") }));
 
     const s3 = accountId && bucket && accessKeyId && secretAccessKey
       ? new S3Client({ region: "auto", endpoint: `https://${accountId}.r2.cloudflarestorage.com`, credentials: { accessKeyId, secretAccessKey } })
@@ -393,7 +449,14 @@ serve(async (req) => {
       if (links.length) {
         const mapped = links.map((l) => ({ product_id: String(created.id), store_id: String(l.store_id), is_active: l.is_active ?? true, custom_price: l.custom_price ?? null, custom_price_promo: l.custom_price_promo ?? null, custom_stock_quantity: l.custom_stock_quantity ?? null, custom_available: l.custom_available ?? null, custom_name: l.custom_name ?? null, custom_description: l.custom_description ?? null, custom_category_id: l.custom_category_id ?? null }));
         await supabase.from("store_product_links").insert(mapped);
-        await invalidateCounts([storeId, ...mapped.map((m) => m.store_id)]);
+        const affectedStoreIds = [storeId, ...mapped.map((m) => m.store_id)];
+        await invalidateCounts(affectedStoreIds);
+        try {
+          await syncStoreCategoriesForStores(supabase, affectedStoreIds);
+        } catch (syncErr) {
+          console.info("create-product.category_sync_failed", JSON.stringify({ userId, storeId, error: (syncErr as { message?: string })?.message || "sync_failed" }));
+        }
+        console.info("create-product.links_created", JSON.stringify({ userId, storeId, linksCount: mapped.length }));
       }
     } catch (subErr) {
       try {
