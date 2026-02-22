@@ -297,7 +297,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                 >
                   <Badge
                     variant="secondary"
-                    className="relative inline-flex items-center rounded-md px-2 py-0 text-[11px] h-5 max-w-[10rem] truncate dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"
+                    className="relative inline-flex items-center rounded-md px-2 py-0 text-[11px] h-5 max-w-[10rem] truncate transition-opacity duration-150 ease-out group-hover:opacity-0 group-focus-within:opacity-0 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"
                   >
                     <span className="min-w-0 select-none truncate" title={name} data-testid={`user_products_store_badge_${product.id}_${id}`}>
                       {label}
@@ -306,7 +306,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
 
                   <Badge
                     variant="secondary"
-                    className="absolute inset-y-0 left-0 z-20 inline-flex h-full w-[calc(100%+18px)] items-center rounded-md px-2 py-0 pr-6 text-[11px] opacity-0 pointer-events-none overflow-visible transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"
+                    className="absolute inset-y-0 left-0 z-20 inline-flex h-full w-[calc(100%+18px)] items-center rounded-md px-2 py-0 pr-6 text-[11px] opacity-0 pointer-events-none overflow-visible transition-[opacity,width,padding] duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"
                   >
                     <span className="min-w-0 flex-1 select-none truncate" title={name}>
                       {label}
