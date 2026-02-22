@@ -1,5 +1,4 @@
 import { createClient } from 'npm:@supabase/supabase-js'
-import { applyExternalRefsToDesiredMap, diffStoreCategoryRows, extractCategoryRefsFromLinks } from '../_shared/store-category-sync.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,44 +51,47 @@ Deno.serve(async (req: Request): Promise<Response> => {
     if (storeErr) return json({ error: 'db_error' }, { status: 500 })
     if (!storeRow || String((storeRow as any).user_id) !== userRes.user.id) return json({ error: 'forbidden' }, { status: 403 })
 
+    // --- Category sync: only keep categories of products actually linked to this store ---
     const { data: links, error: linksErr } = await supabase
       .from('store_product_links')
-      .select('store_id, is_active, custom_category_id, store_products!inner(category_id,category_external_id,supplier_id)')
+      .select('store_products!inner(category_id)')
       .eq('store_id', storeId)
       .eq('is_active', true)
     if (linksErr) return json({ error: 'db_error' }, { status: 500 })
 
-    const { desiredByStore, externalRefs, externalIdList } = extractCategoryRefsFromLinks((links || []) as any[])
-    let categoriesByExternal: any[] = []
-    if (externalIdList.length > 0) {
-      const supplierIds = Array.from(
-        new Set((externalRefs || []).map((r) => Number((r as any)?.supplierId)).filter((v) => Number.isFinite(v))),
-      )
-      const [{ data: storeCats }, { data: supplierCats }] = await Promise.all([
-        supabase
-          .from('store_categories')
-          .select('id, external_id, supplier_id, store_id')
-          .in('external_id', externalIdList)
-          .eq('store_id', storeId),
-        supplierIds.length > 0
-          ? supabase
-              .from('store_categories')
-              .select('id, external_id, supplier_id, store_id')
-              .in('external_id', externalIdList)
-              .in('supplier_id', supplierIds)
-          : Promise.resolve({ data: [] }),
-      ])
-      categoriesByExternal = [...(storeCats || []), ...(supplierCats || [])]
+    // Collect unique category_ids from linked products
+    const desiredCategoryIds = new Set<number>()
+    for (const link of (links || []) as any[]) {
+      const catId = Number(link?.store_products?.category_id)
+      if (Number.isFinite(catId) && catId > 0) desiredCategoryIds.add(catId)
     }
-    applyExternalRefsToDesiredMap(desiredByStore, externalRefs, categoriesByExternal as any[])
 
+    // Get existing store_store_categories rows
     const { data: existingRows, error: existingErr } = await supabase
       .from('store_store_categories')
-      .select('id, store_id, category_id')
+      .select('id, category_id')
       .eq('store_id', storeId)
     if (existingErr) return json({ error: 'db_error' }, { status: 500 })
 
-    const { toInsert, toDeleteIds } = diffStoreCategoryRows(desiredByStore, (existingRows || []) as any[])
+    const existingMap = new Map<number, number>() // category_id -> row id
+    for (const row of (existingRows || []) as any[]) {
+      existingMap.set(Number(row.category_id), Number(row.id))
+    }
+
+    // Determine inserts and deletes
+    const toInsert: { store_id: string; category_id: number }[] = []
+    for (const catId of desiredCategoryIds) {
+      if (!existingMap.has(catId)) {
+        toInsert.push({ store_id: storeId, category_id: catId })
+      }
+    }
+    const toDeleteIds: number[] = []
+    for (const [catId, rowId] of existingMap) {
+      if (!desiredCategoryIds.has(catId)) {
+        toDeleteIds.push(rowId)
+      }
+    }
+
     if (toInsert.length > 0) {
       const { error: insertErr } = await supabase.from('store_store_categories').insert(toInsert)
       if (insertErr) return json({ error: 'db_error' }, { status: 500 })
