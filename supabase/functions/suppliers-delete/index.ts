@@ -226,9 +226,24 @@ Deno.serve(async (req) => {
     const productIds = Array.from(
       new Set((products || []).map((p: any) => String(p?.id || '').trim()).filter(Boolean))
     )
-    const storeIds = Array.from(
+    const sourceStoreIds = Array.from(
       new Set((products || []).map((p: any) => String(p?.store_id || '').trim()).filter(Boolean))
     )
+
+    // Also fetch destination store IDs from store_product_links BEFORE cascade delete
+    let linkedStoreIds: string[] = []
+    if (productIds.length > 0) {
+      const { data: links } = await supabase
+        .from('store_product_links')
+        .select('store_id')
+        .in('product_id', productIds)
+
+      linkedStoreIds = Array.from(
+        new Set((links || []).map((l: any) => String(l?.store_id || '').trim()).filter(Boolean))
+      )
+    }
+
+    const allStoreIds = Array.from(new Set([...sourceStoreIds, ...linkedStoreIds]))
 
     // Clean up R2 images BEFORE the cascade delete removes DB records
     if (productIds.length > 0) {
@@ -246,10 +261,10 @@ Deno.serve(async (req) => {
 
     try { await invalidateSuppliersList(user.id) } catch { void 0 }
     try { await invalidateShopsList(user.id) } catch { void 0 }
-    try { await invalidateCounts(storeIds) } catch { void 0 }
+    try { await invalidateCounts(allStoreIds) } catch { void 0 }
     try { await invalidateProductStores(productIds) } catch { void 0 }
 
-    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders })
+    return new Response(JSON.stringify({ ok: true, linkedStoreIds }), { status: 200, headers: corsHeaders })
   } catch (e) {
     const msg = (e as any)?.message || 'failed'
     return new Response(JSON.stringify({ error: msg }), { status: 500, headers: corsHeaders })
