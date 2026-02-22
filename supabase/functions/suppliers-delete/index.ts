@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { S3Client, DeleteObjectsCommand } from "npm:@aws-sdk/client-s3"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,6 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json',
 }
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
+const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 
 const REDIS_REST_URL =
   Deno.env.get('UPSTASH_REDIS_REST_URL') || Deno.env.get('REDIS_REST_URL') || ''
@@ -19,6 +23,30 @@ const SHOP_LIST_KEY_PREFIX =
   Deno.env.get('SHOP_LIST_KEY_PREFIX') || 'shop:list:'
 const PRODUCT_STORES_KEY_PREFIX =
   Deno.env.get('PRODUCT_STORES_KEY_PREFIX') || 'product:stores:'
+
+const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID") ?? ""
+const bucket = Deno.env.get("R2_BUCKET_NAME") ?? ""
+const accessKeyId = Deno.env.get("R2_ACCESS_KEY_ID") ?? ""
+const secretAccessKey = Deno.env.get("R2_SECRET_ACCESS_KEY") ?? ""
+
+const s3 =
+  accountId && bucket && accessKeyId && secretAccessKey
+    ? new S3Client({
+        region: "auto",
+        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId, secretAccessKey },
+      })
+    : null
+
+function extractObjectKeyFromUrl(url: string): string | null {
+  try {
+    const u = new URL(url)
+    const path = u.pathname || ""
+    return path.startsWith("/") ? path.slice(1) : path
+  } catch {
+    return null
+  }
+}
 
 async function redisPipeline(commands: any[]): Promise<any[] | null> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
@@ -84,6 +112,72 @@ async function invalidateProductStores(productIds: string[]): Promise<void> {
   await redisPipeline(ids.map((pid) => ['DEL', buildProductStoresKey(pid)]))
 }
 
+/**
+ * Delete R2 objects for all images belonging to the given product IDs.
+ * Uses service-role supabase client to bypass RLS.
+ */
+async function deleteR2ImagesForProducts(productIds: string[]): Promise<void> {
+  if (!s3 || productIds.length === 0) return
+
+  const serviceClient = createClient(SUPABASE_URL, SERVICE_KEY)
+
+  const { data: imageRows, error: imgErr } = await serviceClient
+    .from('store_product_images')
+    .select('url, r2_key_original, r2_key_card, r2_key_thumb')
+    .in('product_id', productIds)
+
+  if (imgErr || !imageRows || imageRows.length === 0) {
+    console.log('[suppliers-delete] No images to clean up from R2', imgErr?.message)
+    return
+  }
+
+  const keys: string[] = []
+
+  for (const r of imageRows as { url?: string; r2_key_original?: string; r2_key_card?: string; r2_key_thumb?: string }[]) {
+    if (r.r2_key_original) keys.push(r.r2_key_original)
+    if (r.r2_key_card) keys.push(r.r2_key_card)
+    if (r.r2_key_thumb) keys.push(r.r2_key_thumb)
+
+    const u = String(r.url || "")
+    if (u && !r.r2_key_original && !r.r2_key_card && !r.r2_key_thumb) {
+      let host = ""
+      try { host = new URL(u).host } catch { host = "" }
+      const isOurBucket =
+        host === `${bucket}.${accountId}.r2.cloudflarestorage.com` ||
+        host === "shop-linker.9ea53eb0cc570bc4b00e01008dee35e6.r2.cloudflarestorage.com" ||
+        host === "images-service.xmlreactor.shop"
+      if (isOurBucket) {
+        const key = extractObjectKeyFromUrl(u)
+        if (key) keys.push(key)
+      }
+    }
+  }
+
+  const uniqueKeys = Array.from(new Set(keys))
+  if (uniqueKeys.length === 0) return
+
+  console.log(`[suppliers-delete] Deleting ${uniqueKeys.length} R2 objects for ${productIds.length} products`)
+
+  try {
+    const chunkSize = 900
+    for (let i = 0; i < uniqueKeys.length; i += chunkSize) {
+      const chunk = uniqueKeys.slice(i, i + chunkSize)
+      await s3.send(
+        new DeleteObjectsCommand({
+          Bucket: bucket,
+          Delete: {
+            Objects: chunk.map((k) => ({ Key: k })),
+            Quiet: true,
+          },
+        }),
+      )
+    }
+    console.log(`[suppliers-delete] R2 cleanup done`)
+  } catch (e) {
+    console.warn('[suppliers-delete] R2 cleanup failed:', (e as any)?.message)
+  }
+}
+
 type Body = { id?: number }
 
 Deno.serve(async (req) => {
@@ -97,7 +191,7 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') || '',
+      SUPABASE_URL,
       Deno.env.get('SUPABASE_ANON_KEY') || '',
       { global: { headers: { Authorization: authHeader } } }
     )
@@ -123,6 +217,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: corsHeaders })
     }
 
+    // Fetch products BEFORE cascade delete to get their IDs and store_ids
     const { data: products } = await supabase
       .from('store_products')
       .select('id, store_id')
@@ -135,6 +230,11 @@ Deno.serve(async (req) => {
       new Set((products || []).map((p: any) => String(p?.store_id || '').trim()).filter(Boolean))
     )
 
+    // Clean up R2 images BEFORE the cascade delete removes DB records
+    if (productIds.length > 0) {
+      await deleteR2ImagesForProducts(productIds)
+    }
+
     const { error } = await supabase
       .from('user_suppliers')
       .delete()
@@ -144,26 +244,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'delete_failed', message: (error as any)?.message }), { status: 500, headers: corsHeaders })
     }
 
-    try {
-      await invalidateSuppliersList(user.id)
-    } catch {
-      void 0
-    }
-    try {
-      await invalidateShopsList(user.id)
-    } catch {
-      void 0
-    }
-    try {
-      await invalidateCounts(storeIds)
-    } catch {
-      void 0
-    }
-    try {
-      await invalidateProductStores(productIds)
-    } catch {
-      void 0
-    }
+    try { await invalidateSuppliersList(user.id) } catch { void 0 }
+    try { await invalidateShopsList(user.id) } catch { void 0 }
+    try { await invalidateCounts(storeIds) } catch { void 0 }
+    try { await invalidateProductStores(productIds) } catch { void 0 }
 
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: corsHeaders })
   } catch (e) {
