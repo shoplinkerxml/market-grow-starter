@@ -1695,6 +1695,10 @@ export type Database = {
       }
       get_structured_menu: { Args: { user_uuid: string }; Returns: Json }
       get_user_product_limit: { Args: { p_user_id: string }; Returns: number }
+      infer_counters_user_id: {
+        Args: { p_counter_type: string; p_entity_id: string }
+        Returns: string
+      }
       is_admin: { Args: never; Returns: boolean }
       is_owner_supplier: { Args: { p_supplier_id: number }; Returns: boolean }
       load_demo_data: { Args: { p_user_id: string }; Returns: Json }
