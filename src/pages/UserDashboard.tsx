@@ -130,6 +130,17 @@ const UserDashboard = () => {
     await queryClient.refetchQueries({ predicate, type: "active" });
   }, [queryClient, user.id]);
 
+  const refreshSuppliersQueries = useCallback(async () => {
+    const uid = user?.id ? String(user.id) : "current";
+    const keys = [
+      ["user", uid, "suppliers", "list"] as const,
+      ["user", "current", "suppliers", "list"] as const,
+    ];
+    SupplierService.clearSuppliersCache();
+    await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey, exact: true, refetchType: "all" })));
+    await Promise.all(keys.map((queryKey) => queryClient.refetchQueries({ queryKey, exact: true, type: "all" })));
+  }, [queryClient, user?.id]);
+
   const handleLoadDemoData = async () => {
     if (isDemoLoading) return;
     setIsDemoLoading(true);
@@ -163,6 +174,7 @@ const UserDashboard = () => {
       }
       await refetchStats();
       cache.clearByPrefix("template:");
+      await refreshSuppliersQueries();
       await refreshUserQueries();
     } catch (error) {
       console.error(error);

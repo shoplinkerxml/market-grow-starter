@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
+const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const REDIS_REST_URL =
   Deno.env.get('UPSTASH_REDIS_REST_URL') || Deno.env.get('REDIS_REST_URL') || ''
 const REDIS_REST_TOKEN =
@@ -12,10 +13,6 @@ const SUPPLIERS_LIST_TTL_SECONDS = Math.max(
 )
 const SUPPLIERS_LIST_KEY_PREFIX =
   Deno.env.get('SUPPLIERS_LIST_KEY_PREFIX') || 'suppliers:list:'
-
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing SUPABASE_URL or SUPABASE_ANON_KEY')
-}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -103,9 +100,17 @@ Deno.serve(async (req) => {
       )
     }
 
+    const serviceKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY
+    if (!SUPABASE_URL || !serviceKey) {
+      return jsonResponse(
+        { error: 'Configuration error' },
+        { status: 500 }
+      )
+    }
+
     const supabaseClient = createClient(
       SUPABASE_URL,
-      SUPABASE_ANON_KEY,
+      serviceKey,
       {
         global: {
           headers: { Authorization: authHeader },
