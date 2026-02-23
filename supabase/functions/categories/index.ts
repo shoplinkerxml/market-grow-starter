@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js"
+import { simulateDedup } from "../_shared/category-dedup.ts"
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -226,6 +227,97 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ rows: data || [], count: data?.length || 0 }), 
         { status: 201, headers: corsHeaders }
+      )
+    }
+
+    if (action === "dedupe_store_categories") {
+      const storeId = String(body?.store_id || "").trim()
+      const items = (body?.items || []) as CreateCategoryInput[]
+
+      if (!storeId) {
+        return new Response(
+          JSON.stringify({ error: "invalid_store_id" }),
+          { status: 400, headers: corsHeaders }
+        )
+      }
+
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") || ""
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || ""
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
+
+      if (!supabaseUrl || !anonKey || !serviceKey) {
+        return new Response(
+          JSON.stringify({ error: "server_misconfigured" }),
+          { status: 500, headers: corsHeaders }
+        )
+      }
+
+      if (!authHeader.startsWith("Bearer ")) {
+        return new Response(
+          JSON.stringify({ error: "unauthorized" }),
+          { status: 401, headers: corsHeaders }
+        )
+      }
+
+      const authClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      })
+
+      const { data: userData, error: userError } = await authClient.auth.getUser()
+      const user = userData?.user
+      if (userError || !user?.id) {
+        return new Response(
+          JSON.stringify({ error: "unauthorized" }),
+          { status: 401, headers: corsHeaders }
+        )
+      }
+
+      const { data: storeRow, error: storeError } = await authClient
+        .from("user_stores")
+        .select("id")
+        .eq("id", storeId)
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (storeError) {
+        return new Response(
+          JSON.stringify(handleError(storeError, "Ошибка проверки магазина")),
+          { status: 500, headers: corsHeaders }
+        )
+      }
+
+      if (!storeRow) {
+        return new Response(
+          JSON.stringify({ error: "forbidden" }),
+          { status: 403, headers: corsHeaders }
+        )
+      }
+
+      const inputReport = simulateDedup([], items)
+      console.log("Category dedupe request", {
+        store_id: storeId,
+        ...inputReport,
+      })
+
+      const serviceClient = createClient(supabaseUrl, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+
+      const { data, error } = await serviceClient.rpc("dedupe_store_categories", {
+        p_store_id: storeId,
+        p_items: items,
+      })
+
+      if (error) {
+        return new Response(
+          JSON.stringify(handleError(error, "Ошибка дедупликации категорий")),
+          { status: 500, headers: corsHeaders }
+        )
+      }
+
+      return new Response(
+        JSON.stringify(data ?? { report: inputReport, items: [] }),
+        { headers: corsHeaders }
       )
     }
 
@@ -459,7 +551,8 @@ Deno.serve(async (req) => {
       JSON.stringify({ error: "unknown_action", available_actions: [
         "list", "get_by_id", "get_name_by_id", "get_by_external_id",
         "get_supplier_categories", "get_subcategories", "create", 
-        "bulk_create", "update_name", "delete", "delete_cascade"
+        "bulk_create", "update_name", "delete", "delete_cascade",
+        "dedupe_store_categories"
       ]}), 
       { status: 400, headers: corsHeaders }
     )
