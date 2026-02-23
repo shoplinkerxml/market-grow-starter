@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Gauge, Plus, ArrowLeft, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -39,10 +39,13 @@ export const Suppliers = () => {
 
   const suppliersQueryKey = useMemo(() => ["user", uid, "suppliers", "list"] as const, [uid]);
 
+<<<<<<< HEAD
   useEffect(() => {
     void queryClient.invalidateQueries({ queryKey: suppliersQueryKey, exact: true, refetchType: "active" });
   }, [queryClient, suppliersQueryKey]);
 
+=======
+>>>>>>> 32b6422 (feat(suppliers): disable automatic refetch and add store category overrides)
   const { data: suppliersData } = useSuppliers(uid);
 
   const suppliersCount = suppliersData?.length ?? 0;

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { applyExternalRefsToDesiredMap, dedupeDesiredCategoriesByName, diffStoreCategoryRows, extractCategoryRefsFromLinks } from '../_shared/store-category-sync.ts'
+import { applyExternalRefsToDesiredMap, dedupeDesiredCategoriesByName, diffStoreCategoryRows, extractCategoryRefsFromLinks, normalizeCategoryName } from '../_shared/store-category-sync.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
@@ -136,6 +136,127 @@ async function syncStoreCategoriesForStores(supabase: any, storeIds: string[]): 
   }
 }
 
+async function applyStoreCategoryOverrides(supabase: any, links: any[]): Promise<any[]> {
+  const productIds = Array.from(
+    new Set(links.map((l) => String(l?.product_id || '').trim()).filter((v) => v.length > 0)),
+  )
+  const storeIds = Array.from(
+    new Set(links.map((l) => String(l?.store_id || '').trim()).filter((v) => v.length > 0)),
+  )
+  if (productIds.length === 0 || storeIds.length === 0) return links
+
+  const { data: products } = await supabase
+    .from('store_products')
+    .select('id, category_id, category_external_id, supplier_id')
+    .in('id', productIds)
+
+  const productMetaById = new Map<string, { categoryId: number | null; externalId: string; supplierId: number | null }>()
+  for (const p of products || []) {
+    const id = String((p as any)?.id || '').trim()
+    if (!id) continue
+    const categoryId = Number((p as any)?.category_id)
+    const supplierId = Number((p as any)?.supplier_id)
+    productMetaById.set(id, {
+      categoryId: Number.isFinite(categoryId) ? categoryId : null,
+      externalId: (p as any)?.category_external_id != null ? String((p as any).category_external_id) : '',
+      supplierId: Number.isFinite(supplierId) ? supplierId : null,
+    })
+  }
+
+  const categoryIds = Array.from(
+    new Set(
+      Array.from(productMetaById.values())
+        .map((v) => Number(v.categoryId))
+        .filter((v) => Number.isFinite(v)),
+    ),
+  )
+  const externalIds = Array.from(
+    new Set(
+      Array.from(productMetaById.values())
+        .map((v) => String(v.externalId || '').trim())
+        .filter((v) => v.length > 0),
+    ),
+  )
+  const supplierIds = Array.from(
+    new Set(
+      Array.from(productMetaById.values())
+        .map((v) => Number(v.supplierId))
+        .filter((v) => Number.isFinite(v)),
+    ),
+  )
+
+  const categoryById = new Map<number, { name: string }>()
+  if (categoryIds.length > 0) {
+    const { data: categoryRows } = await supabase
+      .from('store_categories')
+      .select('id, name')
+      .in('id', categoryIds)
+    for (const row of categoryRows || []) {
+      const id = Number((row as any)?.id)
+      if (!Number.isFinite(id)) continue
+      const name = String((row as any)?.name || '')
+      if (name) categoryById.set(id, { name })
+    }
+  }
+
+  const categoryByExternal = new Map<string, { name: string }>()
+  if (externalIds.length > 0 && supplierIds.length > 0) {
+    const { data: externalRows } = await supabase
+      .from('store_categories')
+      .select('id, name, external_id, supplier_id')
+      .in('external_id', externalIds)
+      .in('supplier_id', supplierIds)
+    for (const row of externalRows || []) {
+      const ext = String((row as any)?.external_id || '').trim().toLowerCase()
+      const supplierId = Number((row as any)?.supplier_id)
+      if (!ext || !Number.isFinite(supplierId)) continue
+      const name = String((row as any)?.name || '')
+      if (!name) continue
+      categoryByExternal.set(`${supplierId}|${ext}`, { name })
+    }
+  }
+
+  const storeCategoryByName = new Map<string, number>()
+  const { data: storeCategories } = await supabase
+    .from('store_categories')
+    .select('id, name, store_id')
+    .in('store_id', storeIds)
+  for (const row of storeCategories || []) {
+    const storeId = String((row as any)?.store_id || '').trim()
+    const id = Number((row as any)?.id)
+    if (!storeId || !Number.isFinite(id)) continue
+    const nameNorm = normalizeCategoryName((row as any)?.name)
+    if (!nameNorm) continue
+    const key = `${storeId}|${nameNorm}`
+    const existing = storeCategoryByName.get(key)
+    if (!Number.isFinite(existing) || id < (existing as number)) {
+      storeCategoryByName.set(key, id)
+    }
+  }
+
+  return links.map((link) => {
+    if ((link as any)?.custom_category_id != null) return link
+    const productId = String((link as any)?.product_id || '').trim()
+    const storeId = String((link as any)?.store_id || '').trim()
+    if (!productId || !storeId) return link
+    const meta = productMetaById.get(productId)
+    if (!meta) return link
+    let categoryName = ''
+    if (meta.categoryId != null && Number.isFinite(meta.categoryId)) {
+      categoryName = categoryById.get(Number(meta.categoryId))?.name || ''
+    }
+    if (!categoryName && meta.externalId && Number.isFinite(meta.supplierId)) {
+      const extKey = `${Number(meta.supplierId)}|${String(meta.externalId).trim().toLowerCase()}`
+      categoryName = categoryByExternal.get(extKey)?.name || ''
+    }
+    const nameNorm = normalizeCategoryName(categoryName)
+    if (!nameNorm) return link
+    const storeCategoryId = storeCategoryByName.get(`${storeId}|${nameNorm}`)
+    if (!Number.isFinite(storeCategoryId)) return link
+    return { ...link, custom_category_id: Number(storeCategoryId) }
+  })
+}
+
 async function setCountsToRedis(rows: Array<{ storeId: string; counts: ShopCounts }>): Promise<void> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return
   const items = (rows || [])
@@ -263,7 +384,7 @@ Deno.serve(async (req) => {
     })
 
     const body = await req.json().catch(() => ({}))
-    const links: any[] = Array.isArray((body as any).links) ? ((body as any).links as any[]) : []
+    let links: any[] = Array.isArray((body as any).links) ? ((body as any).links as any[]) : []
 
     if (links.length === 0) {
       return new Response(
@@ -283,9 +404,13 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Вызов RPC функции - весь процесс в одном запросе
-    const { data, error } = await supabase
-      .rpc('bulk_insert_product_links', { input_links: links })
+    try {
+      links = await applyStoreCategoryOverrides(supabase, links)
+    } catch {
+      void 0
+    }
+
+    const { data, error } = await supabase.rpc('bulk_insert_product_links', { input_links: links })
 
     if (error) {
       console.error('RPC error:', error)

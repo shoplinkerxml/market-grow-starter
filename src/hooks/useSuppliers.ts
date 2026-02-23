@@ -9,8 +9,8 @@ export function useSuppliers(userId: string, options?: { enabled?: boolean }) {
     fetchFn: async () => await SupplierService.getSuppliers(),
     enabled: options?.enabled ?? true,
     retry: false,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     placeholderData: (prev) => prev as any,
   });
