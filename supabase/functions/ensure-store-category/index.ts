@@ -26,6 +26,11 @@ function decodeJwtSub(h: string): string | null {
   }
 }
 
+function normalizeCategoryName(value: string | null | undefined): string | null {
+  const v = String(value || "").trim()
+  return v ? v.toLowerCase() : null
+}
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || ""
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY") || ""
 
@@ -52,6 +57,16 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "validation_failed" }), { status: 422, headers: CORS_HEADERS })
     }
 
+    console.info(
+      "ensure-store-category.request",
+      JSON.stringify({
+        storeId,
+        categoryId,
+        externalId: externalId ? String(externalId).slice(0, 128) : null,
+        hasCustomName: !!customName,
+      }),
+    )
+
     const supabase = (createClient as any)(SUPABASE_URL, SERVICE_KEY, {
       global: authHeader ? { headers: { Authorization: authHeader } } : undefined,
     })
@@ -70,7 +85,7 @@ Deno.serve(async (req) => {
 
     const { data: baseCategory } = await supabase
       .from("store_categories")
-      .select("id, external_id")
+      .select("id, external_id, name")
       .eq("id", categoryId)
       .maybeSingle()
     if (!baseCategory) {
@@ -87,7 +102,39 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "db_error" }), { status: 500, headers: CORS_HEADERS })
     }
     if (existingRow?.id != null) {
+      console.info(
+        "ensure-store-category.exists",
+        JSON.stringify({ storeId, categoryId, id: Number(existingRow.id) }),
+      )
       return new Response(JSON.stringify({ id: Number(existingRow.id) }), { headers: CORS_HEADERS })
+    }
+
+    const nameToCheck = customName || (baseCategory as any)?.name || null
+    const normalizedName = normalizeCategoryName(nameToCheck)
+    if (normalizedName) {
+      const { data: nameRows, error: nameErr } = await supabase
+        .from("store_store_categories")
+        .select("id, category_id, custom_name, store_categories(name)")
+        .eq("store_id", storeId)
+      if (nameErr) {
+        return new Response(JSON.stringify({ error: "db_error" }), { status: 500, headers: CORS_HEADERS })
+      }
+      const match = (nameRows || []).find((row: any) => {
+        const baseName = row?.custom_name ?? row?.store_categories?.name ?? null
+        return normalizeCategoryName(baseName) === normalizedName
+      })
+      if (match?.id != null) {
+        console.info(
+          "ensure-store-category.duplicate_name",
+          JSON.stringify({
+            storeId,
+            categoryId,
+            existingId: Number(match.id),
+            name: String(nameToCheck || ""),
+          }),
+        )
+        return new Response(JSON.stringify({ id: Number(match.id) }), { headers: CORS_HEADERS })
+      }
     }
 
     const { data: links, error: linksErr } = await supabase
@@ -122,6 +169,10 @@ Deno.serve(async (req) => {
     }
 
     if (!hasMatch) {
+      console.info(
+        "ensure-store-category.skip_no_links",
+        JSON.stringify({ storeId, categoryId, externalId: externalId ? String(externalId).slice(0, 128) : null }),
+      )
       return new Response(JSON.stringify({ id: null }), { headers: CORS_HEADERS })
     }
 
@@ -141,6 +192,15 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "db_error" }), { status: 500, headers: CORS_HEADERS })
     }
 
+    console.info(
+      "ensure-store-category.created",
+      JSON.stringify({
+        storeId,
+        categoryId,
+        id: inserted?.id != null ? Number(inserted.id) : null,
+        externalId: externalId ? String(externalId).slice(0, 128) : null,
+      }),
+    )
     return new Response(JSON.stringify({ id: inserted?.id != null ? Number(inserted.id) : null }), { headers: CORS_HEADERS })
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message || "failed" }), { status: 500, headers: CORS_HEADERS })

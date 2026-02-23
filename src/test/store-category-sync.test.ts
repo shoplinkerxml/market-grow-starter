@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   applyExternalRefsToDesiredMap,
+  dedupeDesiredCategoriesByName,
   diffStoreCategoryRows,
   extractCategoryRefsFromLinks,
+  normalizeCategoryName,
   normalizeExternalId,
 } from "../../supabase/functions/_shared/store-category-sync";
 
@@ -51,6 +53,11 @@ describe("store-category sync unit", () => {
   it("normalizes external ids", () => {
     expect(normalizeExternalId("  AbC  ")).toBe("abc");
     expect(normalizeExternalId("")).toBe(null);
+  });
+
+  it("normalizes category names", () => {
+    expect(normalizeCategoryName("  Phone ")).toBe("phone");
+    expect(normalizeCategoryName("")).toBe(null);
   });
 });
 
@@ -104,5 +111,30 @@ describe("store-category sync integration", () => {
     const { toInsert, toDeleteIds } = diffStoreCategoryRows(desiredByStore, existingRows);
     expect(toInsert).toEqual([]);
     expect(toDeleteIds.sort()).toEqual([101, 102]);
+  });
+
+  it("dedupes categories by name and prefers existing rows", () => {
+    const desiredByStore = new Map<string, Set<number>>([
+      ["s1", new Set([1, 2])],
+    ]);
+    const categories = [
+      { id: 1, name: "Headphones", store_id: null },
+      { id: 2, name: "headphones", store_id: null },
+    ];
+    const existingRows = [{ id: 201, store_id: "s1", category_id: 2 }];
+    const deduped = dedupeDesiredCategoriesByName(desiredByStore, categories, existingRows);
+    expect(Array.from(deduped.get("s1") || [])).toEqual([2]);
+  });
+
+  it("dedupes categories by name and prefers store-specific", () => {
+    const desiredByStore = new Map<string, Set<number>>([
+      ["s1", new Set([1, 2])],
+    ]);
+    const categories = [
+      { id: 1, name: "Accessories", store_id: "s1" },
+      { id: 2, name: "Accessories", store_id: null },
+    ];
+    const deduped = dedupeDesiredCategoriesByName(desiredByStore, categories, []);
+    expect(Array.from(deduped.get("s1") || [])).toEqual([1]);
   });
 });

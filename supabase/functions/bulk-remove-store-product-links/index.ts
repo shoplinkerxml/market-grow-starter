@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { applyExternalRefsToDesiredMap, diffStoreCategoryRows, extractCategoryRefsFromLinks } from '../_shared/store-category-sync.ts'
+import { applyExternalRefsToDesiredMap, dedupeDesiredCategoriesByName, diffStoreCategoryRows, extractCategoryRefsFromLinks } from '../_shared/store-category-sync.ts'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -106,7 +106,25 @@ async function syncStoreCategoriesForStores(supabase: any, storeIds: string[]): 
     .in('store_id', ids)
   if (existingErr) return
 
-  const { toInsert, toDeleteIds } = diffStoreCategoryRows(desiredByStore, (existingRows || []) as any[])
+  const allCategoryIds = new Set<number>()
+  for (const set of desiredByStore.values()) {
+    for (const id of set) allCategoryIds.add(Number(id))
+  }
+  for (const row of existingRows || []) {
+    const id = Number((row as any)?.category_id)
+    if (Number.isFinite(id)) allCategoryIds.add(id)
+  }
+
+  let finalDesired = desiredByStore
+  if (allCategoryIds.size > 0) {
+    const { data: nameRows } = await supabase
+      .from('store_categories')
+      .select('id, name, store_id')
+      .in('id', Array.from(allCategoryIds))
+    finalDesired = dedupeDesiredCategoriesByName(desiredByStore, (nameRows || []) as any[], (existingRows || []) as any[])
+  }
+
+  const { toInsert, toDeleteIds } = diffStoreCategoryRows(finalDesired, (existingRows || []) as any[])
   if (toInsert.length > 0) {
     await supabase.from('store_store_categories').insert(toInsert)
   }

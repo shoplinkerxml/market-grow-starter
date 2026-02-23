@@ -100,33 +100,30 @@ Deno.serve(async (req) => {
       )
     }
 
-    const serviceKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY
-    if (!SUPABASE_URL || !serviceKey) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       return jsonResponse(
         { error: 'Configuration error' },
         { status: 500 }
       )
     }
 
-    const supabaseClient = createClient(
-      SUPABASE_URL,
-      serviceKey,
-      {
-        global: {
-          headers: { Authorization: authHeader },
-        },
-      }
-    )
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: {
+        headers: { Authorization: authHeader },
+      },
+    })
 
     // Проверка аутентификации пользователя
     const {
       data: { user },
       error: userError,
-    } = await supabaseClient.auth.getUser()
+    } = await authClient.auth.getUser()
 
     if (userError || !user) {
       console.log('User authentication failed', {
         error: userError?.message,
+        status: (userError as any)?.status,
+        name: (userError as any)?.name,
       })
       return jsonResponse({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -143,7 +140,13 @@ Deno.serve(async (req) => {
     }
 
     // Получение поставщиков только текущего пользователя
-    const { data: suppliers, error: suppliersError } = await supabaseClient
+    const dataClient = SUPABASE_SERVICE_ROLE_KEY
+      ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        })
+      : authClient
+
+    const { data: suppliers, error: suppliersError } = await dataClient
       .from('user_suppliers')
       .select('*')
       .eq('user_id', user.id)
@@ -152,6 +155,9 @@ Deno.serve(async (req) => {
     if (suppliersError) {
       console.log('Suppliers fetch error', {
         error: suppliersError.message,
+        code: (suppliersError as any)?.code,
+        details: (suppliersError as any)?.details,
+        hint: (suppliersError as any)?.hint,
       })
       return jsonResponse(
         { error: 'Failed to fetch suppliers' },

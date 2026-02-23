@@ -16,6 +16,12 @@ export type CategoryLike = {
   store_id?: string | null
 }
 
+export type CategoryNameLike = {
+  id: number
+  name?: string | null
+  store_id?: string | null
+}
+
 export type StoreCategoryLike = {
   id: number
   store_id: string
@@ -29,6 +35,11 @@ export type CategoryExternalRef = {
 }
 
 export function normalizeExternalId(value: string | null | undefined): string | null {
+  const v = String(value || "").trim()
+  return v ? v.toLowerCase() : null
+}
+
+export function normalizeCategoryName(value: string | null | undefined): string | null {
   const v = String(value || "").trim()
   return v ? v.toLowerCase() : null
 }
@@ -120,6 +131,66 @@ export function applyExternalRefsToDesiredMap(
   }
 
   return desiredByStore
+}
+
+export function dedupeDesiredCategoriesByName(
+  desiredByStore: Map<string, Set<number>>,
+  categories: CategoryNameLike[],
+  existingRows: StoreCategoryLike[] = [],
+) {
+  const categoryMetaById = new Map<number, { nameNorm: string | null; storeId: string }>()
+  for (const row of categories || []) {
+    const id = Number((row as any)?.id)
+    if (!Number.isFinite(id)) continue
+    const nameNorm = normalizeCategoryName((row as any)?.name)
+    const storeId = (row as any)?.store_id != null ? String((row as any).store_id) : ""
+    categoryMetaById.set(id, { nameNorm, storeId })
+  }
+
+  const existingByStore = new Map<string, Set<number>>()
+  for (const row of existingRows || []) {
+    const storeId = String((row as any)?.store_id || "").trim()
+    const categoryId = Number((row as any)?.category_id)
+    if (!storeId || !Number.isFinite(categoryId)) continue
+    if (!existingByStore.has(storeId)) existingByStore.set(storeId, new Set<number>())
+    existingByStore.get(storeId)!.add(categoryId)
+  }
+
+  const deduped = new Map<string, Set<number>>()
+  for (const [storeId, desired] of desiredByStore) {
+    const picked = new Set<number>()
+    const groups = new Map<string, number[]>()
+    for (const catId of desired) {
+      const meta = categoryMetaById.get(catId)
+      const nameNorm = meta?.nameNorm
+      if (!nameNorm) {
+        picked.add(catId)
+        continue
+      }
+      if (!groups.has(nameNorm)) groups.set(nameNorm, [])
+      groups.get(nameNorm)!.push(catId)
+    }
+
+    for (const [nameNorm, ids] of groups) {
+      let chosen = ids[0]
+      let bestScore = -1
+      for (const id of ids) {
+        const meta = categoryMetaById.get(id)
+        let score = 0
+        if (existingByStore.get(storeId)?.has(id)) score += 2
+        if (meta?.storeId && meta.storeId === storeId) score += 1
+        if (score > bestScore || (score === bestScore && id < chosen)) {
+          bestScore = score
+          chosen = id
+        }
+      }
+      if (Number.isFinite(chosen)) picked.add(chosen)
+    }
+
+    deduped.set(storeId, picked)
+  }
+
+  return deduped
 }
 
 export function diffStoreCategoryRows(
