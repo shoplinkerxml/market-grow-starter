@@ -216,21 +216,27 @@ async function applyStoreCategoryOverrides(supabase: any, links: any[]): Promise
     }
   }
 
-  const storeCategoryByName = new Map<string, number>()
+  const storeCategoryByName = new Map<string, string>()
   const { data: storeCategories } = await supabase
-    .from('store_categories')
-    .select('id, name, store_id')
+    .from('store_store_categories')
+    .select('id, external_id, custom_name, store_id, store_categories(name, external_id)')
     .in('store_id', storeIds)
   for (const row of storeCategories || []) {
     const storeId = String((row as any)?.store_id || '').trim()
-    const id = Number((row as any)?.id)
-    if (!storeId || !Number.isFinite(id)) continue
-    const nameNorm = normalizeCategoryName((row as any)?.name)
+    if (!storeId) continue
+    const nameValue = (row as any)?.custom_name ?? (row as any)?.store_categories?.name ?? ''
+    const nameNorm = normalizeCategoryName(nameValue)
     if (!nameNorm) continue
+    const externalId =
+      (row as any)?.external_id != null
+        ? String((row as any).external_id)
+        : (row as any)?.store_categories?.external_id != null
+          ? String((row as any).store_categories.external_id)
+          : ''
+    if (!externalId) continue
     const key = `${storeId}|${nameNorm}`
-    const existing = storeCategoryByName.get(key)
-    if (!Number.isFinite(existing) || id < (existing as number)) {
-      storeCategoryByName.set(key, id)
+    if (!storeCategoryByName.has(key)) {
+      storeCategoryByName.set(key, externalId)
     }
   }
 
@@ -251,9 +257,9 @@ async function applyStoreCategoryOverrides(supabase: any, links: any[]): Promise
     }
     const nameNorm = normalizeCategoryName(categoryName)
     if (!nameNorm) return link
-    const storeCategoryId = storeCategoryByName.get(`${storeId}|${nameNorm}`)
-    if (!Number.isFinite(storeCategoryId)) return link
-    return { ...link, custom_category_id: Number(storeCategoryId) }
+    const storeCategoryExternalId = storeCategoryByName.get(`${storeId}|${nameNorm}`)
+    if (!storeCategoryExternalId) return link
+    return { ...link, custom_category_id: String(storeCategoryExternalId) }
   })
 }
 
