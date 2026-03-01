@@ -40,7 +40,6 @@ export const Suppliers = () => {
   const suppliersQueryKey = useMemo(() => ["user", uid, "suppliers", "list"] as const, [uid]);
 
   useEffect(() => {
-    SupplierService.clearSuppliersCache();
     void queryClient.invalidateQueries({ queryKey: suppliersQueryKey, exact: true, refetchType: "active" });
   }, [queryClient, suppliersQueryKey]);
 
