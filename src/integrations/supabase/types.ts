@@ -1656,6 +1656,10 @@ export type Database = {
           total_count: number
         }[]
       }
+      dedupe_store_categories: {
+        Args: { p_items: Json; p_store_id: string }
+        Returns: Json
+      }
       delete_category_cascade: {
         Args: { p_external_id: string; p_supplier_id: number }
         Returns: {

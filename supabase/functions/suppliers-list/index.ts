@@ -2,17 +2,14 @@ import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || ''
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const REDIS_REST_URL =
   Deno.env.get('UPSTASH_REDIS_REST_URL') || Deno.env.get('REDIS_REST_URL') || ''
 const REDIS_REST_TOKEN =
   Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || Deno.env.get('REDIS_REST_TOKEN') || ''
-const SUPPLIERS_LIST_TTL_SECONDS = Math.max(
+const CACHE_TTL = Math.max(
   5,
   Number(Deno.env.get('SUPPLIERS_LIST_TTL_SECONDS') || '60') || 60
 )
-const SUPPLIERS_LIST_KEY_PREFIX =
-  Deno.env.get('SUPPLIERS_LIST_KEY_PREFIX') || 'suppliers:list:'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,59 +27,41 @@ const jsonResponse = (body: unknown, init?: ResponseInit) =>
     },
   })
 
-async function redisPipeline(commands: any[]): Promise<any[] | null> {
+// Simple Redis GET via REST API
+async function getFromRedis(key: string): Promise<unknown[] | null> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return null
   try {
     const base = REDIS_REST_URL.replace(/\/+$/, '')
-    const res = await fetch(`${base}/pipeline`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${REDIS_REST_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(commands),
+    const res = await fetch(`${base}/get/${key}`, {
+      headers: { Authorization: `Bearer ${REDIS_REST_TOKEN}` },
     })
     if (!res.ok) return null
-    const json = await res.json()
-    return Array.isArray(json) ? json : null
-  } catch {
-    return null
-  }
-}
-
-function buildSuppliersKey(userId: string): string {
-  return `${SUPPLIERS_LIST_KEY_PREFIX}${userId}`
-}
-
-async function getSuppliersFromRedis(userId: string): Promise<unknown[] | null> {
-  const uid = String(userId || '').trim()
-  if (!uid) return null
-  const resp = await redisPipeline([['GET', buildSuppliersKey(uid)]])
-  const raw = resp?.[0]?.result
-  if (!raw) return null
-  try {
+    const data = await res.json()
+    const raw = data?.result
+    if (!raw) return null
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-    if (Array.isArray(parsed)) return parsed
-    const rows = (parsed as any)?.rows
-    return Array.isArray(rows) ? rows : null
-  } catch {
+    return Array.isArray(parsed) ? parsed : null
+  } catch (err) {
+    console.warn('Redis GET error:', err)
     return null
   }
 }
 
-async function setSuppliersToRedis(userId: string, suppliers: unknown[]): Promise<void> {
-  const uid = String(userId || '').trim()
-  if (!uid) return
+// Simple Redis SET via REST API
+async function setToRedis(key: string, value: unknown[]): Promise<void> {
   if (!REDIS_REST_URL || !REDIS_REST_TOKEN) return
-  await redisPipeline([
-    [
-      'SET',
-      buildSuppliersKey(uid),
-      JSON.stringify(suppliers || []),
-      'EX',
-      SUPPLIERS_LIST_TTL_SECONDS,
-    ],
-  ])
+  try {
+    const base = REDIS_REST_URL.replace(/\/+$/, '')
+    await fetch(`${base}/set/${key}/${encodeURIComponent(JSON.stringify(value))}/ex/${CACHE_TTL}`, {
+      headers: { Authorization: `Bearer ${REDIS_REST_TOKEN}` },
+    })
+  } catch (err) {
+    console.warn('Redis SET error:', err)
+  }
+}
+
+function buildCacheKey(userId: string): string {
+  return `suppliers:list:${userId}`
 }
 
 Deno.serve(async (req) => {
@@ -91,95 +70,68 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return jsonResponse(
-        { error: 'Missing or invalid authorization header' },
-        { status: 401 }
-      )
-    }
-
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      return jsonResponse(
-        { error: 'Configuration error' },
-        { status: 500 }
-      )
+      console.error('Missing SUPABASE_URL or SUPABASE_ANON_KEY')
+      return jsonResponse({ error: 'Configuration error' }, { status: 500 })
     }
 
-    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return jsonResponse({ error: 'Missing or invalid authorization header' }, { status: 401 })
+    }
+
+    // Single Supabase client — RLS handles user filtering
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
     })
 
-    // Проверка аутентификации пользователя
-    const {
-      data: { user },
-      error: userError,
-    } = await authClient.auth.getUser()
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
     if (userError || !user) {
-      console.log('User authentication failed', {
-        error: userError?.message,
-        status: (userError as any)?.status,
-        name: (userError as any)?.name,
-      })
+      console.error('Auth failed:', userError?.message)
       return jsonResponse({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('User authenticated successfully', {
-      userId: user.id,
-    })
-
+    // Try cache first
+    const cacheKey = buildCacheKey(user.id)
     try {
-      const cached = await getSuppliersFromRedis(user.id)
-      if (cached) return jsonResponse({ suppliers: cached })
+      const cached = await getFromRedis(cacheKey)
+      if (cached) {
+        return jsonResponse({ suppliers: cached })
+      }
     } catch {
-      void 0
+      // Cache miss, proceed to DB
     }
 
-    // Получение поставщиков только текущего пользователя
-    const dataClient = SUPABASE_SERVICE_ROLE_KEY
-      ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-          auth: { autoRefreshToken: false, persistSession: false },
-        })
-      : authClient
-
-    const { data: suppliers, error: suppliersError } = await dataClient
+    // Query DB — RLS automatically filters by user_id
+    const { data: suppliers, error: dbError } = await supabase
       .from('user_suppliers')
       .select('*')
-      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
-    if (suppliersError) {
-      console.log('Suppliers fetch error', {
-        error: suppliersError.message,
-        code: (suppliersError as any)?.code,
-        details: (suppliersError as any)?.details,
-        hint: (suppliersError as any)?.hint,
+    if (dbError) {
+      console.error('DB error:', {
+        message: dbError.message,
+        code: (dbError as any)?.code,
+        details: (dbError as any)?.details,
+        hint: (dbError as any)?.hint,
       })
-      return jsonResponse(
-        { error: 'Failed to fetch suppliers' },
-        { status: 500 }
-      )
+      return jsonResponse({ error: 'Failed to fetch suppliers' }, { status: 500 })
     }
 
+    // Cache result
     try {
-      await setSuppliersToRedis(user.id, suppliers || [])
+      await setToRedis(cacheKey, suppliers || [])
     } catch {
-      void 0
+      // Non-critical
     }
 
-    return jsonResponse({
-      suppliers: suppliers || []
-    })
-
+    return jsonResponse({ suppliers: suppliers || [] })
   } catch (error) {
-    console.error('Unexpected error:', error)
-    return jsonResponse(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Unexpected error:', {
+      message: (error as any)?.message,
+      stack: (error as any)?.stack,
+    })
+    return jsonResponse({ error: 'Internal server error' }, { status: 500 })
   }
 })
