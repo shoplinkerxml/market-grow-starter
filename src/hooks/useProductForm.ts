@@ -86,6 +86,7 @@ function stateFromProduct(product: Product): FormState {
       ...emptyStock,
       stock_quantity: product.stock_quantity || 0,
       available: product.available ?? true,
+      is_active: (product as any).is_active ?? true,
     },
   };
 }
