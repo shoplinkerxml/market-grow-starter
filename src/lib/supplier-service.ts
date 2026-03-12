@@ -29,6 +29,7 @@ export interface UpdateSupplierData {
   website_url?: string;
   xml_feed_url?: string | null;
   phone?: string;
+  is_active?: boolean;
 }
 
 export interface SupplierLimitInfo {
@@ -209,7 +210,7 @@ export class SupplierService {
     const sessionValidation = await requireValidSession({ requireAccessToken: false });
     const userId = sessionValidation.user?.id ? String(sessionValidation.user.id) : "";
 
-    const cleanData: Partial<Pick<Supplier, 'supplier_name' | 'website_url' | 'xml_feed_url' | 'phone'>> & { updated_at?: string } = {};
+    const cleanData: Partial<Pick<Supplier, 'supplier_name' | 'website_url' | 'xml_feed_url' | 'phone' | 'is_active'>> & { updated_at?: string } = {};
     if (supplierData.supplier_name !== undefined) {
       if (!supplierData.supplier_name.trim()) {
         throw new Error("Назва постачальника обов'язкова");
@@ -226,6 +227,9 @@ export class SupplierService {
     }
     if (supplierData.phone !== undefined) {
       cleanData.phone = supplierData.phone?.trim() || null;
+    }
+    if (supplierData.is_active !== undefined) {
+      cleanData.is_active = supplierData.is_active;
     }
 
     if (Object.keys(cleanData).length === 0) {

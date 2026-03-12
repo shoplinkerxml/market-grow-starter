@@ -63,6 +63,7 @@ export interface FormData {
   price_promo: number;
   stock_quantity: number;
   available: boolean;
+  is_active: boolean;
   state: string;
   store_id: string;
 }
@@ -91,4 +92,4 @@ export type PriceData = Pick<
   'currency_code' | 'price' | 'price_old' | 'price_promo'
 >;
 
-export type StockData = Pick<FormData, 'stock_quantity' | 'available'>;
+export type StockData = Pick<FormData, 'stock_quantity' | 'available' | 'is_active'>;

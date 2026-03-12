@@ -558,6 +558,8 @@ export const productsDictionary: Dictionary = {
     en: "Enter stock quantity",
   },
   product_available: { uk: "Товар доступний", en: "Product available" },
+  product_is_active: { uk: "Товар активний", en: "Product active" },
+  product_inactive_badge: { uk: "Неактивний", en: "Inactive" },
   currency: { uk: "Валюта", en: "Currency" },
   select_supplier: {
     uk: "Виберіть постачальника",

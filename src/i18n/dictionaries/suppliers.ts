@@ -95,4 +95,6 @@ export const suppliersDictionary: Dictionary = {
     en: "Supplier limit reached",
   },
   save_changes: { uk: "Зберегти зміни", en: "Save Changes" },
+  supplier_is_active: { uk: "Постачальник активний", en: "Supplier active" },
+  supplier_inactive_warning: { uk: "Всі товари постачальника стануть неактивними", en: "All supplier products will become inactive" },
 };
