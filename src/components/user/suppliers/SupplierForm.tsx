@@ -7,7 +7,9 @@ import {
   InputGroupText, 
   InputGroupInput 
 } from '@/components/ui/input-group';
-import { Building2, Globe, Link, Phone, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Building2, Globe, Link, Phone, Loader2, AlertTriangle } from 'lucide-react';
 import { useI18n } from "@/i18n";
 import { SupplierService, type Supplier, type CreateSupplierData, type UpdateSupplierData } from '@/lib/supplier-service';
 import { toast } from 'sonner';
@@ -31,6 +33,7 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
     website_url: supplier?.website_url || '',
     xml_feed_url: supplier?.xml_feed_url || '',
     phone: supplier?.phone || '',
+    is_active: supplier?.is_active !== false,
   });
 
   const [errors, setErrors] = useState({
