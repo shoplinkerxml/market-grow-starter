@@ -44,6 +44,7 @@ const emptyPrice: PriceData = {
 const emptyStock: StockData = {
   stock_quantity: 0,
   available: true,
+  is_active: true,
 };
 
 function stateFromProduct(product: Product): FormState {
