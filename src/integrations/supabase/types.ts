@@ -755,6 +755,7 @@ export type Database = {
           docket_ua: string | null
           external_id: string
           id: string
+          is_active: boolean
           name: string
           name_ua: string | null
           price: number
@@ -780,6 +781,7 @@ export type Database = {
           docket_ua?: string | null
           external_id: string
           id?: string
+          is_active?: boolean
           name: string
           name_ua?: string | null
           price: number
@@ -805,6 +807,7 @@ export type Database = {
           docket_ua?: string | null
           external_id?: string
           id?: string
+          is_active?: boolean
           name?: string
           name_ua?: string | null
           price?: number
@@ -1371,6 +1374,7 @@ export type Database = {
           docket_ua: string | null
           external_id: string | null
           id: string | null
+          is_active: boolean | null
           main_image_key: string | null
           main_image_url: string | null
           name: string | null
