@@ -89,6 +89,14 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
           return next.some((s) => Number(s.id) === Number(updated.id)) ? next : [updated, ...next];
         });
         toast.success(t('supplier_updated'));
+        // If supplier was deactivated, invalidate products cache
+        if (!formData.is_active) {
+          try {
+            const { ProductService } = await import('@/lib/product-service');
+            ProductService.clearAllProductsCaches();
+            queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false, refetchType: "all" });
+          } catch { void 0; }
+        }
       } else {
         // Створення
         const createData: CreateSupplierData = {
