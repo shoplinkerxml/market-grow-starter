@@ -29,6 +29,7 @@ export interface UpdateSupplierData {
   website_url?: string;
   xml_feed_url?: string | null;
   phone?: string;
+  is_active?: boolean;
 }
 
 export interface SupplierLimitInfo {
