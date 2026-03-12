@@ -184,6 +184,7 @@ export const ProductEdit = () => {
       vendor: formData.vendor || null,
       article: isValidShortId(formData.article || null) ? formData.article || null : undefined,
       available: !!formData.available,
+      is_active: formData.is_active !== undefined ? !!formData.is_active : undefined,
       stock_quantity: clampStock(Number(formData.stock_quantity) || 0),
       price: typeof formData.price === 'number' ? formData.price : null,
       price_old: typeof formData.price_old === 'number' ? formData.price_old : null,
