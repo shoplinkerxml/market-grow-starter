@@ -119,6 +119,7 @@ export interface UpdateProductData {
   price_promo?: number | null;
   stock_quantity?: number;
   available?: boolean;
+  is_active?: boolean;
   state?: string;
   params?: ProductParam[];
   images?: ProductImage[];

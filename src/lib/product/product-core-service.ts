@@ -191,6 +191,7 @@ export class ProductCoreService {
       vendor: productData.vendor !== undefined ? productData.vendor : undefined,
       article: productData.article !== undefined ? productData.article : undefined,
       available: productData.available !== undefined ? productData.available : undefined,
+      is_active: productData.is_active !== undefined ? productData.is_active : undefined,
       stock_quantity: productData.stock_quantity !== undefined ? productData.stock_quantity : undefined,
       price: productData.price !== undefined ? productData.price : undefined,
       price_old: productData.price_old !== undefined ? productData.price_old : undefined,
