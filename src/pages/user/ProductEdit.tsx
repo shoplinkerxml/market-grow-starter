@@ -151,6 +151,7 @@ export const ProductEdit = () => {
     vendor?: string | null;
     article?: string | null;
     available?: boolean;
+    is_active?: boolean;
     stock_quantity?: number | string;
     price?: number;
     price_old?: number;

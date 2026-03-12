@@ -205,8 +205,9 @@ function createNameColumn(config: ColumnConfig): ColumnDef<ProductRow> {
     cell: ({ row }) => {
       const name = getProductName(row.original);
       const product = row.original;
+      const isInactive = product.is_active === false;
       return (
-        <div className="min-w-0 max-w-[clamp(10rem,26vw,18rem)]" data-testid="user_products_name">
+        <div className={`min-w-0 max-w-[clamp(10rem,26vw,18rem)] ${isInactive ? 'opacity-50' : ''}`} data-testid="user_products_name">
           <button
             type="button"
             className="text-left font-medium break-words line-clamp-2 w-full transition-colors hover:text-emerald-600 hover:font-semibold"
@@ -215,6 +216,11 @@ function createNameColumn(config: ColumnConfig): ColumnDef<ProductRow> {
           >
             {name}
           </button>
+          {isInactive && (
+            <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+              {config.t('product_inactive_badge')}
+            </span>
+          )}
         </div>
       );
     },
