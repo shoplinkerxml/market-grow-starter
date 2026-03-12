@@ -180,6 +180,20 @@ const BasicSection = React.memo(function BasicSection({ t, basicData, setBasicDa
               />
               <Label htmlFor="available">{t('product_available')}</Label>
             </div>
+
+            <div className="flex items-center gap-3">
+              <Switch
+                id="is_active"
+                checked={stockData.is_active !== false}
+                onCheckedChange={(val) => {
+                  setStockData(prev => ({ ...prev, is_active: val }));
+                  onChange?.({ is_active: val });
+                }}
+                data-testid="productFormTabs_isActive"
+                disabled={!!readOnly}
+              />
+              <Label htmlFor="is_active">{t('product_is_active')}</Label>
+            </div>
           </div>
         </CollapsibleContent>
       </Collapsible>
