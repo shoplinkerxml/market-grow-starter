@@ -223,6 +223,26 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
             </InputGroup>
           </div>
 
+          {/* Активність постачальника (тільки при редагуванні) */}
+          {supplier && (
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="supplier_is_active"
+                  checked={formData.is_active}
+                  onCheckedChange={(val) => setFormData(prev => ({ ...prev, is_active: val }))}
+                />
+                <Label htmlFor="supplier_is_active">{t('supplier_is_active')}</Label>
+              </div>
+              {!formData.is_active && (
+                <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>{t('supplier_inactive_warning')}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Кнопки */}
           <div className="flex gap-2 justify-end pt-4">
             <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
