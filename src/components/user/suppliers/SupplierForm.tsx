@@ -80,6 +80,7 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
           website_url: formData.website_url.trim() || undefined,
           xml_feed_url: formData.xml_feed_url.trim() || null,
           phone: formData.phone.trim() || undefined,
+          is_active: formData.is_active,
         };
         const updated = await SupplierService.updateSupplier(supplier.id, updateData);
         queryClient.setQueryData<Supplier[]>(['user', uid, 'suppliers', 'list'], (old) => {
