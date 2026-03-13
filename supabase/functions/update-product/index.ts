@@ -71,6 +71,7 @@ type Body = {
   vendor?: string | null
   article?: string | null
   available?: boolean
+  is_active?: boolean
   stock_quantity?: number
   price?: number | null
   price_old?: number | null
