@@ -51,6 +51,7 @@ type Body = {
   website_url?: string | null
   xml_feed_url?: string | null
   phone?: string | null
+  is_active?: boolean
 }
 
 Deno.serve(async (req) => {
@@ -101,6 +102,7 @@ Deno.serve(async (req) => {
     if (body.website_url !== undefined) patch['website_url'] = body.website_url ?? null
     if (body.xml_feed_url !== undefined) patch['xml_feed_url'] = body.xml_feed_url ?? null
     if (body.phone !== undefined) patch['phone'] = body.phone ?? null
+    if (body.is_active !== undefined) patch['is_active'] = !!body.is_active
     patch['updated_at'] = new Date().toISOString()
 
     const { data, error } = await supabase

@@ -71,6 +71,7 @@ type Body = {
   vendor?: string | null
   article?: string | null
   available?: boolean
+  is_active?: boolean
   stock_quantity?: number
   price?: number | null
   price_old?: number | null
@@ -600,6 +601,7 @@ serve(async (req) => {
     if (body.stock_quantity !== undefined)
       updateBase.stock_quantity = body.stock_quantity
     if (body.available !== undefined) updateBase.available = body.available
+    if (body.is_active !== undefined) updateBase.is_active = !!body.is_active
     if (body.state !== undefined) updateBase.state = body.state
 
     if (Object.keys(updateBase).length > 0) {

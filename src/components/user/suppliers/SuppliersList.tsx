@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,11 +12,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
+import { Switch } from '@/components/ui/switch';
 import { Building2, Edit, Trash2, Globe, Link, Phone, Truck } from 'lucide-react';
 import { useI18n } from "@/i18n";
 import { SupplierService, type Supplier } from '@/lib/supplier-service';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router-dom';
 import { FullPageLoader } from '@/components/LoadingSkeletons';
 
@@ -32,6 +33,7 @@ export const SuppliersList = ({
   onCreateNew
 }: SuppliersListProps) => {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const { user } = useOutletContext<{ user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
   const { data: suppliersData, isLoading: loading } = useQuery<Supplier[]>({
@@ -47,6 +49,36 @@ export const SuppliersList = ({
     open: false,
     supplier: null
   });
+  const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
+
+  const handleToggleActive = useCallback(async (supplier: Supplier, checked: boolean) => {
+    const sid = supplier.id;
+    setTogglingIds(prev => new Set(prev).add(sid));
+    
+    // Optimistic update
+    queryClient.setQueryData(['user', uid, 'suppliers', 'list'], (old: Supplier[] | undefined) => 
+      (old || []).map(s => s.id === sid ? { ...s, is_active: checked } : s)
+    );
+
+    try {
+      await SupplierService.updateSupplier(sid, { is_active: checked });
+      toast.success(checked ? t('supplier_activated') : t('supplier_deactivated'));
+      // Invalidate products since cascade trigger changes product is_active
+      queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
+    } catch {
+      // Revert
+      queryClient.setQueryData(['user', uid, 'suppliers', 'list'], (old: Supplier[] | undefined) => 
+        (old || []).map(s => s.id === sid ? { ...s, is_active: !checked } : s)
+      );
+      toast.error(t('operation_failed'));
+    } finally {
+      setTogglingIds(prev => {
+        const next = new Set(prev);
+        next.delete(sid);
+        return next;
+      });
+    }
+  }, [queryClient, uid, t]);
 
   const handleDeleteConfirm = async () => {
     if (!deleteDialog.supplier) return;
@@ -95,82 +127,98 @@ export const SuppliersList = ({
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {suppliers.map((supplier) => (
-          <Card
-            key={supplier.id}
-            className="card-elevated card-elevated-hover cursor-pointer"
-            onClick={() => onEdit?.(supplier)}
-          >
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <Building2 className="h-8 w-8 text-emerald-600" />
-                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 rounded-full border border-transparent hover:border-emerald-500 hover:text-emerald-600 focus-visible:ring-0 focus-visible:ring-offset-0"
-                    onClick={() => onEdit?.(supplier)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 rounded-full border border-transparent text-destructive hover:border-destructive hover:text-destructive focus-visible:ring-0 focus-visible:ring-offset-0"
-                    onClick={() => setDeleteDialog({ open: true, supplier })}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+        {suppliers.map((supplier) => {
+          const isActive = supplier.is_active !== false;
+          const isToggling = togglingIds.has(supplier.id);
+          return (
+            <Card
+              key={supplier.id}
+              className={`card-elevated card-elevated-hover cursor-pointer transition-opacity ${!isActive ? 'opacity-50' : ''}`}
+              onClick={() => onEdit?.(supplier)}
+            >
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <Building2 className={`h-8 w-8 ${isActive ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+                  <div className="flex gap-1 items-center" onClick={(e) => e.stopPropagation()}>
+                    <Switch
+                      checked={isActive}
+                      onCheckedChange={(checked) => handleToggleActive(supplier, checked)}
+                      disabled={isToggling}
+                      aria-label={t('supplier_is_active')}
+                      className="mr-1"
+                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 rounded-full border border-transparent hover:border-emerald-500 hover:text-emerald-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                      onClick={() => onEdit?.(supplier)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 rounded-full border border-transparent text-destructive hover:border-destructive hover:text-destructive focus-visible:ring-0 focus-visible:ring-offset-0"
+                      onClick={() => setDeleteDialog({ open: true, supplier })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <CardTitle className="mt-2">{supplier.supplier_name}</CardTitle>
-              <CardDescription>
-                {new Date(supplier.created_at).toLocaleDateString('uk-UA')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Globe className="h-4 w-4" />
-                {supplier.website_url ? (
-                  <a 
-                    href={supplier.website_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="hover:text-emerald-600 truncate"
-                  >
-                    {supplier.website_url}
-                  </a>
-                ) : (
-                  <span className="truncate opacity-70">{t('supplier_website_empty')}</span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Link className="h-4 w-4" />
-                {supplier.xml_feed_url ? (
-                  <span className="truncate">
-                    {supplier.xml_feed_url}
-                  </span>
-                ) : (
-                  <span className="truncate opacity-70">
-                    {t('supplier_xml_feed_empty')}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Phone className="h-4 w-4" />
-                {supplier.phone ? (
-                  <span className="truncate">
-                    {supplier.phone}
-                  </span>
-                ) : (
-                  <span className="truncate opacity-70">
-                    {t('supplier_phone_empty')}
-                  </span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                <CardTitle className="mt-2">{supplier.supplier_name}</CardTitle>
+                <CardDescription>
+                  {new Date(supplier.created_at).toLocaleDateString('uk-UA')}
+                  {!isActive && (
+                    <span className="ml-2 inline-block text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+                      {t('inactive')}
+                    </span>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Globe className="h-4 w-4" />
+                  {supplier.website_url ? (
+                    <a 
+                      href={supplier.website_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="hover:text-emerald-600 truncate"
+                    >
+                      {supplier.website_url}
+                    </a>
+                  ) : (
+                    <span className="truncate opacity-70">{t('supplier_website_empty')}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Link className="h-4 w-4" />
+                  {supplier.xml_feed_url ? (
+                    <span className="truncate">
+                      {supplier.xml_feed_url}
+                    </span>
+                  ) : (
+                    <span className="truncate opacity-70">
+                      {t('supplier_xml_feed_empty')}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Phone className="h-4 w-4" />
+                  {supplier.phone ? (
+                    <span className="truncate">
+                      {supplier.phone}
+                    </span>
+                  ) : (
+                    <span className="truncate opacity-70">
+                      {t('supplier_phone_empty')}
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, supplier: null })}>
