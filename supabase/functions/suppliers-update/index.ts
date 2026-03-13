@@ -51,6 +51,7 @@ type Body = {
   website_url?: string | null
   xml_feed_url?: string | null
   phone?: string | null
+  is_active?: boolean
 }
 
 Deno.serve(async (req) => {
