@@ -225,6 +225,7 @@ export const ProductEdit = () => {
         price_old: typeof formData.price_old === 'number' ? formData.price_old : null,
         price_promo: typeof formData.price_promo === 'number' ? formData.price_promo : null,
         available: !!formData.available,
+        is_active: formData.is_active !== undefined ? !!formData.is_active : undefined,
         stock_quantity: Number(formData.stock_quantity) || 0,
         category_id: cidNum ?? null,
         category_external_id: formData.category_external_id || null,
