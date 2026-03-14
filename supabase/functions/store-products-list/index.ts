@@ -253,7 +253,7 @@ async function fetchStoreProducts(
         state: p.state ?? 'new',
         created_at: p.created_at,
         updated_at: p.updated_at,
-        is_active: true,
+        is_active: p.is_active !== false,
         mainImageUrl: resolvedMainImageUrl,
         categoryName,
         supplierName: p.supplier_name,

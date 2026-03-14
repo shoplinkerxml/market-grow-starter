@@ -150,7 +150,7 @@ export const SuppliersList = ({
                   <div className="flex gap-1 items-center" onClick={(e) => e.stopPropagation()}>
                     <Switch
                       checked={isActive}
-                      onCheckedChange={(checked) => handleToggleActive(supplier, checked)}
+                      onCheckedChange={() => handleToggleActive(supplier)}
                       disabled={isToggling}
                       aria-label={t('supplier_is_active')}
                       className="mr-1"

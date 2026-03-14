@@ -155,6 +155,12 @@ function ProductCard({
           {name}
         </button>
 
+        {isInactive ? (
+          <Badge variant="outline" className="mt-1 text-[10px] h-5 px-1.5 py-0.5">
+            {t("product_inactive_badge")}
+          </Badge>
+        ) : null}
+
         <div className="mt-2 flex flex-wrap gap-1">
           {(storeLabels.length > 0 ? storeLabels.slice(0, 4) : ["—"]).map((label, idx) => (
             <Badge
