@@ -51,24 +51,32 @@ export const SuppliersList = ({
   });
   const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
 
-  const handleToggleActive = useCallback(async (supplier: Supplier, checked: boolean) => {
+  const handleToggleActive = useCallback(async (supplier: Supplier) => {
     const sid = supplier.id;
+    const list = queryClient.getQueryData<Supplier[]>(['user', uid, 'suppliers', 'list']) || [];
+    const current = list.find((s) => Number(s.id) === Number(sid)) || supplier;
+    const previousActive = current.is_active !== false;
+    const nextActive = !previousActive;
+
     setTogglingIds(prev => new Set(prev).add(sid));
-    
+
     // Optimistic update
-    queryClient.setQueryData(['user', uid, 'suppliers', 'list'], (old: Supplier[] | undefined) => 
-      (old || []).map(s => s.id === sid ? { ...s, is_active: checked } : s)
+    queryClient.setQueryData(['user', uid, 'suppliers', 'list'], (old: Supplier[] | undefined) =>
+      (old || []).map(s => s.id === sid ? { ...s, is_active: nextActive } : s)
     );
 
     try {
-      await SupplierService.updateSupplier(sid, { is_active: checked });
-      toast.success(checked ? t('supplier_activated') : t('supplier_deactivated'));
+      const updated = await SupplierService.updateSupplier(sid, { is_active: nextActive });
+      queryClient.setQueryData<Supplier[]>(['user', uid, 'suppliers', 'list'], (old) =>
+        (old || []).map((s) => Number(s.id) === Number(updated.id) ? updated : s)
+      );
+      toast.success(nextActive ? t('supplier_activated') : t('supplier_deactivated'));
       // Invalidate products since cascade trigger changes product is_active
       queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
     } catch {
       // Revert
-      queryClient.setQueryData(['user', uid, 'suppliers', 'list'], (old: Supplier[] | undefined) => 
-        (old || []).map(s => s.id === sid ? { ...s, is_active: !checked } : s)
+      queryClient.setQueryData(['user', uid, 'suppliers', 'list'], (old: Supplier[] | undefined) =>
+        (old || []).map(s => s.id === sid ? { ...s, is_active: previousActive } : s)
       );
       toast.error(t('operation_failed'));
     } finally {

@@ -87,9 +87,11 @@ function ProductCard({
   const displayPrice = promoPrice ?? regularPrice;
   const showOldPrice = promoPrice != null && oldPrice != null && promoPrice < oldPrice;
 
+  const isInactive = product.is_active === false;
+
   return (
     <Card
-      className={`@container/card overflow-hidden border shadow-sm transition-shadow hover:shadow-md ${row.getIsSelected() ? "border-emerald-400" : "border-border"}`}
+      className={`@container/card overflow-hidden border shadow-sm transition-shadow hover:shadow-md ${row.getIsSelected() ? "border-emerald-400" : "border-border"} ${isInactive ? "opacity-60 bg-muted/20" : ""}`}
       data-testid={`user_products_card_${product.id}`}
     >
       <div className="flex items-center justify-between gap-2 px-2 pt-2">
