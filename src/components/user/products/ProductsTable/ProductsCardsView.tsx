@@ -87,9 +87,11 @@ function ProductCard({
   const displayPrice = promoPrice ?? regularPrice;
   const showOldPrice = promoPrice != null && oldPrice != null && promoPrice < oldPrice;
 
+  const isInactive = product.is_active === false;
+
   return (
     <Card
-      className={`@container/card overflow-hidden border shadow-sm transition-shadow hover:shadow-md ${row.getIsSelected() ? "border-emerald-400" : "border-border"}`}
+      className={`@container/card overflow-hidden border shadow-sm transition-shadow hover:shadow-md ${row.getIsSelected() ? "border-emerald-400" : "border-border"} ${isInactive ? "opacity-60 bg-muted/20" : ""}`}
       data-testid={`user_products_card_${product.id}`}
     >
       <div className="flex items-center justify-between gap-2 px-2 pt-2">
@@ -152,6 +154,12 @@ function ProductCard({
         >
           {name}
         </button>
+
+        {isInactive ? (
+          <Badge variant="outline" className="mt-1 text-[10px] h-5 px-1.5 py-0.5">
+            {t("product_inactive_badge")}
+          </Badge>
+        ) : null}
 
         <div className="mt-2 flex flex-wrap gap-1">
           {(storeLabels.length > 0 ? storeLabels.slice(0, 4) : ["—"]).map((label, idx) => (

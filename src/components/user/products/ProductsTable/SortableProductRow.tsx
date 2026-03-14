@@ -32,12 +32,14 @@ export function SortableProductRow({
     [rowHeight, transform, transition],
   );
 
+  const isInactive = row.original.is_active === false;
+
   return (
     <TableRow
       ref={setNodeRef}
       key={row.id}
       data-state={row.getIsSelected() && "selected"}
-      className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isDragging ? "opacity-70" : ""}`}
+      className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isInactive ? "opacity-60 bg-muted/30" : ""} ${isDragging ? "opacity-70" : ""}`}
       style={style}
     >
       {row.getVisibleCells().map((cell) => {

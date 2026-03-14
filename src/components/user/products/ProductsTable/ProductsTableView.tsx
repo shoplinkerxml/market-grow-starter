@@ -225,18 +225,21 @@ export function ProductsTableView({
                           <TableCell colSpan={columns.length} />
                         </TableRow>
                       ) : null}
-                      {slice.map((row) => (
-                        <TableRow
-                          key={row.id}
-                          data-state={row.getIsSelected() && "selected"}
-                          className="hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                          style={{ height: rowHeight }}
-                        >
-                          {row.getVisibleCells().map((cell) => (
-                            <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
+                      {slice.map((row) => {
+                        const isInactive = (row.original as ProductRow).is_active === false;
+                        return (
+                          <TableRow
+                            key={row.id}
+                            data-state={row.getIsSelected() && "selected"}
+                            className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isInactive ? "opacity-60 bg-muted/30" : ""}`}
+                            style={{ height: rowHeight }}
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                            ))}
+                          </TableRow>
+                        );
+                      })}
                       {virtualBottomH > 0 ? (
                         <TableRow style={{ height: virtualBottomH }}>
                           <TableCell colSpan={columns.length} />
