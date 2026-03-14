@@ -91,6 +91,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: corsHeaders })
     }
 
+    console.log('[suppliers-update] body received:', JSON.stringify(body))
+
     const patch: Record<string, any> = {}
     if (body.supplier_name != null) {
       const name = String(body.supplier_name || '').trim()
