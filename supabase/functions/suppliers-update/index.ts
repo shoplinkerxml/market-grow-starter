@@ -104,7 +104,8 @@ Deno.serve(async (req) => {
     if (body.website_url !== undefined) patch['website_url'] = body.website_url ?? null
     if (body.xml_feed_url !== undefined) patch['xml_feed_url'] = body.xml_feed_url ?? null
     if (body.phone !== undefined) patch['phone'] = body.phone ?? null
-    if (body.is_active !== undefined) patch['is_active'] = !!body.is_active
+    if (body.is_active === true || body.is_active === false) patch['is_active'] = body.is_active
+    console.log('[suppliers-update] patch:', JSON.stringify(patch))
     patch['updated_at'] = new Date().toISOString()
 
     const { data, error } = await supabase
