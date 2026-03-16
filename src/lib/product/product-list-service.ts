@@ -184,7 +184,7 @@ export class ProductListService {
       store_id: String(storeId),
       limit,
       offset: 0,
-      bypassCache: options?.bypassCache === true,
+      bypassCache: true,
     });
     const products = Array.isArray(fresh?.products) ? fresh.products : [];
     const page: ProductListPage = {
