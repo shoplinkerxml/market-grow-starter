@@ -70,6 +70,7 @@ function mapRowToProductAggregated(row: ProductsWithDetailsRowWithLinks): Produc
     price_promo: row?.price_promo ?? null,
     stock_quantity: Number.isFinite(Number(row?.stock_quantity)) ? Number(row?.stock_quantity) : 0,
     available: row?.available === true,
+    is_active: row?.is_active !== false,
     state: row?.state != null ? String(row.state) : "new",
     created_at: row?.created_at != null ? String(row.created_at) : BASE_ISO,
     updated_at: row?.updated_at != null ? String(row.updated_at) : BASE_ISO,

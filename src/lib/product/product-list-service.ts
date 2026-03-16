@@ -220,7 +220,7 @@ export class ProductListService {
         ...(storeId ? { store_id: storeId } : {}),
         limit,
         offset,
-        bypassCache: options?.bypassCache || options?.force,
+        bypassCache: true,
       });
       const products = Array.isArray(resp?.products) ? resp!.products! : [];
       const page: ProductListPage = {
