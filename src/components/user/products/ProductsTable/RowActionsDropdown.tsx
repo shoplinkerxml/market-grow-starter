@@ -166,6 +166,10 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
                                 disabled={togglingStoreIds.includes(id)}
                                 onClick={(e) => e.stopPropagation()}
                                 onCheckedChange={async (v) => {
+                                  if (v && product.is_active === false) {
+                                    toast.error(t("operation_failed"));
+                                    return;
+                                  }
                                   setTogglingStoreIds((prev) => Array.from(new Set([...prev, id])));
                                   const baseIds = Array.from(new Set([...initialLinked.map(String), ...linkedStoreIds.map(String)]));
                                   const nextIds = v

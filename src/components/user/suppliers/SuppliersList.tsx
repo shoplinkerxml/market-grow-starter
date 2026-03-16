@@ -51,16 +51,17 @@ export const SuppliersList = ({
   });
   const [togglingIds, setTogglingIds] = useState<Set<number>>(new Set());
 
-  const handleToggleActive = useCallback(async (supplier: Supplier) => {
+  const handleToggleActive = useCallback(async (supplier: Supplier, checked: boolean) => {
     const sid = supplier.id;
     const list = queryClient.getQueryData<Supplier[]>(['user', uid, 'suppliers', 'list']) || [];
     const current = list.find((s) => Number(s.id) === Number(sid)) || supplier;
     const previousActive = current.is_active !== false;
-    const nextActive = !previousActive;
+    const nextActive = checked === true;
+
+    if (previousActive === nextActive) return;
 
     setTogglingIds(prev => new Set(prev).add(sid));
 
-    // Optimistic update
     queryClient.setQueryData(['user', uid, 'suppliers', 'list'], (old: Supplier[] | undefined) =>
       (old || []).map(s => s.id === sid ? { ...s, is_active: nextActive } : s)
     );
@@ -70,11 +71,11 @@ export const SuppliersList = ({
       queryClient.setQueryData<Supplier[]>(['user', uid, 'suppliers', 'list'], (old) =>
         (old || []).map((s) => Number(s.id) === Number(updated.id) ? updated : s)
       );
-      toast.success(nextActive ? t('supplier_activated') : t('supplier_deactivated'));
-      // Invalidate products since cascade trigger changes product is_active
+      await SupplierService.getSuppliers({ bypassCache: true });
+      queryClient.invalidateQueries({ queryKey: ['user', uid, 'suppliers'], exact: false });
       queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
+      toast.success(nextActive ? t('supplier_activated') : t('supplier_deactivated'));
     } catch {
-      // Revert
       queryClient.setQueryData(['user', uid, 'suppliers', 'list'], (old: Supplier[] | undefined) =>
         (old || []).map(s => s.id === sid ? { ...s, is_active: previousActive } : s)
       );
@@ -150,7 +151,7 @@ export const SuppliersList = ({
                   <div className="flex gap-1 items-center" onClick={(e) => e.stopPropagation()}>
                     <Switch
                       checked={isActive}
-                      onCheckedChange={() => handleToggleActive(supplier)}
+                      onCheckedChange={(checked) => handleToggleActive(supplier, checked === true)}
                       disabled={isToggling}
                       aria-label={t('supplier_is_active')}
                       className="mr-1"

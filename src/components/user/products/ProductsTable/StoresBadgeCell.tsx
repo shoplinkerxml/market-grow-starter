@@ -183,6 +183,10 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                       disabled={isToggling}
                       onClick={(e) => e.stopPropagation()}
                       onCheckedChange={async (v) => {
+                        if (v && product.is_active === false) {
+                          toast.error(t("operation_failed"));
+                          return;
+                        }
                         setTogglingStoreIds((prev) => Array.from(new Set([...prev, id])));
                         const prevIds = linkedStoreIds.slice();
                         const nextIds = v ? Array.from(new Set([...linkedStoreIds, id])) : linkedStoreIds.filter((x) => String(x) !== String(id));

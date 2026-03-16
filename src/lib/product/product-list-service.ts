@@ -128,7 +128,7 @@ export class ProductListService {
   }
 
   static async getUserMasterProducts(): Promise<ProductAggregated[]> {
-    const resp = await invokeEdge<ProductListResponseObj>("user-products-list", {});
+    const resp = await invokeEdge<ProductListResponseObj>("user-products-list", { bypassCache: true });
     const rows = Array.isArray(resp?.products) ? resp.products : [];
     return rows;
   }
@@ -139,6 +139,7 @@ export class ProductListService {
     }
     const resp = await invokeEdge<ProductListResponseObj>("store-products-list", {
       store_id: String(storeId),
+      bypassCache: true,
     });
     const rows = Array.isArray(resp?.products) ? resp.products : [];
     return rows;
@@ -154,7 +155,7 @@ export class ProductListService {
     const fresh = await invokeEdge<ProductListResponseObj>("user-products-list", {
       limit,
       offset: 0,
-      bypassCache: options?.bypassCache === true,
+      bypassCache: true,
     });
     const products = Array.isArray(fresh?.products) ? fresh.products : [];
     const page: ProductListPage = {
@@ -183,7 +184,7 @@ export class ProductListService {
       store_id: String(storeId),
       limit,
       offset: 0,
-      bypassCache: options?.bypassCache === true,
+      bypassCache: true,
     });
     const products = Array.isArray(fresh?.products) ? fresh.products : [];
     const page: ProductListPage = {
@@ -219,7 +220,7 @@ export class ProductListService {
         ...(storeId ? { store_id: storeId } : {}),
         limit,
         offset,
-        bypassCache: options?.bypassCache || options?.force,
+        bypassCache: true,
       });
       const products = Array.isArray(resp?.products) ? resp!.products! : [];
       const page: ProductListPage = {

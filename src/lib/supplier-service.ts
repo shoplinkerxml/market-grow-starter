@@ -117,7 +117,10 @@ export class SupplierService {
   }
 
   /** Отримання списку постачальників поточного користувача */
-  static async getSuppliers(opts?: { signal?: AbortSignal }): Promise<Supplier[]> {
+  static async getSuppliers(opts?: { signal?: AbortSignal; bypassCache?: boolean }): Promise<Supplier[]> {
+    if (opts?.bypassCache === true) {
+      return await SupplierService.getSuppliersDirect(opts);
+    }
     return await PersistentCacheService.getSuppliers(async () => await SupplierService.getSuppliersDirect(opts));
   }
 

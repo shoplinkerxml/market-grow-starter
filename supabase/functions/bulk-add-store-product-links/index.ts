@@ -72,9 +72,10 @@ async function syncStoreCategoriesForStores(supabase: any, storeIds: string[]): 
 
   const { data: links, error: linksErr } = await supabase
     .from('store_product_links')
-    .select('store_id, is_active, custom_category_id, store_products!inner(category_id,category_external_id,supplier_id)')
+    .select('store_id, is_active, custom_category_id, store_products!inner(category_id,category_external_id,supplier_id,is_active)')
     .in('store_id', ids)
     .eq('is_active', true)
+    .eq('store_products.is_active', true)
   if (linksErr) return
 
   const { desiredByStore, externalRefs, externalIdList } = extractCategoryRefsFromLinks((links || []) as any[])
@@ -292,10 +293,11 @@ async function recomputeCountsForStores(
   const { data: links } = await supabase
     .from('store_product_links')
     .select(
-      'store_id, is_active, product_id, custom_category_id, store_products!inner(category_id,category_external_id)',
+      'store_id, is_active, product_id, custom_category_id, store_products!inner(category_id,category_external_id,is_active)',
     )
     .in('store_id', ids)
     .eq('is_active', true)
+    .eq('store_products.is_active', true)
 
   const customCategoryIds = Array.from(
     new Set(
@@ -414,6 +416,44 @@ Deno.serve(async (req) => {
       links = await applyStoreCategoryOverrides(supabase, links)
     } catch {
       void 0
+    }
+
+    const productIds = Array.from(
+      new Set(
+        links
+          .map((l: any) => String(l?.product_id || '').trim())
+          .filter((v: string) => v.length > 0),
+      ),
+    )
+
+    const { data: sourceProducts, error: sourceProductsError } = await supabase
+      .from('store_products')
+      .select('id, is_active')
+      .in('id', productIds)
+
+    if (sourceProductsError) {
+      return new Response(
+        JSON.stringify({ error: 'source_products_check_failed', message: sourceProductsError.message }),
+        { status: 500, headers: CORS_HEADERS }
+      )
+    }
+
+    const inactiveProductIds = new Set(
+      (sourceProducts || [])
+        .filter((row: any) => row?.is_active === false)
+        .map((row: any) => String(row?.id || '').trim())
+        .filter(Boolean),
+    )
+
+    if (inactiveProductIds.size > 0) {
+      return new Response(
+        JSON.stringify({
+          error: 'inactive_products_not_allowed',
+          message: 'Inactive products cannot be added to stores',
+          product_ids: Array.from(inactiveProductIds),
+        }),
+        { status: 422, headers: CORS_HEADERS }
+      )
     }
 
     const { data, error } = await supabase.rpc('bulk_insert_product_links', { input_links: links })
