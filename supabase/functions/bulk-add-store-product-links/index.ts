@@ -72,9 +72,10 @@ async function syncStoreCategoriesForStores(supabase: any, storeIds: string[]): 
 
   const { data: links, error: linksErr } = await supabase
     .from('store_product_links')
-    .select('store_id, is_active, custom_category_id, store_products!inner(category_id,category_external_id,supplier_id)')
+    .select('store_id, is_active, custom_category_id, store_products!inner(category_id,category_external_id,supplier_id,is_active)')
     .in('store_id', ids)
     .eq('is_active', true)
+    .eq('store_products.is_active', true)
   if (linksErr) return
 
   const { desiredByStore, externalRefs, externalIdList } = extractCategoryRefsFromLinks((links || []) as any[])
