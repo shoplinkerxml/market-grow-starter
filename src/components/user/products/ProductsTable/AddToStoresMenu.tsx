@@ -133,12 +133,18 @@ export function AddToStoresMenu({
   const handleAddToStores = async () => {
     if (!hasSelectedProducts || selectedStoreIds.length === 0) return;
 
-    const productIds = selectedProducts.map(p => String(p.id));
+    const activeSelectedProducts = selectedProducts.filter((product) => product.is_active !== false);
+    if (activeSelectedProducts.length === 0) {
+      toast.error(t('operation_failed'));
+      return;
+    }
+
+    const productIds = activeSelectedProducts.map(p => String(p.id));
     setOpen(false);
     setAddingStores(true);
 
     try {
-      const links = selectedProducts.flatMap(product => {
+      const links = activeSelectedProducts.flatMap(product => {
         const existingStores = new Set(product.linkedStoreIds || []);
         return selectedStoreIds
           .filter(sid => !existingStores.has(sid))

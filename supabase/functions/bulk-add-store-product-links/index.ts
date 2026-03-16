@@ -416,6 +416,44 @@ Deno.serve(async (req) => {
       void 0
     }
 
+    const productIds = Array.from(
+      new Set(
+        links
+          .map((l: any) => String(l?.product_id || '').trim())
+          .filter((v: string) => v.length > 0),
+      ),
+    )
+
+    const { data: sourceProducts, error: sourceProductsError } = await supabase
+      .from('store_products')
+      .select('id, is_active')
+      .in('id', productIds)
+
+    if (sourceProductsError) {
+      return new Response(
+        JSON.stringify({ error: 'source_products_check_failed', message: sourceProductsError.message }),
+        { status: 500, headers: CORS_HEADERS }
+      )
+    }
+
+    const inactiveProductIds = new Set(
+      (sourceProducts || [])
+        .filter((row: any) => row?.is_active === false)
+        .map((row: any) => String(row?.id || '').trim())
+        .filter(Boolean),
+    )
+
+    if (inactiveProductIds.size > 0) {
+      return new Response(
+        JSON.stringify({
+          error: 'inactive_products_not_allowed',
+          message: 'Inactive products cannot be added to stores',
+          product_ids: Array.from(inactiveProductIds),
+        }),
+        { status: 422, headers: CORS_HEADERS }
+      )
+    }
+
     const { data, error } = await supabase.rpc('bulk_insert_product_links', { input_links: links })
 
     if (error) {
