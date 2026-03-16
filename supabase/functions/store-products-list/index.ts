@@ -180,11 +180,12 @@ async function fetchStoreProducts(
   const linksResult = await client
     .from('store_product_links')
     .select(
-      'product_id, created_at, custom_name, custom_description, custom_price, custom_price_old, custom_price_promo, custom_stock_quantity, custom_available, custom_category_id',
+      'product_id, created_at, custom_name, custom_description, custom_price, custom_price_old, custom_price_promo, custom_stock_quantity, custom_available, custom_category_id, store_products!inner(is_active)',
       { count: 'exact' },
     )
     .eq('store_id', storeId)
     .eq('is_active', true)
+    .eq('store_products.is_active', true)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
 

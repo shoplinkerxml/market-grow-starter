@@ -293,10 +293,11 @@ async function recomputeCountsForStores(
   const { data: links } = await supabase
     .from('store_product_links')
     .select(
-      'store_id, is_active, product_id, custom_category_id, store_products!inner(category_id,category_external_id)',
+      'store_id, is_active, product_id, custom_category_id, store_products!inner(category_id,category_external_id,is_active)',
     )
     .in('store_id', ids)
     .eq('is_active', true)
+    .eq('store_products.is_active', true)
 
   const customCategoryIds = Array.from(
     new Set(
