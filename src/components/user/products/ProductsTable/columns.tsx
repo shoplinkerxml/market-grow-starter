@@ -144,30 +144,46 @@ export type ColumnConfig = {
 function createSelectColumn(config: ColumnConfig): ColumnDef<ProductRow> {
   return {
     id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-start">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected()
-              ? true
-              : table.getIsSomePageRowsSelected()
-              ? "indeterminate"
-              : false
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(value === true)}
-          aria-label={config.t("select_all")}
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-start">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(value === true)}
-          aria-label={config.t("select_row")}
-        />
-      </div>
-    ),
+    header: ({ table }) => {
+      const allRows = table.getRowModel().rows;
+      const activeRows = allRows.filter(r => r.original.is_active !== false);
+      const allActiveSelected = activeRows.length > 0 && activeRows.every(r => r.getIsSelected());
+      const someSelected = activeRows.some(r => r.getIsSelected());
+      return (
+        <div className="flex items-center justify-start">
+          <Checkbox
+            checked={allActiveSelected ? true : someSelected ? "indeterminate" : false}
+            onCheckedChange={(value) => {
+              allRows.forEach(r => {
+                if (r.original.is_active === false) {
+                  r.toggleSelected(false);
+                } else {
+                  r.toggleSelected(value === true);
+                }
+              });
+            }}
+            aria-label={config.t("select_all")}
+          />
+        </div>
+      );
+    },
+    cell: ({ row }) => {
+      const isInactive = row.original.is_active === false;
+      return (
+        <div className="flex items-center justify-start">
+          <Checkbox
+            checked={isInactive ? false : row.getIsSelected()}
+            onCheckedChange={(value) => {
+              if (isInactive) return;
+              row.toggleSelected(value === true);
+            }}
+            disabled={isInactive}
+            aria-label={config.t("select_row")}
+            className={isInactive ? "opacity-30 cursor-not-allowed" : ""}
+          />
+        </div>
+      );
+    },
     enableSorting: false,
     enableHiding: false,
     size: 48,
@@ -207,17 +223,17 @@ function createNameColumn(config: ColumnConfig): ColumnDef<ProductRow> {
       const product = row.original;
       const isInactive = product.is_active === false;
       return (
-        <div className={`min-w-0 max-w-[clamp(10rem,26vw,18rem)] ${isInactive ? 'opacity-50' : ''}`} data-testid="user_products_name">
+        <div className={`min-w-0 max-w-[clamp(10rem,26vw,18rem)]`} data-testid="user_products_name">
           <button
             type="button"
-            className="text-left font-medium break-words line-clamp-2 w-full transition-colors hover:text-emerald-600 hover:font-semibold"
+            className={`text-left font-medium break-words line-clamp-2 w-full transition-colors hover:text-emerald-600 hover:font-semibold ${isInactive ? 'text-muted-foreground' : ''}`}
             title={name}
             onClick={() => config.onEdit?.(product)}
           >
             {name}
           </button>
           {isInactive && (
-            <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+            <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-semibold border border-destructive/20">
               {config.t('product_inactive_badge')}
             </span>
           )}

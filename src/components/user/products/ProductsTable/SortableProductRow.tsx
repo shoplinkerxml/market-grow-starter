@@ -39,7 +39,7 @@ export function SortableProductRow({
       ref={setNodeRef}
       key={row.id}
       data-state={row.getIsSelected() && "selected"}
-      className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isInactive ? "opacity-60 bg-muted/30" : ""} ${isDragging ? "opacity-70" : ""}`}
+      className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isInactive ? "opacity-50 bg-muted/40 dark:bg-muted/20 [&_img]:grayscale [&_img]:opacity-50" : ""} ${isDragging ? "opacity-70" : ""}`}
       style={style}
     >
       {row.getVisibleCells().map((cell) => {

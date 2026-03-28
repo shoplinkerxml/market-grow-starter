@@ -91,16 +91,17 @@ function ProductCard({
 
   return (
     <Card
-      className={`@container/card overflow-hidden border shadow-sm transition-shadow hover:shadow-md ${row.getIsSelected() ? "border-emerald-400" : "border-border"} ${isInactive ? "opacity-60 bg-muted/20" : ""}`}
+      className={`@container/card overflow-hidden border shadow-sm transition-shadow hover:shadow-md ${row.getIsSelected() ? "border-emerald-400" : "border-border"} ${isInactive ? "opacity-50 bg-muted/30 [&_img]:grayscale [&_img]:opacity-50" : ""}`}
       data-testid={`user_products_card_${product.id}`}
     >
       <div className="flex items-center justify-between gap-2 px-2 pt-2">
         <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(v) => row.toggleSelected(v === true)}
+          checked={isInactive ? false : row.getIsSelected()}
+          onCheckedChange={(v) => { if (isInactive) return; row.toggleSelected(v === true); }}
           aria-label={t("select_row")}
-          disabled={loading || duplicating}
-          aria-disabled={loading || duplicating}
+          disabled={isInactive || loading || duplicating}
+          aria-disabled={isInactive || loading || duplicating}
+          className={isInactive ? "opacity-30 cursor-not-allowed" : ""}
         />
 
         <React.Suspense fallback={null}>
@@ -156,7 +157,7 @@ function ProductCard({
         </button>
 
         {isInactive ? (
-          <Badge variant="outline" className="mt-1 text-[10px] h-5 px-1.5 py-0.5">
+          <Badge variant="outline" className="mt-1 text-[10px] h-5 px-1.5 py-0.5 bg-destructive/10 text-destructive border-destructive/20 font-semibold">
             {t("product_inactive_badge")}
           </Badge>
         ) : null}
