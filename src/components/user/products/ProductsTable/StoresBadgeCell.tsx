@@ -184,7 +184,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                       onClick={(e) => e.stopPropagation()}
                       onCheckedChange={async (v) => {
                         if (v && product.is_active === false) {
-                          toast.error(t("operation_failed"));
+                          toast.error(t("inactive_products_cannot_add_to_store"));
                           return;
                         }
                         setTogglingStoreIds((prev) => Array.from(new Set([...prev, id])));

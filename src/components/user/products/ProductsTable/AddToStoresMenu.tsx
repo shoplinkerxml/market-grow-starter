@@ -134,9 +134,13 @@ export function AddToStoresMenu({
     if (!hasSelectedProducts || selectedStoreIds.length === 0) return;
 
     const activeSelectedProducts = selectedProducts.filter((product) => product.is_active !== false);
+    const inactiveCount = selectedProducts.length - activeSelectedProducts.length;
     if (activeSelectedProducts.length === 0) {
-      toast.error(t('operation_failed'));
+      toast.error(t('inactive_products_cannot_add_to_store'));
       return;
+    }
+    if (inactiveCount > 0) {
+      toast.warning(`${inactiveCount} ${t('inactive_products_skipped')}`);
     }
 
     const productIds = activeSelectedProducts.map(p => String(p.id));

@@ -231,7 +231,7 @@ export function ProductsTableView({
                           <TableRow
                             key={row.id}
                             data-state={row.getIsSelected() && "selected"}
-                            className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isInactive ? "opacity-60 bg-muted/30" : ""}`}
+                            className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isInactive ? "opacity-50 bg-muted/40 dark:bg-muted/20 [&_img]:grayscale [&_img]:opacity-50" : ""}`}
                             style={{ height: rowHeight }}
                           >
                             {row.getVisibleCells().map((cell) => (
