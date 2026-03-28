@@ -231,7 +231,7 @@ export function ProductsTableView({
                           <TableRow
                             key={row.id}
                             data-state={row.getIsSelected() && "selected"}
-                            className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isInactive ? "opacity-50 bg-muted/40 dark:bg-muted/20 [&_img]:grayscale [&_img]:opacity-50" : ""}`}
+                            className={`hover:bg-emerald-50 dark:hover:bg-emerald-950/30 ${isInactive ? "bg-muted/40 dark:bg-muted/20 [&_img]:grayscale [&_img]:opacity-60 [&_[data-testid='user_products_name']_button]:text-muted-foreground [&_[data-testid='user_products_supplier']]:text-muted-foreground" : ""}`}
                             style={{ height: rowHeight }}
                           >
                             {row.getVisibleCells().map((cell) => (

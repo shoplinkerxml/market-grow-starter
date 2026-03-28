@@ -135,8 +135,18 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
     getSortedRowModel: getSortedRowModel(),
     manualPagination: true,
     pageCount,
-    enableRowSelection: true,
-    onRowSelectionChange: (updater) => dispatch({ type: "setRowSelection", next: (typeof updater === "function" ? (updater as any)(state.rowSelection) : updater) as any }),
+    enableRowSelection: (row) => row.original.is_active !== false,
+    onRowSelectionChange: (updater) => {
+      const nextSelection = (typeof updater === "function" ? (updater as any)(state.rowSelection) : updater) as Record<string, boolean>;
+      const sanitizedSelection = Object.fromEntries(
+        Object.entries(nextSelection).filter(([rowId, selected]) => {
+          if (!selected) return false;
+          const row = rows.find((item) => String(item.id) === String(rowId));
+          return row?.is_active !== false;
+        }),
+      );
+      dispatch({ type: "setRowSelection", next: sanitizedSelection });
+    },
     onSortingChange: (updater) => {
       if (state.rowReorderEnabled) return;
       const nextSorting = (typeof updater === "function" ? (updater as any)(state.sorting) : updater) as any;
