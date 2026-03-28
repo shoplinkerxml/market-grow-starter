@@ -91,7 +91,7 @@ function ProductCard({
 
   return (
     <Card
-      className={`@container/card overflow-hidden border shadow-sm transition-shadow hover:shadow-md ${row.getIsSelected() ? "border-emerald-400" : "border-border"} ${isInactive ? "opacity-50 bg-muted/30 [&_img]:grayscale [&_img]:opacity-50" : ""}`}
+      className={`@container/card overflow-hidden border shadow-sm transition-shadow hover:shadow-md ${row.getIsSelected() ? "border-emerald-400" : "border-border"} ${isInactive ? "bg-muted/30 [&_img]:grayscale [&_img]:opacity-60" : ""}`}
       data-testid={`user_products_card_${product.id}`}
     >
       <div className="flex items-center justify-between gap-2 px-2 pt-2">
@@ -157,7 +157,7 @@ function ProductCard({
         </button>
 
         {isInactive ? (
-          <Badge variant="outline" className="mt-1 text-[10px] h-5 px-1.5 py-0.5 bg-destructive/10 text-destructive border-destructive/20 font-semibold">
+          <Badge variant="outline" className="mt-1 text-[10px] h-5 px-2 py-0.5 bg-muted text-muted-foreground border-border font-medium">
             {t("product_inactive_badge")}
           </Badge>
         ) : null}

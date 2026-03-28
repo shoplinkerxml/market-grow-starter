@@ -223,17 +223,17 @@ function createNameColumn(config: ColumnConfig): ColumnDef<ProductRow> {
       const product = row.original;
       const isInactive = product.is_active === false;
       return (
-        <div className={`min-w-0 max-w-[clamp(10rem,26vw,18rem)]`} data-testid="user_products_name">
+        <div className="min-w-0 max-w-[clamp(10rem,26vw,18rem)]" data-testid="user_products_name">
           <button
             type="button"
-            className={`text-left font-medium break-words line-clamp-2 w-full transition-colors hover:text-emerald-600 hover:font-semibold ${isInactive ? 'text-muted-foreground' : ''}`}
+            className={`text-left font-medium break-words line-clamp-2 w-full transition-colors hover:text-emerald-600 hover:font-semibold ${isInactive ? 'text-muted-foreground/90' : ''}`}
             title={name}
             onClick={() => config.onEdit?.(product)}
           >
             {name}
           </button>
           {isInactive && (
-            <span className="inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-semibold border border-destructive/20">
+            <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded border border-border bg-muted text-muted-foreground font-medium">
               {config.t('product_inactive_badge')}
             </span>
           )}
