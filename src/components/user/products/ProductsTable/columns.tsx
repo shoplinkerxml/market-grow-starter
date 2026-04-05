@@ -31,9 +31,11 @@ export type ProductRow = Product & {
 const ProductThumbnail = React.memo(({
   product,
   onClick,
+  disabled = false,
 }: {
   product: ProductRow;
   onClick: () => void;
+  disabled?: boolean;
 }) => {
   const sizeCls = "h-[clamp(2.25rem,4vw,3rem)] w-[clamp(2.25rem,4vw,3rem)]";
 
@@ -44,8 +46,14 @@ const ProductThumbnail = React.memo(({
   return (
     <HoverCard openDelay={150} closeDelay={80}>
       <HoverCardTrigger asChild>
-        <button type="button" onClick={onClick} className="inline-flex">
-          <Avatar className={`${sizeCls} rounded-md cursor-pointer bg-white dark:bg-white`}>
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={disabled}
+          aria-disabled={disabled}
+          className="inline-flex disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          <Avatar className={`${sizeCls} rounded-md ${disabled ? "cursor-not-allowed" : "cursor-pointer"} bg-white dark:bg-white`}>
             <AvatarImage
               src={src}
               alt={product.name_ua || product.name || ""}
@@ -199,11 +207,13 @@ function createPhotoColumn(config: ColumnConfig): ColumnDef<ProductRow> {
     size: 56,
     cell: ({ row }) => {
       const product = row.original;
+      const isInactive = product.is_active === false;
       
       return (
         <div className="flex items-center justify-start" data-testid="user_products_photo">
           <ProductThumbnail
             product={product}
+            disabled={isInactive}
             onClick={() => config.onEdit?.(product)}
           />
         </div>
@@ -226,14 +236,16 @@ function createNameColumn(config: ColumnConfig): ColumnDef<ProductRow> {
         <div className="min-w-0 max-w-[clamp(10rem,26vw,18rem)]" data-testid="user_products_name">
           <button
             type="button"
-            className={`text-left font-medium break-words line-clamp-2 w-full transition-colors hover:text-emerald-600 hover:font-semibold ${isInactive ? 'text-muted-foreground/90' : ''}`}
+              disabled={isInactive}
+              aria-disabled={isInactive}
+              className={`text-left font-medium break-words line-clamp-2 w-full transition-colors disabled:cursor-not-allowed disabled:hover:text-muted-foreground disabled:hover:font-medium ${isInactive ? 'text-muted-foreground' : 'hover:text-emerald-600 hover:font-semibold'}`}
             title={name}
             onClick={() => config.onEdit?.(product)}
           >
             {name}
           </button>
           {isInactive && (
-            <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded border border-border bg-muted text-muted-foreground font-medium">
+            <span className="inline-flex mt-1 text-[10px] px-2 py-0.5 rounded-md border border-border bg-muted text-muted-foreground font-medium uppercase tracking-[0.08em]">
               {config.t('product_inactive_badge')}
             </span>
           )}
