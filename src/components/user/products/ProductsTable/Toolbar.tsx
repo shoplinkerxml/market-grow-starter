@@ -95,7 +95,7 @@ export function Toolbar({
   const isDupPending = duplicationStatus?.status === "pending";
   const isDupError = duplicationStatus?.status === "error";
   const canDuplicate = selectedCount === 1 && canCreate !== false && hideDuplicate !== true && !duplicating && !isDupPending;
-  const canEditSelected = selectedCount === 1 && !duplicating;
+  const canEditSelected = selectedCount === 1 && !duplicating && selectedRow?.is_active !== false;
   const canDeleteSelected = selectedCount >= 1 && !duplicating;
   const createDisabled = (canCreate === false) || suppliersEmpty === true || !!duplicating;
   const iconButtonCls = "h-8 w-8 hover:bg-transparent";

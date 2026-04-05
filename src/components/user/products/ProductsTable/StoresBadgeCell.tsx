@@ -134,13 +134,17 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
   }, [openMenuId, stores]);
 
   const handleOpenChange = useCallback((menuId: string, v: boolean) => {
+    if (v && menuId === addMenuId && product.is_active === false) {
+      toast.error(t("inactive_products_cannot_add_to_store"));
+      return;
+    }
     setOpenMenuId((prev) => {
       if (v) return menuId;
       if (prev === menuId) return null;
       return prev;
     });
     if (v) void loadStoresAndLinks();
-  }, [loadStoresAndLinks]);
+  }, [addMenuId, loadStoresAndLinks, product.is_active, t]);
 
   const renderStoresDropdownContent = useCallback((menuId: string) => {
     return (
@@ -266,8 +270,9 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="h-6 w-6 p-0 mx-auto rounded-full border border-border text-neutral-500 bg-neutral-100 hover:border-emerald-500 hover:text-emerald-600 hover:bg-neutral-200 dark:border-emerald-500/60 dark:text-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40"
+            className={`h-6 w-6 p-0 mx-auto rounded-full border border-border bg-muted hover:border-emerald-500 hover:text-emerald-600 hover:bg-muted/80 dark:border-emerald-500/60 dark:text-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40 ${product.is_active === false ? "text-muted-foreground opacity-70" : "text-muted-foreground"}`}
             aria-label={t("menu_stores")}
+            aria-disabled={product.is_active === false}
             data-testid={`user_products_store_add_trigger_${product.id}`}
             onClick={(e) => {
               e.stopPropagation();

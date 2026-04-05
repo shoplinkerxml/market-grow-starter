@@ -50,6 +50,24 @@ import {
 type ProductsTableProps = { onEdit?: (product: Product) => void; onDelete?: (product: Product) => Promise<void> | void; onCreateNew?: () => void; onProductsLoaded?: (count: number) => void; onLoadingChange?: (loading: boolean) => void; refreshTrigger?: number; canCreate?: boolean; suppliersEmpty?: boolean; storeId?: string; hideDuplicate?: boolean };
 type PageInfo = { limit: number; offset: number; hasMore: boolean; nextOffset: number | null; total: number };
 
+function sanitizeRowSelection(selection: Record<string, boolean>, items: ProductRow[]): Record<string, boolean> {
+  const itemsById = new Map(items.map((item) => [String(item.id), item] as const));
+  return Object.fromEntries(
+    Object.entries(selection).filter(([rowId, selected]) => {
+      if (!selected) return false;
+      const row = itemsById.get(String(rowId));
+      return !!row && row.is_active !== false;
+    }),
+  );
+}
+
+function isSameRowSelection(a: Record<string, boolean>, b: Record<string, boolean>): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every((key) => a[key] === b[key]);
+}
+
 function applyRowOrder(items: ProductRow[], order: string[]): ProductRow[] {
   if (!Array.isArray(order) || order.length === 0) return items;
   const pos = new Map<string, number>();
@@ -127,6 +145,7 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
     data: rows,
     columns,
     state: { sorting: sortingEffective, columnVisibility: state.columnVisibility, rowSelection: state.rowSelection, columnFilters: state.columnFilters, pagination: state.pagination, columnOrder: withStoreSpecificColumns(state.columnOrder, storeId) },
+    getRowId: (row) => String(row.id),
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
@@ -138,13 +157,7 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
     enableRowSelection: (row) => row.original.is_active !== false,
     onRowSelectionChange: (updater) => {
       const nextSelection = (typeof updater === "function" ? (updater as any)(state.rowSelection) : updater) as Record<string, boolean>;
-      const sanitizedSelection = Object.fromEntries(
-        Object.entries(nextSelection).filter(([rowId, selected]) => {
-          if (!selected) return false;
-          const row = rows.find((item) => String(item.id) === String(rowId));
-          return row?.is_active !== false;
-        }),
-      );
+      const sanitizedSelection = sanitizeRowSelection(nextSelection, rows);
       dispatch({ type: "setRowSelection", next: sanitizedSelection });
     },
     onSortingChange: (updater) => {
@@ -167,6 +180,12 @@ export const ProductsTable = ({ onEdit, onDelete, onCreateNew, onProductsLoaded,
       }),
     onPaginationChange: (updater) => dispatch({ type: "setPagination", next: updater as any }),
   });
+
+  useEffect(() => {
+    const sanitizedSelection = sanitizeRowSelection(state.rowSelection, rows);
+    if (isSameRowSelection(sanitizedSelection, state.rowSelection)) return;
+    dispatch({ type: "setRowSelection", next: sanitizedSelection });
+  }, [rows, state.rowSelection]);
 
   const toggleRowReorderEnabled = useCallback(() => {
     const next = !state.rowReorderEnabled;

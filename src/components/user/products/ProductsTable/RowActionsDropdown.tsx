@@ -32,6 +32,7 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
   const duplicationStatus = useSyncStatus(`product:duplicate:${product.id}`);
   const isDupPending = duplicationStatus?.status === "pending";
   const isDupError = duplicationStatus?.status === "error";
+  const isInactive = product.is_active === false;
 
   const loadStoresAndLinks = async () => {
     const initialLinked = Array.isArray(product.linkedStoreIds) ? (product.linkedStoreIds as string[]).map(String) : [];
@@ -110,7 +111,7 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="bg-white border border-emerald-300/40 dark:bg-neutral-900/80 dark:border-emerald-500/40">
-        <DropdownMenuItem onClick={onEdit} className="cursor-pointer" data-testid="user_products_row_edit">
+        <DropdownMenuItem onClick={onEdit} className="cursor-pointer" disabled={isInactive} data-testid="user_products_row_edit">
           <Edit className="mr-2 h-4 w-4" />
           {t("edit")}
         </DropdownMenuItem>
@@ -167,7 +168,7 @@ export function ProductActionsDropdown({ product, onEdit, onDelete, onDuplicate,
                                 onClick={(e) => e.stopPropagation()}
                                 onCheckedChange={async (v) => {
                                   if (v && product.is_active === false) {
-                                    toast.error(t("operation_failed"));
+                                    toast.error(t("inactive_products_cannot_add_to_store"));
                                     return;
                                   }
                                   setTogglingStoreIds((prev) => Array.from(new Set([...prev, id])));

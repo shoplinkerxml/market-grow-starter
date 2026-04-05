@@ -88,10 +88,11 @@ function ProductCard({
   const showOldPrice = promoPrice != null && oldPrice != null && promoPrice < oldPrice;
 
   const isInactive = product.is_active === false;
+  const isSelected = row.getIsSelected() && !isInactive;
 
   return (
     <Card
-      className={`@container/card overflow-hidden border shadow-sm transition-shadow hover:shadow-md ${row.getIsSelected() ? "border-emerald-400" : "border-border"} ${isInactive ? "bg-muted/30 [&_img]:grayscale [&_img]:opacity-60" : ""}`}
+      className={`@container/card overflow-hidden border shadow-sm transition-shadow ${isSelected ? "border-emerald-400" : "border-border"} ${isInactive ? "bg-muted/40 text-muted-foreground opacity-75 [&_img]:grayscale [&_img]:opacity-70" : "hover:shadow-md"}`}
       data-testid={`user_products_card_${product.id}`}
     >
       <div className="flex items-center justify-between gap-2 px-2 pt-2">
@@ -126,8 +127,10 @@ function ProductCard({
       <div className="px-2 pb-2">
         <button
           type="button"
-          className="relative mt-2 block w-full aspect-[4/3] bg-muted/40 rounded-md overflow-hidden dark:bg-neutral-900/60 dark:border dark:border-emerald-500/40"
+          className="relative mt-2 block w-full aspect-[4/3] bg-muted/40 rounded-md overflow-hidden disabled:cursor-not-allowed dark:bg-neutral-900/60 dark:border dark:border-emerald-500/40"
           onClick={() => onEdit?.(product)}
+          disabled={isInactive}
+          aria-disabled={isInactive}
         >
           {src ? (
             <img
@@ -149,15 +152,17 @@ function ProductCard({
         <div className="text-[11px] text-muted-foreground truncate">{product.article || "—"}</div>
         <button
           type="button"
-          className="mt-1 text-left font-semibold leading-snug break-words line-clamp-2 w-full transition-colors hover:text-emerald-600"
+          className={`mt-1 text-left font-semibold leading-snug break-words line-clamp-2 w-full transition-colors disabled:cursor-not-allowed disabled:hover:text-muted-foreground ${isInactive ? "text-muted-foreground" : "hover:text-emerald-600"}`}
           title={name}
           onClick={() => onEdit?.(product)}
+          disabled={isInactive}
+          aria-disabled={isInactive}
         >
           {name}
         </button>
 
         {isInactive ? (
-          <Badge variant="outline" className="mt-1 text-[10px] h-5 px-2 py-0.5 bg-muted text-muted-foreground border-border font-medium">
+          <Badge variant="outline" className="mt-1 text-[10px] h-5 px-2 py-0.5 bg-muted text-muted-foreground border-border font-medium uppercase tracking-[0.08em]">
             {t("product_inactive_badge")}
           </Badge>
         ) : null}
