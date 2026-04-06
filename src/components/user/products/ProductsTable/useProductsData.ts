@@ -72,7 +72,9 @@ export function useProductsData({ uid, storeId, pageSize, pageIndex, refreshTrig
     queryFn: async ({ pageParam }) => {
       const offset = Number.isFinite(pageParam) ? pageParam : 0;
       if (isDefaultNormalizedFilters(normalizedFilters)) {
-        const { products, page } = await ProductService.getProductsPage(storeId ?? null, pageSize, offset);
+        const { products, page } = await ProductService.getProductsPage(storeId ?? null, pageSize, offset, {
+          bypassCache: true,
+        });
         return { products: products as unknown as ProductRow[], page: page as unknown as PageInfo };
       }
       const { products, page } = await ProductsWithDetailsService.getProductsPage(

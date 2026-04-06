@@ -197,6 +197,11 @@ export const StoreProductEdit = () => {
     
     try {
       const agg = await ProductService.getProductEditData(pid, storeId);
+      if (agg.product?.is_active === false) {
+        toast.error(t('inactive_product_cannot_be_edited'));
+        navigate(`/user/shops/${storeId}/products`);
+        return;
+      }
       const sid = agg.product?.supplier_id != null ? String(agg.product.supplier_id) : "";
       
       setProductData({
@@ -225,7 +230,7 @@ export const StoreProductEdit = () => {
     } finally {
       setUiState(prev => ({ ...prev, loading: false }));
     }
-  }, [pid, storeId, t]);
+  }, [navigate, pid, storeId, t]);
 
   useEffect(() => {
     loadProductData();

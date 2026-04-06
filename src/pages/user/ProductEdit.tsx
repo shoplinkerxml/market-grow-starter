@@ -75,6 +75,11 @@ export const ProductEdit = () => {
       setLoading(true);
       try {
         const agg = await ProductService.getProductEditData(id);
+        if (agg.product?.is_active === false) {
+          toast.error(t('inactive_product_cannot_be_edited'));
+          navigate('/user/products');
+          return;
+        }
         setProduct(agg.product);
         preloadedImagesRef.current = (agg.images || []) as Array<{ id?: string; url: string; order_index: number; is_main: boolean; alt_text?: string }>;
         let params = (agg.params || []) as Array<{ id?: string; name: string; value: string; order_index: number; paramid?: string; valueid?: string }>;
@@ -104,7 +109,7 @@ export const ProductEdit = () => {
       }
     };
     loadProductAgg();
-  }, [id, t]);
+  }, [id, navigate, t]);
 
   const supplierId = useMemo(() => {
     return product?.supplier_id != null ? String(product.supplier_id) : "";
