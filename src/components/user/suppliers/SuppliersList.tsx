@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { Building2, Edit, Trash2, Globe, Link, Phone, Truck } from 'lucide-react';
 import { useI18n } from "@/i18n";
 import { SupplierService, type Supplier } from '@/lib/supplier-service';
+import { ProductService } from '@/lib/product-service';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router-dom';
@@ -68,6 +69,11 @@ export const SuppliersList = ({
 
     try {
       const updated = await SupplierService.updateSupplier(sid, { is_active: nextActive });
+      try {
+        ProductService.clearAllCaches();
+      } catch {
+        void 0;
+      }
       queryClient.setQueryData<Supplier[]>(['user', uid, 'suppliers', 'list'], (old) =>
         (old || []).map((s) => Number(s.id) === Number(updated.id) ? updated : s)
       );

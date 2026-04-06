@@ -66,6 +66,10 @@ export const Products = () => {
 
 
   const handleEdit = (product: Product) => {
+    if (product.is_active === false) {
+      toast.error(t('inactive_product_cannot_be_edited'));
+      return;
+    }
     navigate(`/user/products/edit/${product.id}`);
   };
 

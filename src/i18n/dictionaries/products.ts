@@ -560,6 +560,7 @@ export const productsDictionary: Dictionary = {
   product_available: { uk: "Товар доступний", en: "Product available" },
   product_is_active: { uk: "Товар активний", en: "Product active" },
   product_inactive_badge: { uk: "Неактивний", en: "Inactive" },
+  inactive_product_cannot_be_edited: { uk: "Неактивний товар не можна редагувати", en: "Inactive product cannot be edited" },
   inactive_products_cannot_add_to_store: { uk: "Неактивні товари не можуть бути додані в магазин", en: "Inactive products cannot be added to a store" },
   inactive_products_skipped: { uk: "неактивних товарів пропущено", en: "inactive products skipped" },
   currency: { uk: "Валюта", en: "Currency" },
