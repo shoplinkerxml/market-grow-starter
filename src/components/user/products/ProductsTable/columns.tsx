@@ -10,6 +10,7 @@ import { StoresBadgeCell } from "./StoresBadgeCell";
 import { ProductStatusBadge } from "./ProductStatusBadge";
 import { Image as ImageIcon } from "lucide-react";
 import { useResolvedImageSrc } from "@/hooks/useProductImages";
+import { inactiveProductBadgeClassName, inactiveProductCheckboxClassName } from "./inactiveProductStyles";
 const ProductActionsDropdownLazy = React.lazy(() =>
   import("./RowActionsDropdown").then((m) => ({ default: m.ProductActionsDropdown }))
 );
@@ -154,16 +155,16 @@ function createSelectColumn(config: ColumnConfig): ColumnDef<ProductRow> {
     id: "select",
     header: ({ table }) => {
       const allRows = table.getRowModel().rows;
-      const activeRows = allRows.filter(r => r.original.is_active !== false);
-      const allActiveSelected = activeRows.length > 0 && activeRows.every(r => r.getIsSelected());
-      const someSelected = activeRows.some(r => r.getIsSelected());
+      const selectableRows = allRows.filter((r) => r.getCanSelect());
+      const allActiveSelected = selectableRows.length > 0 && selectableRows.every((r) => r.getIsSelected());
+      const someSelected = selectableRows.some((r) => r.getIsSelected());
       return (
         <div className="flex items-center justify-start">
           <Checkbox
             checked={allActiveSelected ? true : someSelected ? "indeterminate" : false}
             onCheckedChange={(value) => {
-              allRows.forEach(r => {
-                if (r.original.is_active === false) {
+              allRows.forEach((r) => {
+                if (!r.getCanSelect()) {
                   r.toggleSelected(false);
                 } else {
                   r.toggleSelected(value === true);
@@ -187,7 +188,7 @@ function createSelectColumn(config: ColumnConfig): ColumnDef<ProductRow> {
             }}
             disabled={isInactive}
             aria-label={config.t("select_row")}
-            className={isInactive ? "opacity-30 cursor-not-allowed" : ""}
+            className={isInactive ? inactiveProductCheckboxClassName : ""}
           />
         </div>
       );
@@ -236,16 +237,16 @@ function createNameColumn(config: ColumnConfig): ColumnDef<ProductRow> {
         <div className="min-w-0 max-w-[clamp(10rem,26vw,18rem)]" data-testid="user_products_name">
           <button
             type="button"
-              disabled={isInactive}
-              aria-disabled={isInactive}
-              className={`text-left font-medium break-words line-clamp-2 w-full transition-colors disabled:cursor-not-allowed disabled:hover:text-muted-foreground disabled:hover:font-medium ${isInactive ? 'text-muted-foreground' : 'hover:text-emerald-600 hover:font-semibold'}`}
+            disabled={isInactive}
+            aria-disabled={isInactive}
+            className={`text-left font-medium break-words line-clamp-2 w-full transition-colors disabled:cursor-not-allowed disabled:hover:text-muted-foreground disabled:hover:font-medium ${isInactive ? 'text-muted-foreground' : 'hover:text-emerald-600 hover:font-semibold'}`}
             title={name}
             onClick={() => config.onEdit?.(product)}
           >
             {name}
           </button>
           {isInactive && (
-            <span className="inline-flex mt-1 text-[10px] px-2 py-0.5 rounded-md border border-border bg-muted text-muted-foreground font-medium uppercase tracking-[0.08em]">
+            <span className={`inline-flex mt-1 text-[10px] px-2 py-0.5 rounded-md border font-medium uppercase tracking-[0.08em] ${inactiveProductBadgeClassName}`}>
               {config.t('product_inactive_badge')}
             </span>
           )}
@@ -433,7 +434,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       accessorFn: (row) => row.state ?? "",
       filterFn: stringFilter,
       header: () => renderHeader(t("table_status")),
-      cell: ({ row }) => <ProductStatusBadge state={row.original.state} />,
+      cell: ({ row }) => <ProductStatusBadge state={row.original.state} inactive={row.original.is_active === false} />,
       enableHiding: true,
     },
     {
@@ -443,8 +444,9 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       header: () => renderHeader(t("supplier")),
       cell: ({ row }) => {
         const name = row.original.supplierName;
+        const isInactive = row.original.is_active === false;
         return name ? (
-          <span className="text-sm" data-testid="user_products_supplier">{name}</span>
+          <span className={isInactive ? "text-sm text-muted-foreground" : "text-sm"} data-testid="user_products_supplier">{name}</span>
         ) : (
           <span className="text-muted-foreground" data-testid="user_products_supplier_empty">—</span>
         );
@@ -516,7 +518,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       filterFn: stringFilter,
       header: () => renderHeader(t("article")),
       cell: ({ row }) => (
-        <span className="text-sm text-foreground">{row.original.article || ""}</span>
+        <span className={`product-text-strong text-sm ${row.original.is_active === false ? "text-muted-foreground" : "text-foreground"}`}>{row.original.article || ""}</span>
       ),
       enableHiding: true,
     },
@@ -525,7 +527,7 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       filterFn: stringFilter,
       header: () => renderHeader(t("vendor")),
       cell: ({ row }) => (
-        <span className="text-sm text-foreground">{row.original.vendor || ""}</span>
+        <span className={`product-text-strong text-sm ${row.original.is_active === false ? "text-muted-foreground" : "text-foreground"}`}>{row.original.vendor || ""}</span>
       ),
       enableHiding: true,
     },
@@ -535,9 +537,10 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       header: () => renderHeader(t("short_name_ua")),
       cell: ({ row }) => {
         const shortName = row.original.docket_ua || "";
+        const isInactive = row.original.is_active === false;
         return (
           <div
-            className="text-sm text-foreground max-w-[clamp(8rem,20vw,16rem)] truncate"
+            className={`product-text-strong text-sm max-w-[clamp(8rem,20vw,16rem)] truncate ${isInactive ? "text-muted-foreground" : "text-foreground"}`}
             title={shortName}
             data-testid="user_products_docketUa"
           >
@@ -553,9 +556,10 @@ export function createColumns(config: ColumnConfig): ColumnDef<ProductRow>[] {
       header: () => renderHeader(t("product_description_ua")),
       cell: ({ row }) => {
         const desc = row.original.description_ua || "";
+        const isInactive = row.original.is_active === false;
         return (
           <div
-            className="text-sm text-foreground max-w-[clamp(10rem,22vw,18rem)] line-clamp-2 break-words"
+            className={`product-text-strong text-sm max-w-[clamp(10rem,22vw,18rem)] line-clamp-2 break-words ${isInactive ? "text-muted-foreground" : "text-foreground"}`}
             title={desc}
             data-testid="user_products_descriptionUa"
           >

@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { ProductRow } from "./columns";
+import { activeProductRowClassName, inactiveProductRowClassName } from "./inactiveProductStyles";
 
 export function SortableProductRow({
   row,
@@ -18,9 +19,11 @@ export function SortableProductRow({
   rowReorderEnabled: boolean;
 }) {
   const id = String(row.original.id);
+  const isInactive = row.original.is_active === false;
+  const canReorderRow = rowReorderEnabled && !isInactive;
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id,
-    disabled: !rowReorderEnabled,
+    disabled: !canReorderRow,
   });
   const style = useMemo(
     () =>
@@ -32,17 +35,12 @@ export function SortableProductRow({
     [rowHeight, transform, transition],
   );
 
-  const isInactive = row.original.is_active === false;
-
   return (
     <TableRow
       ref={setNodeRef}
       key={row.id}
       data-state={row.getIsSelected() && !isInactive ? "selected" : undefined}
-      className={`${isInactive
-        ? "bg-muted/50 text-muted-foreground hover:bg-muted/50 dark:bg-muted/25 dark:hover:bg-muted/25 opacity-75 [&_img]:grayscale [&_img]:opacity-70 [&_[data-testid='user_products_name']_button]:text-muted-foreground [&_[data-testid='user_products_supplier']]:text-muted-foreground"
-        : "hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-      } ${isDragging ? "opacity-70" : ""}`}
+      className={`${isInactive ? inactiveProductRowClassName : activeProductRowClassName} ${isDragging ? "opacity-70" : ""}`}
       style={style}
     >
       {row.getVisibleCells().map((cell) => {
@@ -52,7 +50,7 @@ export function SortableProductRow({
         return (
           <TableCell key={cell.id}>
             <div className="flex items-start gap-2 min-w-0">
-              {rowReorderEnabled ? (
+              {canReorderRow ? (
                 <button
                   ref={setActivatorNodeRef}
                   type="button"

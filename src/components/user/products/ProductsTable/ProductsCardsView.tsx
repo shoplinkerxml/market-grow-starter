@@ -9,6 +9,7 @@ import { useProductsTableContext } from "./context";
 import { Image as ImageIcon } from "lucide-react";
 import type { ProductRow } from "./columns";
 import type { ShopAggregated } from "@/lib/shop-service";
+import { inactiveProductBadgeClassName, inactiveProductCheckboxClassName } from "./inactiveProductStyles";
 
 const ProductActionsDropdownLazy = React.lazy(() =>
   import("./RowActionsDropdown").then((m) => ({ default: m.ProductActionsDropdown })),
@@ -102,7 +103,7 @@ function ProductCard({
           aria-label={t("select_row")}
           disabled={isInactive || loading || duplicating}
           aria-disabled={isInactive || loading || duplicating}
-          className={isInactive ? "opacity-30 cursor-not-allowed" : ""}
+          className={isInactive ? inactiveProductCheckboxClassName : ""}
         />
 
         <React.Suspense fallback={null}>
@@ -162,7 +163,7 @@ function ProductCard({
         </button>
 
         {isInactive ? (
-          <Badge variant="outline" className="mt-1 text-[10px] h-5 px-2 py-0.5 bg-muted text-muted-foreground border-border font-medium uppercase tracking-[0.08em]">
+          <Badge variant="outline" className={`mt-1 text-[10px] h-5 px-2 py-0.5 font-medium uppercase tracking-[0.08em] ${inactiveProductBadgeClassName}`}>
             {t("product_inactive_badge")}
           </Badge>
         ) : null}
@@ -172,14 +173,14 @@ function ProductCard({
             <Badge
               key={`${product.id}:store:${idx}`}
               variant="secondary"
-              className="rounded-md px-2 py-0.5 text-[11px] h-5 max-w-[10rem] truncate dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"
+              className={`rounded-md px-2 py-0.5 text-[11px] h-5 max-w-[10rem] truncate ${isInactive ? inactiveProductBadgeClassName : "dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"}`}
               title={label}
             >
               {label}
             </Badge>
           ))}
           {storeLabels.length > 4 ? (
-            <Badge variant="outline" className="rounded-md px-2 py-0.5 text-[11px] h-5 dark:border-emerald-500/60 dark:text-emerald-200">
+            <Badge variant="outline" className={`rounded-md px-2 py-0.5 text-[11px] h-5 ${isInactive ? inactiveProductBadgeClassName : "dark:border-emerald-500/60 dark:text-emerald-200"}`}>
               +{storeLabels.length - 4}
             </Badge>
           ) : null}

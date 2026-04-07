@@ -11,6 +11,7 @@ import type { ShopAggregated } from "@/lib/shop-service";
 import { ProductService, type Product } from "@/lib/product-service";
 import { useOutletContext } from "react-router-dom";
 import { UserAuthService } from "@/lib/user-auth-service";
+import { inactiveProductBadgeClassName } from "./inactiveProductStyles";
 
 type ProductRow = Product & { linkedStoreIds?: string[] };
 
@@ -28,6 +29,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
   const queryClient = useQueryClient();
   const { user } = useOutletContext<{ user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
+  const isInactive = product.is_active === false;
   const storeIds = product.linkedStoreIds || [];
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [stores, setStores] = useState<ShopAggregated[]>([]);
@@ -270,9 +272,9 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className={`h-6 w-6 p-0 mx-auto rounded-full border border-border bg-muted hover:border-emerald-500 hover:text-emerald-600 hover:bg-muted/80 dark:border-emerald-500/60 dark:text-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40 ${product.is_active === false ? "text-muted-foreground opacity-70" : "text-muted-foreground"}`}
+            className={`h-6 w-6 p-0 mx-auto rounded-full border ${isInactive ? `${inactiveProductBadgeClassName} cursor-not-allowed hover:border-border hover:text-muted-foreground hover:bg-muted` : "border-border bg-muted text-muted-foreground hover:border-emerald-500 hover:text-emerald-600 hover:bg-muted/80 dark:border-emerald-500/60 dark:text-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/40"}`}
             aria-label={t("menu_stores")}
-            aria-disabled={product.is_active === false}
+            aria-disabled={isInactive}
             data-testid={`user_products_store_add_trigger_${product.id}`}
             onClick={(e) => {
               e.stopPropagation();
@@ -298,7 +300,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
             <DropdownMenu open={openMenuId === String(id)} onOpenChange={(v) => handleOpenChange(String(id), v)}>
               <DropdownMenuTrigger asChild>
                 <div
-                  className="group relative inline-block cursor-pointer"
+                  className={`group relative inline-block ${isInactive ? "cursor-not-allowed" : "cursor-pointer"}`}
                   onClick={(e) => {
                     e.stopPropagation();
                   }}
@@ -306,7 +308,7 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
                 >
                   <Badge
                     variant="secondary"
-                    className="relative inline-flex items-center rounded-md px-2 py-0 text-[11px] h-5 max-w-[10rem] truncate transition-opacity duration-150 ease-out group-hover:opacity-0 group-focus-within:opacity-0 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"
+                    className={`relative inline-flex items-center rounded-md px-2 py-0 text-[11px] h-5 max-w-[10rem] truncate transition-opacity duration-150 ease-out group-hover:opacity-0 group-focus-within:opacity-0 ${isInactive ? inactiveProductBadgeClassName : "dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"}`}
                   >
                     <span className="min-w-0 select-none truncate" title={name} data-testid={`user_products_store_badge_${product.id}_${id}`}>
                       {label}
@@ -315,12 +317,12 @@ export function StoresBadgeCell({ product, storeNames, storesList, prefetchStore
 
                   <Badge
                     variant="secondary"
-                    className="absolute inset-y-0 left-0 z-20 inline-flex h-full w-[calc(100%+18px)] items-center rounded-md px-2 py-0 pr-6 text-[11px] opacity-0 pointer-events-none overflow-visible transition-[opacity,width,padding] duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"
+                    className={`absolute inset-y-0 left-0 z-20 inline-flex h-full w-[calc(100%+18px)] items-center rounded-md px-2 py-0 pr-6 text-[11px] opacity-0 pointer-events-none overflow-visible transition-[opacity,width,padding] duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 ${isInactive ? inactiveProductBadgeClassName : "dark:bg-emerald-900/40 dark:text-emerald-100 dark:border-emerald-500/60"}`}
                   >
                     <span className="min-w-0 flex-1 select-none truncate" title={name}>
                       {label}
                     </span>
-                    {onRemove ? (
+                    {onRemove && !isInactive ? (
                       <button
                         type="button"
                         className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-4 w-4 items-center justify-center rounded text-muted-foreground opacity-0 pointer-events-auto transition-[opacity,transform,color,background-color] duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 hover:scale-110 hover:bg-black/30 hover:text-white active:scale-95 dark:hover:bg-emerald-900/70 dark:hover:text-emerald-100"

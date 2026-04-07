@@ -1,8 +1,16 @@
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/i18n";
+import { inactiveProductBadgeClassName } from "./inactiveProductStyles";
 
-export function ProductStatusBadge({ state }: { state?: string }) {
+export function ProductStatusBadge({ state, inactive = false }: { state?: string; inactive?: boolean }) {
   const { t } = useI18n();
+  if (inactive) {
+    return (
+      <Badge variant="outline" className={`${inactiveProductBadgeClassName} font-medium uppercase tracking-[0.08em]`} data-testid="user_products_statusBadge">
+        {t("product_inactive_badge")}
+      </Badge>
+    );
+  }
   const s = state || 'new';
   const labelKey = s === 'stock' ? 'status_stock' : s === 'used' ? 'status_used' : s === 'refurbished' ? 'status_refurbished' : 'status_new';
   const cls = s === 'new'
