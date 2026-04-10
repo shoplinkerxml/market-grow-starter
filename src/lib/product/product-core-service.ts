@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { SessionValidator } from "@/lib/session-validation";
 import { ApiError } from "@/lib/user-service";
 import type { CreateProductData, Product, ProductImage, UpdateProductData } from "@/lib/product-service";
@@ -36,6 +37,38 @@ export class ProductCoreService {
     const sessionValidation = await SessionValidator.ensureValidSession();
     if (!sessionValidation.isValid) {
       throw new Error("Invalid session: " + (sessionValidation.error || "Session expired"));
+    }
+  }
+
+  private static async syncExplicitStatusFields(id: string, productData: UpdateProductData): Promise<void> {
+    const statusPatch: { available?: boolean; is_active?: boolean } = {};
+
+    if (typeof productData.available === "boolean") {
+      statusPatch.available = productData.available;
+    }
+
+    if (typeof productData.is_active === "boolean") {
+      statusPatch.is_active = productData.is_active;
+    }
+
+    if (Object.keys(statusPatch).length === 0) return;
+
+    const { data, error } = await supabase
+      .from("store_products")
+      .update(statusPatch)
+      .eq("id", String(id))
+      .select("id, available, is_active")
+      .single();
+
+    if (error) {
+      throw new ApiError(error.message || "update_status_failed", 500, "STATUS_SYNC_FAILED");
+    }
+
+    if (
+      (typeof statusPatch.available === "boolean" && data?.available !== statusPatch.available) ||
+      (typeof statusPatch.is_active === "boolean" && data?.is_active !== statusPatch.is_active)
+    ) {
+      throw new ApiError("update_status_verification_failed", 500, "STATUS_SYNC_MISMATCH");
     }
   }
 
@@ -222,6 +255,9 @@ export class ProductCoreService {
       payload,
     );
     const productId = respUpdate?.product_id || id;
+
+    await ProductCoreService.syncExplicitStatusFields(String(productId), productData);
+
     return String(productId);
   }
 
