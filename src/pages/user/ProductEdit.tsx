@@ -253,12 +253,15 @@ export const ProductEdit = () => {
     try {
       await ProductService.updateProduct(id, payload);
 
+      await queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
+
       toast.success(t('product_updated'));
     } catch (error) {
       console.error('Failed to save product:', error);
       toast.error(t('failed_save_product'));
       // Invalidate to be safe
       queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
+      throw error;
     }
   };
 
