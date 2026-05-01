@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,7 +47,12 @@ export const SuppliersList = ({
     refetchOnWindowFocus: true,
     placeholderData: (prev) => prev as Supplier[] | undefined,
   });
-  const suppliers: Supplier[] = suppliersData ?? [];
+  // Стабільне сортування за id (порядок створення), щоб картки не «стрибали»
+  // при перемиканні активності або інвалідації кешу.
+  const suppliers: Supplier[] = useMemo(() => {
+    const list = suppliersData ?? [];
+    return [...list].sort((a, b) => Number(a.id) - Number(b.id));
+  }, [suppliersData]);
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; supplier: Supplier | null }>({
     open: false,
     supplier: null
@@ -81,9 +86,16 @@ export const SuppliersList = ({
       } catch {
         void 0;
       }
-      queryClient.setQueryData<Supplier[]>(['user', uid, 'suppliers', 'list'], (old) =>
-        (old || []).map((s) => Number(s.id) === Number(updated.id) ? updated : s)
-      );
+      // Мерджимо відповідь у наявний запис, щоб не «загубити» поля
+      // та не дублювати/прибирати інші картки під час швидких перемикань.
+      queryClient.setQueryData<Supplier[]>(['user', uid, 'suppliers', 'list'], (old) => {
+        const list = Array.isArray(old) ? old.slice() : [];
+        const idx = list.findIndex((s) => Number(s.id) === Number(updated?.id ?? sid));
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...(updated || {}), is_active: nextActive };
+        }
+        return list;
+      });
       await SupplierService.getSuppliers({ bypassCache: true });
       queryClient.invalidateQueries({ queryKey: ['user', uid, 'suppliers'], exact: false });
       queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
