@@ -17,6 +17,8 @@ import { Building2, Edit, Trash2, Globe, Link, Phone, Truck } from 'lucide-react
 import { useI18n } from "@/i18n";
 import { SupplierService, type Supplier } from '@/lib/supplier-service';
 import { ProductService } from '@/lib/product-service';
+import { ShopService } from '@/lib/shop-service';
+import { ShopCountsService } from '@/lib/shop-counts';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router-dom';
@@ -74,12 +76,26 @@ export const SuppliersList = ({
       } catch {
         void 0;
       }
+      try {
+        ShopService.invalidateInternalCache();
+      } catch {
+        void 0;
+      }
       queryClient.setQueryData<Supplier[]>(['user', uid, 'suppliers', 'list'], (old) =>
         (old || []).map((s) => Number(s.id) === Number(updated.id) ? updated : s)
       );
       await SupplierService.getSuppliers({ bypassCache: true });
       queryClient.invalidateQueries({ queryKey: ['user', uid, 'suppliers'], exact: false });
       queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
+      // Магазини: лічильники товарів/категорій залежать від активних постачальників
+      try {
+        ShopCountsService.invalidate(queryClient, uid, null, `supplier_toggle:${nextActive}`, {
+          refetch: "active",
+        });
+      } catch {
+        void 0;
+      }
+      queryClient.invalidateQueries({ queryKey: ["user", uid, "shops"], exact: false });
       toast.success(nextActive ? t('supplier_activated') : t('supplier_deactivated'));
     } catch {
       queryClient.setQueryData(['user', uid, 'suppliers', 'list'], (old: Supplier[] | undefined) =>
