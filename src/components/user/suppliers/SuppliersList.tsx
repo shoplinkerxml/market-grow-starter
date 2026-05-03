@@ -93,11 +93,12 @@ export const SuppliersList = ({
         const idx = list.findIndex((s) => Number(s.id) === Number(updated?.id ?? sid));
         if (idx >= 0) {
           list[idx] = { ...list[idx], ...(updated || {}), is_active: nextActive };
+        } else if (current && Number(current.id) === Number(sid)) {
+          list.push({ ...current, ...(updated || {}), is_active: nextActive });
         }
         return list;
       });
-      await SupplierService.getSuppliers({ bypassCache: true });
-      queryClient.invalidateQueries({ queryKey: ['user', uid, 'suppliers'], exact: false });
+      void SupplierService.getSuppliers({ bypassCache: true });
       queryClient.invalidateQueries({ queryKey: ["user", uid, "products"], exact: false });
       // Магазини: лічильники товарів/категорій залежать від активних постачальників
       try {
