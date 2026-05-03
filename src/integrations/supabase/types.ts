@@ -1651,6 +1651,10 @@ export type Database = {
           parent_external_id: string
         }[]
       }
+      cleanup_counters_if_empty: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       count_attributes_by_templates: {
         Args: { p_template_ids: number[] }
         Returns: {
