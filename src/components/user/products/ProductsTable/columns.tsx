@@ -170,13 +170,11 @@ function createSelectColumn(config: ColumnConfig): ColumnDef<ProductRow> {
           <Checkbox
             checked={allActiveSelected ? true : someSelected ? "indeterminate" : false}
             onCheckedChange={(value) => {
-              allRows.forEach((r) => {
-                if (!r.getCanSelect()) {
-                  r.toggleSelected(false);
-                } else {
-                  r.toggleSelected(value === true);
+                const next: Record<string, boolean> = {};
+                if (value === true) {
+                  for (const r of selectableRows) next[r.id] = true;
                 }
-              });
+                table.setRowSelection(next);
             }}
             aria-label={config.t("select_all")}
           />
