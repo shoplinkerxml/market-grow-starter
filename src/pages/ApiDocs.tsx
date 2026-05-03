@@ -115,13 +115,14 @@ export default function ApiDocs() {
       const savedApiKey = localStorage.getItem('supabase-apikey');
       const savedAccessToken = localStorage.getItem('access-token');
       const savedEmail = localStorage.getItem('admin-email');
-      const savedPassword = localStorage.getItem('admin-password');
-      
+      // SECURITY: Never load passwords from localStorage. Clean any legacy value.
+      try { localStorage.removeItem('admin-password'); } catch { /* ignore */ }
+
       setSettings({
         apiKey: savedApiKey || "",
         accessToken: savedAccessToken || "",
         adminEmail: savedEmail || "",
-        adminPassword: savedPassword || "",
+        adminPassword: "",
       });
     } catch (e) {
       console.warn('Не удалось загрузить данные из localStorage', e);
@@ -241,11 +242,8 @@ export default function ApiDocs() {
 
   const handleAdminPasswordChange = useCallback((value: string) => {
     setSettings((prev) => ({ ...prev, adminPassword: value }));
-    try {
-      localStorage.setItem("admin-password", value);
-    } catch (e) {
-      console.warn("Не удалось сохранить password в localStorage", e);
-    }
+    // SECURITY: Passwords must NOT be persisted to localStorage.
+    // Kept in component state only for the duration of the session.
   }, []);
 
   const handleSaveBearerAuth = useCallback(() => {

@@ -19,6 +19,7 @@ import { ShopStructureEditor } from "@/components/user/shops";
 import { ExportDialog } from "@/components/user/shops/ExportDialog";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
 import { Layers, Tag } from "lucide-react";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 interface UserDashboardContextType {
   user: UserProfile;
@@ -381,7 +382,7 @@ const UserMenuContentByPath = () => {
           ) : menuItem.page_type === 'content' && menuItem.content_data ? (
             <div className="prose max-w-none">
               {menuItem.content_data.content ? (
-                <div dangerouslySetInnerHTML={{ __html: menuItem.content_data.content }} />
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(menuItem.content_data.content) }} />
               ) : (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">{t("no_content_available")}</p>

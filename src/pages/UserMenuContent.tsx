@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { FullPageLoader } from "@/components/LoadingSkeletons";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 interface UserDashboardContextType {
   user: UserProfile;
@@ -160,7 +161,7 @@ const UserMenuContent = () => {
           {menuItem.page_type === 'content' && menuItem.content_data ? (
             <div className="prose max-w-none">
               {menuItem.content_data.content ? (
-                <div dangerouslySetInnerHTML={{ __html: menuItem.content_data.content }} />
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(menuItem.content_data.content) }} />
               ) : (
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">{t("no_content_available")}</p>
@@ -280,7 +281,7 @@ const UserMenuContent = () => {
                 const content = menuItem.content_data?.content as string | undefined;
                 return content ? (
                   <div className="prose max-w-none">
-                    <div dangerouslySetInnerHTML={{ __html: content }} />
+                    <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }} />
                   </div>
                 ) : null;
               })()}
