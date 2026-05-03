@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { PageCardHeader } from "@/components/page-header";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 interface ContentPageProps {
   data: any;
@@ -15,7 +16,7 @@ export const ContentPage = ({ data, title }: ContentPageProps) => {
       <CardContent>
         <div 
           className="prose max-w-none dark:prose-invert" 
-          dangerouslySetInnerHTML={{ __html: htmlContent }} 
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlContent) }} 
         />
       </CardContent>
     </Card>
