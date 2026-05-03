@@ -60,8 +60,9 @@ const AdminProtected = () => {
             }
           } catch (roleError) {
             console.error('[AdminProtected] Error checking admin role:', roleError);
-            // Default to allowing access if role check fails to prevent blocking legitimate admins
-            setHasAdminRole(true);
+            // Fail closed: deny access if we can't verify admin role
+            setHasAdminRole(false);
+            setSessionError('Role check failed');
           }
           
           // Log session info for debugging
