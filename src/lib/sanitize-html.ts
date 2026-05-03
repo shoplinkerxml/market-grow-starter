@@ -5,8 +5,8 @@ import DOMPurify from "dompurify";
  * Strips scripts, event handlers, and dangerous URI schemes while
  * preserving common formatting tags used in CMS content.
  */
-export function sanitizeHtml(html: string | null | undefined): string {
-  if (!html) return "";
+export function sanitizeHtml(html: unknown): string {
+  if (!html || typeof html !== "string") return "";
   return DOMPurify.sanitize(html, {
     USE_PROFILES: { html: true },
     FORBID_TAGS: ["style", "script", "iframe", "object", "embed", "form"],
