@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
 
     const { data: tariff, error: tariffError } = await adminClient
       .from("tariffs")
-      .select("duration_days,is_lifetime,is_active")
+      .select("duration_days,is_lifetime,is_active,is_free")
       .eq("id", tariffId)
       .single()
 
@@ -71,6 +71,12 @@ Deno.serve(async (req) => {
 
     if (tariff.is_active === false) {
       return json({ success: false, error: "tariff_inactive" }, { status: 200 })
+    }
+
+    // Only free tariffs can be self-activated. Paid tariffs require a verified
+    // payment flow (admin or service role on the server side).
+    if (tariff.is_free !== true) {
+      return json({ success: false, error: "payment_required" }, { status: 402 })
     }
 
     const startDate = new Date()
