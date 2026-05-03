@@ -246,10 +246,12 @@ export class SupplierService {
     if (!row) throw new Error('Update failed');
     if (userId) {
       const cached = SupplierService.getCachedSuppliers(userId);
-      const prev = cached?.rows || [];
-      const next = prev.map((s) => (Number(s.id) === Number(row.id) ? row : s));
-      const exists = next.some((s) => Number(s.id) === Number(row.id));
-      SupplierService.setSuppliersCache(userId, exists ? next : [row, ...next]);
+      if (cached) {
+        const prev = cached.rows || [];
+        const next = prev.map((s) => (Number(s.id) === Number(row.id) ? { ...s, ...row } : s));
+        const exists = next.some((s) => Number(s.id) === Number(row.id));
+        SupplierService.setSuppliersCache(userId, exists ? next : prev);
+      }
     }
     try {
       PersistentCacheService.invalidateSuppliers();
