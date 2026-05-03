@@ -137,12 +137,26 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
+    // All operations now require admin permission (incl. GET to avoid leaking profiles)
+    const adminCheckEarly: any = await checkAdminPermission(serviceClient, authHeader);
+    if ('error' in adminCheckEarly) {
+      return new Response(JSON.stringify({
+        error: adminCheckEarly.error,
+        debug: adminCheckEarly.debug || {}
+      }), {
+        status: adminCheckEarly.status,
+        headers: corsHeaders
+      });
+    }
+
     // ---------------- GET /users ----------------
     if (req.method === 'GET' && !userId) {
       const page = parseInt(url.searchParams.get('page') || '1');
       const limit = parseInt(url.searchParams.get('limit') || '10');
       const offset = (page - 1) * limit;
-      const sortBy = url.searchParams.get('sortBy') || 'created_at';
+      const ALLOWED_SORT = new Set(['created_at','name','email','role','status','updated_at']);
+      const rawSort = url.searchParams.get('sortBy') || 'created_at';
+      const sortBy = ALLOWED_SORT.has(rawSort) ? rawSort : 'created_at';
       const sortOrder = url.searchParams.get('sortOrder') || 'desc';
       const search = url.searchParams.get('search') || undefined;
       const roleParam = url.searchParams.get('role') || undefined;
@@ -205,17 +219,7 @@ Deno.serve(async (req) => {
     }
 
     // ---------------- ALL OTHER OPERATIONS REQUIRE ADMIN PERMISSIONS ----------------
-    // Check admin permission for POST, PATCH, DELETE operations
-    const adminCheck: any = await checkAdminPermission(serviceClient, authHeader);
-    if ('error' in adminCheck) {
-      return new Response(JSON.stringify({ 
-        error: adminCheck.error,
-        debug: adminCheck.debug || {}
-      }), { 
-        status: adminCheck.status, 
-        headers: corsHeaders 
-      });
-    }
+    const adminCheck: any = adminCheckEarly;
 
     // ---------------- POST /users ----------------
     if (req.method === 'POST') {
@@ -330,8 +334,7 @@ Deno.serve(async (req) => {
         method: req.method,
         contentType: req.headers.get('Content-Type'),
         contentLength: req.headers.get('Content-Length'),
-        authorizationHeader: req.headers.get('Authorization') ? 'present' : 'missing',
-        allHeaders: Object.fromEntries(req.headers.entries())
+        hasAuth: !!req.headers.get('Authorization')
       });
 
       const contentType = req.headers.get('Content-Type') || '';
