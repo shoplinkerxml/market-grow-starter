@@ -175,7 +175,7 @@ export function ProductsFiltersSheet() {
 
   return (
     <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-      <SheetContent side="right" className="flex flex-col w-full sm:max-w-[22rem]" onInteractOutside={() => {}}>
+      <SheetContent side="left" className="flex flex-col w-full sm:max-w-[22rem]" onInteractOutside={() => {}}>
         <SheetHeader className="flex-row items-center justify-start gap-2 space-y-0 pr-10 text-left">
           <SheetTitle className="min-w-0">{t("filter")}</SheetTitle>
           <TooltipProvider delayDuration={200}>
