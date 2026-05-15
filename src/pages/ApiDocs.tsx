@@ -113,7 +113,10 @@ export default function ApiDocs() {
       }
       
       const savedApiKey = localStorage.getItem('supabase-apikey');
-      const savedAccessToken = localStorage.getItem('access-token');
+      // SECURITY: Admin Bearer access token is kept in sessionStorage only
+      // (cleared when the tab closes). Clean up any legacy localStorage value.
+      try { localStorage.removeItem('access-token'); } catch { /* ignore */ }
+      const savedAccessToken = sessionStorage.getItem('access-token');
       const savedEmail = localStorage.getItem('admin-email');
       // SECURITY: Never load passwords from localStorage. Clean any legacy value.
       try { localStorage.removeItem('admin-password'); } catch { /* ignore */ }
@@ -225,9 +228,11 @@ export default function ApiDocs() {
   const handleAccessTokenChange = useCallback((value: string) => {
     setSettings((prev) => ({ ...prev, accessToken: value }));
     try {
-      localStorage.setItem("access-token", value);
+      // SECURITY: never persist a long-lived admin token to localStorage —
+      // any XSS could exfiltrate it. sessionStorage clears on tab close.
+      sessionStorage.setItem("access-token", value);
     } catch (e) {
-      console.warn("Не удалось сохранить access token в localStorage", e);
+      console.warn("Не удалось сохранить access token в sessionStorage", e);
     }
   }, []);
 

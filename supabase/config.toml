@@ -89,3 +89,36 @@ verify_jwt = true
 
 [functions.bulk-import-products]
 verify_jwt = true
+
+[functions.export-generate]
+verify_jwt = true
+
+[functions.upload-product-image]
+verify_jwt = true
+
+[functions.r2-copy]
+verify_jwt = true
+
+[functions.create-product]
+verify_jwt = true
+
+[functions.update-product]
+verify_jwt = true
+
+[functions.duplicate-product]
+verify_jwt = true
+
+[functions.save-store-product-edit]
+verify_jwt = true
+
+[functions.add-store-currency]
+verify_jwt = true
+
+[functions.delete-store-category-with-products]
+verify_jwt = true
+
+[functions.ensure-store-category]
+verify_jwt = true
+
+[functions.cleanup-unused-store-category]
+verify_jwt = true
