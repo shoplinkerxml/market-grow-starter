@@ -85,11 +85,40 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-    const supabase = createClient(supabaseUrl, serviceKey || anonKey, { global: { headers: authHeader ? { Authorization: authHeader } : {} } });
+
+    // Require an authenticated caller. verify_jwt=true in config.toml validates
+    // the signature; we additionally resolve the user and enforce ownership.
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+    const { data: userRes, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userRes?.user) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const callerId = userRes.user.id;
+
+    const supabase = createClient(supabaseUrl, serviceKey || anonKey);
 
     const body = await req.json() as GenerateBody;
     if (!body?.store_id || !body?.format) {
       return new Response(JSON.stringify({ error: 'invalid_body' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (body.format !== 'xml' && body.format !== 'csv') {
+      return new Response(JSON.stringify({ error: 'invalid_format' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Ownership check: caller must own the target store.
+    const { data: ownerCheck, error: ownerErr } = await supabase
+      .from('user_stores')
+      .select('id,user_id')
+      .eq('id', body.store_id)
+      .maybeSingle();
+    if (ownerErr) {
+      return new Response(JSON.stringify({ error: 'store_fetch_failed' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    if (!ownerCheck || String((ownerCheck as any).user_id) !== callerId) {
+      return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const { data: linkRow, error: linkErr } = await supabase
