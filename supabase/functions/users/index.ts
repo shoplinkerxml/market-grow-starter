@@ -12,21 +12,9 @@ const corsHeaders = {
 
 // Проверка админа для POST/PATCH/DELETE
 async function checkAdminPermission(serviceClient: SupabaseClient, authHeader: string) {
-  // Debug information for header analysis
-  const hasAuthHeader = !!authHeader;
-  const tokenLength = authHeader ? authHeader.length : 0;
-  const isBearerToken = authHeader && authHeader.startsWith('Bearer ');
-  
   if (!authHeader) {
-    return { 
-      error: 'Unauthorized - no token', 
-      status: 401,
-      debug: {
-        hasAuthHeader,
-        tokenLength,
-        isBearerToken
-      }
-    };
+    console.warn('[users] missing Authorization header');
+    return { error: 'Unauthorized', status: 401 };
   }
 
   // Extract the token from the Authorization header (Bearer token)
@@ -34,16 +22,8 @@ async function checkAdminPermission(serviceClient: SupabaseClient, authHeader: s
   
   // Validate that we have a proper token
   if (!token || token.length < 10) {
-    return { 
-      error: 'Unauthorized - invalid token format', 
-      status: 401,
-      debug: {
-        hasAuthHeader,
-        tokenLength,
-        isBearerToken,
-        extractedTokenLength: token ? token.length : 0
-      }
-    };
+    console.warn('[users] invalid token format');
+    return { error: 'Unauthorized', status: 401 };
   }
   
   const client = createClient(
@@ -58,16 +38,8 @@ async function checkAdminPermission(serviceClient: SupabaseClient, authHeader: s
 
   const { data: { user }, error: userError } = await client.auth.getUser();
   if (userError || !user) {
-    return { 
-      error: 'Unauthorized - invalid token', 
-      status: 401,
-      debug: {
-        hasAuthHeader,
-        tokenLength,
-        isBearerToken,
-        userError: userError?.message || 'No user found'
-      }
-    };
+    console.warn('[users] invalid token', userError?.message);
+    return { error: 'Unauthorized', status: 401 };
   }
 
   const { data: profile, error: profileError } = await serviceClient
@@ -76,38 +48,20 @@ async function checkAdminPermission(serviceClient: SupabaseClient, authHeader: s
     .eq('id', user.id)
     .maybeSingle();
 
-  if (profileError) return { 
-    error: 'Failed to fetch profile', 
-    status: 500,
-    debug: {
-      hasAuthHeader,
-      tokenLength,
-      isBearerToken,
-      profileError: profileError.message
-    }
-  };
-  
-  if (!profile) return { 
-    error: 'User profile not found', 
-    status: 404,
-    debug: {
-      hasAuthHeader,
-      tokenLength,
-      isBearerToken,
-      userId: user.id
-    }
-  };
-  
-  if (profile.role !== 'admin') return { 
-    error: 'Forbidden - Admin access required', 
-    status: 403,
-    debug: {
-      hasAuthHeader,
-      tokenLength,
-      isBearerToken,
-      userRole: profile.role
-    }
-  };
+  if (profileError) {
+    console.error('[users] profile fetch error', profileError.message);
+    return { error: 'Internal error', status: 500 };
+  }
+
+  if (!profile) {
+    console.warn('[users] profile not found for', user.id);
+    return { error: 'Forbidden', status: 403 };
+  }
+
+  if (profile.role !== 'admin') {
+    console.warn('[users] non-admin access attempt', user.id);
+    return { error: 'Forbidden', status: 403 };
+  }
 
   return { user, profile };
 }
@@ -142,7 +96,6 @@ Deno.serve(async (req) => {
     if ('error' in adminCheckEarly) {
       return new Response(JSON.stringify({
         error: adminCheckEarly.error,
-        debug: adminCheckEarly.debug || {}
       }), {
         status: adminCheckEarly.status,
         headers: corsHeaders
