@@ -57,13 +57,8 @@ export const CategoryTreeEditor: React.FC<CategoryTreeEditorProps> = ({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<string | null>(null);
 
-  const suppliersSorted = useMemo(() => {
-    const current = String(supplierId || defaultSupplierId || "");
-    if (!current) return suppliers;
-    const idx = (suppliers || []).findIndex((s) => String(s.id) === current);
-    if (idx <= 0) return suppliers;
-    return [suppliers[idx], ...suppliers.slice(0, idx), ...suppliers.slice(idx + 1)];
-  }, [suppliers, supplierId, defaultSupplierId]);
+  // Keep stable order — do not reorder tabs when selection changes
+  const suppliersSorted = suppliers;
 
   // Keep internal supplierId in sync with parent-provided defaultSupplierId
   // This ensures the categories query runs when the user selects a supplier outside this component
