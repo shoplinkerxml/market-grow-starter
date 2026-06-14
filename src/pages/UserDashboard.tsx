@@ -1,4 +1,5 @@
 import { useOutletContext } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -253,6 +254,28 @@ const UserDashboard = () => {
           ) : null}
         </div>
       </div>
+
+      {!hasActiveTariff ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <div className="font-semibold text-destructive">
+                {t("subscription_expired") || "Ваш тариф закінчився"}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("tariff_expired_banner_desc") || "Ваш тариф закінчився. Оберіть новий тарифний план, щоб продовжити роботу."}
+              </p>
+            </div>
+          </div>
+          <Button asChild size="sm" className="shrink-0">
+            <Link to="/user/tariff">
+              <CreditCard className="h-4 w-4 mr-2" />
+              {t("go_to_tariff_plans") || "Перейти до тарифних планів"}
+            </Link>
+          </Button>
+        </div>
+      ) : null}
 
       <Card className="w-full bg-transparent border-transparent shadow-none">
         <CardHeader className="pb-4">

@@ -148,6 +148,14 @@ export const tariffsDictionary: Dictionary = {
     uk: "Будь ласка, оберіть новий тариф",
     en: "Please select a new tariff",
   },
+  go_to_tariff_plans: {
+    uk: "Перейти до тарифних планів",
+    en: "Go to tariff plans",
+  },
+  tariff_expired_banner_desc: {
+    uk: "Ваш тариф закінчився. Щоб продовжити користуватися сервісом, оберіть та активуйте новий тарифний план.",
+    en: "Your plan has ended. To continue using the service, please choose and activate a new tariff plan.",
+  },
   demo_trial_title_prefix: {
     uk: "Демо-доступ — ще",
     en: "Demo access —",
