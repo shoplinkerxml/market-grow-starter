@@ -122,3 +122,6 @@ verify_jwt = true
 
 [functions.cleanup-unused-store-category]
 verify_jwt = true
+
+[functions.inngest]
+verify_jwt = false
