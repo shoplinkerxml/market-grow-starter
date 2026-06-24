@@ -949,6 +949,183 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_import_items: {
+        Row: {
+          created_at: string
+          error: string | null
+          external_id: string | null
+          id: string
+          payload: Json | null
+          run_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          external_id?: string | null
+          id?: string
+          payload?: Json | null
+          run_id: string
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          external_id?: string | null
+          id?: string
+          payload?: Json | null
+          run_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_import_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_import_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_import_runs: {
+        Row: {
+          created_at: string
+          created_count: number
+          error: string | null
+          failed_count: number
+          finished_at: string | null
+          id: string
+          inngest_run_id: string | null
+          processed_rows: number
+          skipped_count: number
+          started_at: string | null
+          status: string
+          supplier_id: number
+          total_rows: number
+          trigger: string
+          updated_at: string
+          updated_count: number
+          user_id: string
+          xml_etag: string | null
+          xml_last_modified: string | null
+          xml_size_bytes: number | null
+          xml_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_count?: number
+          error?: string | null
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          inngest_run_id?: string | null
+          processed_rows?: number
+          skipped_count?: number
+          started_at?: string | null
+          status?: string
+          supplier_id: number
+          total_rows?: number
+          trigger?: string
+          updated_at?: string
+          updated_count?: number
+          user_id: string
+          xml_etag?: string | null
+          xml_last_modified?: string | null
+          xml_size_bytes?: number | null
+          xml_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_count?: number
+          error?: string | null
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          inngest_run_id?: string | null
+          processed_rows?: number
+          skipped_count?: number
+          started_at?: string | null
+          status?: string
+          supplier_id?: number
+          total_rows?: number
+          trigger?: string
+          updated_at?: string
+          updated_count?: number
+          user_id?: string
+          xml_etag?: string | null
+          xml_last_modified?: string | null
+          xml_size_bytes?: number | null
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_import_runs_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "user_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_xml_mappings: {
+        Row: {
+          category: Json
+          created_at: string
+          currency: string | null
+          fields: Json
+          id: string
+          images: Json
+          is_active: boolean
+          params: Json
+          supplier_id: number
+          updated_at: string
+          user_id: string
+          version: number
+          xpath_item: string
+        }
+        Insert: {
+          category?: Json
+          created_at?: string
+          currency?: string | null
+          fields?: Json
+          id?: string
+          images?: Json
+          is_active?: boolean
+          params?: Json
+          supplier_id: number
+          updated_at?: string
+          user_id: string
+          version?: number
+          xpath_item?: string
+        }
+        Update: {
+          category?: Json
+          created_at?: string
+          currency?: string | null
+          fields?: Json
+          id?: string
+          images?: Json
+          is_active?: boolean
+          params?: Json
+          supplier_id?: number
+          updated_at?: string
+          user_id?: string
+          version?: number
+          xpath_item?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_xml_mappings_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "user_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tariff_features: {
         Row: {
           feature_name: string
@@ -1315,37 +1492,55 @@ export type Database = {
           address: string | null
           created_at: string | null
           id: number
+          import_enabled: boolean
+          import_frequency_hours: number
           is_active: boolean | null
+          last_import_at: string | null
+          last_import_run_id: string | null
           phone: string | null
           supplier_name: string
           updated_at: string | null
           user_id: string
           website_url: string | null
+          xml_etag: string | null
           xml_feed_url: string | null
+          xml_last_modified: string | null
         }
         Insert: {
           address?: string | null
           created_at?: string | null
           id?: number
+          import_enabled?: boolean
+          import_frequency_hours?: number
           is_active?: boolean | null
+          last_import_at?: string | null
+          last_import_run_id?: string | null
           phone?: string | null
           supplier_name: string
           updated_at?: string | null
           user_id: string
           website_url?: string | null
+          xml_etag?: string | null
           xml_feed_url?: string | null
+          xml_last_modified?: string | null
         }
         Update: {
           address?: string | null
           created_at?: string | null
           id?: number
+          import_enabled?: boolean
+          import_frequency_hours?: number
           is_active?: boolean | null
+          last_import_at?: string | null
+          last_import_run_id?: string | null
           phone?: string | null
           supplier_name?: string
           updated_at?: string | null
           user_id?: string
           website_url?: string | null
+          xml_etag?: string | null
           xml_feed_url?: string | null
+          xml_last_modified?: string | null
         }
         Relationships: [
           {
