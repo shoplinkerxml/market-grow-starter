@@ -148,7 +148,7 @@ Unique index `(supplier_id, external_id)` на `store_products`. ENABLE Realtime
 Чеклист реалізації — оновлюється після кожного кроку.
 
 - [x] **Крок 1.** Підключено Inngest-конектор + скаффолд `supabase/functions/inngest/index.ts` (порожній serve-ендпоінт), `verify_jwt = false` у `supabase/config.toml`.
-- [ ] **Крок 2.** Міграція БД: `supplier_import_runs`, `supplier_import_items`, `supplier_xml_mappings`, розширення `user_suppliers`, unique index `(supplier_id, external_id)` на `store_products`, RLS + GRANT-и, Realtime.
+- [x] **Крок 2.** Міграція БД: створено `supplier_import_runs`, `supplier_import_items`, `supplier_xml_mappings`; розширено `user_suppliers` (import_enabled, import_frequency_hours, last_import_at, last_import_run_id, xml_etag, xml_last_modified); додано unique index `(supplier_id, external_id)` на `store_products`; RLS + GRANT-и; Realtime для runs/items.
 - [ ] **Крок 3.** Edge function `supplier-import-start` + клієнтський `XmlImportService`.
 - [ ] **Крок 4.** Inngest-функція `supplier-import` (fetch + парс + батчі + RPC upsert), YML-пресет.
 - [ ] **Крок 5.** RPC `supplier_import_upsert_batch` + RPC для images/params.
