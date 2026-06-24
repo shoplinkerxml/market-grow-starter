@@ -142,3 +142,27 @@ Unique index `(supplier_id, external_id)` на `store_products`. ENABLE Realtime
 - Не редагуємо маппінг через UI.
 - Не імпортуємо з файлу (тільки URL).
 - Без diff-перегляду перед застосуванням.
+
+## 12. Прогрес виконання
+
+Чеклист реалізації — оновлюється після кожного кроку.
+
+- [x] **Крок 1.** Підключено Inngest-конектор + скаффолд `supabase/functions/inngest/index.ts` (порожній serve-ендпоінт), `verify_jwt = false` у `supabase/config.toml`.
+- [ ] **Крок 2.** Міграція БД: `supplier_import_runs`, `supplier_import_items`, `supplier_xml_mappings`, розширення `user_suppliers`, unique index `(supplier_id, external_id)` на `store_products`, RLS + GRANT-и, Realtime.
+- [ ] **Крок 3.** Edge function `supplier-import-start` + клієнтський `XmlImportService`.
+- [ ] **Крок 4.** Inngest-функція `supplier-import` (fetch + парс + батчі + RPC upsert), YML-пресет.
+- [ ] **Крок 5.** RPC `supplier_import_upsert_batch` + RPC для images/params.
+- [ ] **Крок 6.** UI в `SupplierForm`: автоімпорт, "Імпортувати зараз", індикатор останнього run.
+- [ ] **Крок 7.** Сторінка `/user/xml-imports` (список + деталі з Realtime-прогресом).
+- [ ] **Крок 8.** Inngest cron `supplier-import-scheduler` + `supplier-import-cleanup`.
+- [ ] **Крок 9.** i18n ключі в `src/i18n/dictionaries/suppliers.ts` (UK/EN).
+- [ ] **Крок 10.** Інвалідація `ProductService`/`PersistentCacheService` + realtime suppress 2-3с після фінішу.
+- [ ] **Крок 11.** Тести: unit (маппер/edge) + e2e (Playwright).
+- [ ] **Крок 12 (v2).** Редактор маппінгу, "позначити відсутні як недоступні", імпорт з файлу, gzip.
+
+### Зроблено в кроці 1
+
+- Підключено конектор `inngest` → з'явились `INNGEST_API_KEY`, `INNGEST_SIGNING_KEY` (плюс `LOVABLE_API_KEY` уже є).
+- Створено `supabase/functions/inngest/index.ts` з клієнтом `id: "marketgrow"` і порожнім масивом `functions`.
+- У `supabase/config.toml` додано `[functions.inngest] verify_jwt = false` (підпис перевіряє SDK через `INNGEST_SIGNING_KEY`).
+- Після деплою URL ендпоінта: `https://ehznqzaumsnjkrntaiox.supabase.co/functions/v1/inngest` — потрібно один раз зробити Sync у Inngest Dashboard, щоб платформа підхопила застосунок (поки що без функцій).
