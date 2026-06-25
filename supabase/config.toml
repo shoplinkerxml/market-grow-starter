@@ -125,3 +125,6 @@ verify_jwt = true
 
 [functions.inngest]
 verify_jwt = false
+
+[functions.supplier-import-start]
+verify_jwt = true
