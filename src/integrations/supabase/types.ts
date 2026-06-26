@@ -1913,6 +1913,23 @@ export type Database = {
         Args: { p_store_id: string }
         Returns: undefined
       }
+      supplier_import_replace_images: {
+        Args: { p_pictures: Json; p_product_id: string }
+        Returns: undefined
+      }
+      supplier_import_replace_params: {
+        Args: { p_params: Json; p_product_id: string }
+        Returns: undefined
+      }
+      supplier_import_upsert_batch: {
+        Args: {
+          p_rows: Json
+          p_run_id: string
+          p_supplier_id: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       update_counter: {
         Args: { p_counter_type: string; p_delta: number; p_entity_id: string }
         Returns: undefined
