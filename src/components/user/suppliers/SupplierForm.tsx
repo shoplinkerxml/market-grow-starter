@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -9,9 +9,12 @@ import {
 } from '@/components/ui/input-group';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Building2, Globe, Link, Phone, Loader2, AlertTriangle } from 'lucide-react';
+import { Building2, Globe, Link, Phone, Loader2, AlertTriangle, Download, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useI18n } from "@/i18n";
 import { SupplierService, type Supplier, type CreateSupplierData, type UpdateSupplierData } from '@/lib/supplier-service';
+import { XmlImportService, type SupplierImportRun } from '@/lib/xml-import-service';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router-dom';
@@ -28,12 +31,16 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
   const { user } = useOutletContext<{ user: { id?: string } | null }>();
   const uid = user?.id ? String(user.id) : "current";
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [lastRun, setLastRun] = useState<SupplierImportRun | null>(null);
   const [formData, setFormData] = useState({
     supplier_name: supplier?.supplier_name || '',
     website_url: supplier?.website_url || '',
     xml_feed_url: supplier?.xml_feed_url || '',
     phone: supplier?.phone || '',
     is_active: supplier?.is_active !== false,
+    import_enabled: !!supplier?.import_enabled,
+    import_frequency_hours: Number(supplier?.import_frequency_hours ?? 0),
   });
 
   const [errors, setErrors] = useState({
@@ -64,6 +71,53 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
     return !newErrors.supplier_name && !newErrors.xml_feed_url;
   };
 
+  // Load last import run + subscribe to realtime updates
+  useEffect(() => {
+    if (!supplier?.id) return;
+    let cancelled = false;
+    void XmlImportService.listRuns(Number(supplier.id), 1)
+      .then((runs) => { if (!cancelled) setLastRun(runs[0] ?? null); })
+      .catch(() => { /* ignore */ });
+
+    const channel = supabase
+      .channel(`supplier-runs-${supplier.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'supplier_import_runs', filter: `supplier_id=eq.${supplier.id}` },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as SupplierImportRun | null;
+          if (!row) return;
+          setLastRun((prev) => {
+            if (!prev) return row;
+            const prevTs = new Date(prev.created_at).getTime();
+            const nextTs = new Date(row.created_at).getTime();
+            return nextTs >= prevTs ? row : prev;
+          });
+        },
+      )
+      .subscribe();
+
+    return () => { cancelled = true; supabase.removeChannel(channel); };
+  }, [supplier?.id]);
+
+  const handleRunImport = async () => {
+    if (!supplier?.id) return;
+    if (!formData.xml_feed_url.trim()) {
+      toast.error(t('xml_import_no_url'));
+      return;
+    }
+    setImporting(true);
+    try {
+      await XmlImportService.startImport(Number(supplier.id), 'manual');
+      toast.success(t('xml_import_queued'));
+    } catch (e) {
+      const m = e instanceof Error ? e.message : '';
+      toast.error(m || t('xml_import_failed_start'));
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -81,6 +135,8 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
           xml_feed_url: formData.xml_feed_url.trim() || null,
           phone: formData.phone.trim() || undefined,
           is_active: formData.is_active,
+          import_enabled: formData.import_enabled,
+          import_frequency_hours: formData.import_frequency_hours,
         };
         const updated = await SupplierService.updateSupplier(supplier.id, updateData);
         queryClient.setQueryData<Supplier[]>(['user', uid, 'suppliers', 'list'], (old) => {
