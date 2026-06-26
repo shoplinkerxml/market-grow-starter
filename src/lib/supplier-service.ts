@@ -15,6 +15,10 @@ export interface Supplier {
   updated_at: string | null;
   address?: string | null;
   is_active?: boolean | null;
+  import_enabled?: boolean | null;
+  import_frequency_hours?: number | null;
+  last_import_at?: string | null;
+  last_import_run_id?: string | null;
 }
 
 export interface CreateSupplierData {
@@ -30,6 +34,8 @@ export interface UpdateSupplierData {
   xml_feed_url?: string | null;
   phone?: string;
   is_active?: boolean;
+  import_enabled?: boolean;
+  import_frequency_hours?: number;
 }
 
 export interface SupplierLimitInfo {
