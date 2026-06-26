@@ -219,7 +219,7 @@ export class SupplierService {
     const sessionValidation = await requireValidSession({ requireAccessToken: false });
     const userId = sessionValidation.user?.id ? String(sessionValidation.user.id) : "";
 
-    const cleanData: Partial<Pick<Supplier, 'supplier_name' | 'website_url' | 'xml_feed_url' | 'phone' | 'is_active'>> & { updated_at?: string } = {};
+    const cleanData: Partial<Pick<Supplier, 'supplier_name' | 'website_url' | 'xml_feed_url' | 'phone' | 'is_active' | 'import_enabled' | 'import_frequency_hours'>> & { updated_at?: string } = {};
     if (supplierData.supplier_name !== undefined) {
       if (!supplierData.supplier_name.trim()) {
         throw new Error("Назва постачальника обов'язкова");
@@ -239,6 +239,13 @@ export class SupplierService {
     }
     if (supplierData.is_active !== undefined) {
       cleanData.is_active = supplierData.is_active;
+    }
+    if (supplierData.import_enabled !== undefined) {
+      cleanData.import_enabled = !!supplierData.import_enabled;
+    }
+    if (supplierData.import_frequency_hours !== undefined) {
+      const n = Number(supplierData.import_frequency_hours);
+      cleanData.import_frequency_hours = Number.isFinite(n) && n >= 0 ? n : 0;
     }
 
     if (Object.keys(cleanData).length === 0) {
