@@ -52,6 +52,8 @@ type Body = {
   xml_feed_url?: string | null
   phone?: string | null
   is_active?: boolean
+  import_enabled?: boolean
+  import_frequency_hours?: number
 }
 
 Deno.serve(async (req) => {
@@ -105,6 +107,11 @@ Deno.serve(async (req) => {
     if (body.xml_feed_url !== undefined) patch['xml_feed_url'] = body.xml_feed_url ?? null
     if (body.phone !== undefined) patch['phone'] = body.phone ?? null
     if (body.is_active === true || body.is_active === false) patch['is_active'] = body.is_active
+    if (body.import_enabled === true || body.import_enabled === false) patch['import_enabled'] = body.import_enabled
+    if (body.import_frequency_hours !== undefined && body.import_frequency_hours !== null) {
+      const n = Number(body.import_frequency_hours)
+      if (Number.isFinite(n) && n >= 0 && n <= 168) patch['import_frequency_hours'] = Math.floor(n)
+    }
     console.log('[suppliers-update] patch:', JSON.stringify(patch))
     patch['updated_at'] = new Date().toISOString()
 
