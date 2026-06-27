@@ -122,6 +122,7 @@ export const suppliersDictionary: Dictionary = {
   xml_import_stats: { uk: "Створено / Оновлено / Помилок", en: "Created / Updated / Failed" },
   // XML Imports page
   xml_imports_title: { uk: "Імпорт XML", en: "XML Imports" },
+  menu_xml_imports: { uk: "Імпорт XML", en: "XML Imports" },
   xml_imports_description: { uk: "Історія запусків імпорту XML постачальників", en: "XML supplier import history" },
   xml_imports_empty: { uk: "Ще не було запусків імпорту", en: "No import runs yet" },
   xml_imports_supplier: { uk: "Постачальник", en: "Supplier" },
