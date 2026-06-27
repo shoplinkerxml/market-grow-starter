@@ -47,6 +47,7 @@ const USER_ROUTE_MAPPING: Record<string, { labelKey: string; parentPath?: string
   "/user/profile": { labelKey: "breadcrumb_personal", parentPath: "/user" },
   "/user/settings": { labelKey: "breadcrumb_settings", parentPath: "/user" },
   "/user/tariff": { labelKey: "menu_pricing", parentPath: "/user" },
+  "/user/xml-imports": { labelKey: "menu_xml_imports", parentPath: "/user" },
   "/user/suppliers": { labelKey: "menu_suppliers", parentPath: "/user" },
   "/user/shops": { labelKey: "shops_title", parentPath: "/user" },
   "/user/products": { labelKey: "products_title", parentPath: "/user" },
