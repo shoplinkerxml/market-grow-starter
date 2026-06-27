@@ -25,6 +25,16 @@ export interface SupplierImportRun {
   updated_at: string;
 }
 
+export interface SupplierImportItem {
+  id: string;
+  run_id: string;
+  external_id: string | null;
+  status: string;
+  error: string | null;
+  payload: unknown;
+  created_at: string;
+}
+
 export class XmlImportService {
   /**
    * Queue an XML import for a supplier. Returns the created run id.
@@ -67,5 +77,28 @@ export class XmlImportService {
       .maybeSingle();
     if (error) throw new Error(error.message);
     return (data as SupplierImportRun | null) ?? null;
+  }
+
+  /** List recent runs for the current user (across all suppliers). */
+  static async listAllRuns(limit = 100): Promise<SupplierImportRun[]> {
+    const { data, error } = await supabase
+      .from("supplier_import_runs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as SupplierImportRun[];
+  }
+
+  /** List failed item rows for a run. */
+  static async listRunItems(runId: string, limit = 200): Promise<SupplierImportItem[]> {
+    const { data, error } = await supabase
+      .from("supplier_import_items")
+      .select("*")
+      .eq("run_id", runId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as SupplierImportItem[];
   }
 }
