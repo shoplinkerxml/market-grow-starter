@@ -30,6 +30,14 @@ const STATIC_ROUTES: StaticRouteConfig[] = [
     order_index: 2,
     icon_name: "credit-card",
   },
+  {
+    id: -4,
+    title: "Імпорт XML",
+    path: "xml-imports",
+    page_type: "list",
+    order_index: 3,
+    icon_name: "file-code",
+  },
 ];
 
 function normalizeItemPath(path: string): string {
