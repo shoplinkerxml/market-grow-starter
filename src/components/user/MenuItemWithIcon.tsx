@@ -62,6 +62,8 @@ export const MenuItemWithIcon: React.FC<MenuItemWithIconProps> = ({
       "Stores": "menu_stores",
       "Постачальники": "menu_suppliers",
       "Suppliers": "menu_suppliers",
+      "Імпорт XML": "menu_xml_imports",
+      "XML Imports": "menu_xml_imports",
     };
     
     const translationKey = translationMap[title];
