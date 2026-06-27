@@ -139,7 +139,7 @@ const XmlImports = () => {
       <PageHeader
         title={t("xml_imports_title")}
         description={t("xml_imports_description")}
-        breadcrumbs={breadcrumbs}
+        breadcrumbItems={breadcrumbs}
         actions={
           <Button variant="outline" size="sm" onClick={() => void loadRuns()} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
@@ -268,7 +268,7 @@ function RunDetails({
       <PageHeader
         title={t("xml_imports_run_details")}
         description={run ? supplierMap.get(run.supplier_id) ?? `#${run.supplier_id}` : ""}
-        breadcrumbs={breadcrumbs}
+        breadcrumbItems={breadcrumbs}
         actions={
           <Button variant="outline" size="sm" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />
