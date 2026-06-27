@@ -54,6 +54,7 @@ const StoreProducts = lazy(() => import("./pages/user/StoreProducts").then(m => 
 const ShopSettings = lazy(() => import("./pages/user/ShopSettings"));
 const StoreProductEdit = lazy(() => import("./pages/user/StoreProductEdit").then(m => ({ default: m.StoreProductEdit })));
 const CategoryTemplates = lazy(() => import("./pages/user/CategoryTemplates/index"));
+const XmlImports = lazy(() => import("./pages/user/XmlImports"));
 const ErrorPage = lazy(() => import("./pages/ErrorPage"));
 
 const LegacyUserShopsRedirect = () => {
@@ -267,6 +268,7 @@ const App = () => {
             { path: ":path/*", element: <UserMenuContentByPath /> },
             { path: "tariff", element: <TariffPage /> },
             { path: "suppliers", element: <Suppliers /> },
+            { path: "xml-imports", element: <XmlImports /> },
             { path: "Shops/*", caseSensitive: true, element: <LegacyUserShopsRedirect /> },
             { path: "shops", caseSensitive: true, element: <Shops /> },
             { path: "shops/:id/*", caseSensitive: true, element: <ShopDetail /> },
