@@ -461,7 +461,14 @@ const supplierImportScheduler = inngest.createFunction(
   async ({ step }) => {
     const due = await step.run("scan-suppliers", async () => {
       const sb = adminClient();
-      const { data, error } = await sb.rpc("supplier_import_due_suppliers");
+      const { data, error } = await sb
+        .from("user_suppliers")
+        .select("id, user_id, xml_feed_url")
+        .eq("import_enabled", true)
+        .gt("import_frequency_hours", 0)
+        .or("last_import_at.is.null,last_import_at.lte.now()-.import_frequency_hours.hours")
+        .order("last_import_at", { ascending: true, nullsFirst: true })
+        .limit(100);
       if (error) throw error;
       return (data ?? []) as SupplierImportDue[];
     });
@@ -475,10 +482,7 @@ const supplierImportScheduler = inngest.createFunction(
             queued.push({ supplier_id: supplier.id, run_id: result.run_id });
           }
         } catch (err) {
-          logger?.error?.("scheduler.queue-failed", {
-            supplier_id: supplier.id,
-            error: err instanceof Error ? err.message : String(err),
-          });
+          console.error("scheduler queue failed", supplier.id, err);
         }
       }
       return queued;
