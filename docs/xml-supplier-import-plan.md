@@ -166,3 +166,13 @@ Unique index `(supplier_id, external_id)` на `store_products`. ENABLE Realtime
 - Створено `supabase/functions/inngest/index.ts` з клієнтом `id: "marketgrow"` і порожнім масивом `functions`.
 - У `supabase/config.toml` додано `[functions.inngest] verify_jwt = false` (підпис перевіряє SDK через `INNGEST_SIGNING_KEY`).
 - Після деплою URL ендпоінта: `https://ehznqzaumsnjkrntaiox.supabase.co/functions/v1/inngest` — потрібно один раз зробити Sync у Inngest Dashboard, щоб платформа підхопила застосунок (поки що без функцій).
+
+### Зроблено в кроці 8
+
+- Додано `supplierImportScheduler` (`*/15 * * * *`) у `supabase/functions/inngest/index.ts`:
+  - `scan-suppliers` — вибирає `user_suppliers`, де `import_enabled = true` та `import_frequency_hours > 0`, фільтрує тих, у кого `last_import_at` відсутній або минуло достатньо часу.
+  - `queue-imports` — для кожного постачальника створює `supplier_import_runs` у статусі `queued` (з guard від дублікатів) і відправляє подію `supplier/import.requested` через `inngest.send` з idempotency `import:<supplier_id>:<minute>`.
+- Додано `supplierImportCleanup` (`0 3 * * *`) у `supabase/functions/inngest/index.ts`:
+  - `cleanup-items` — видаляє рядки `supplier_import_items` старші 7 діб.
+  - `cleanup-runs` — видаляє рядки `supplier_import_runs` старші 90 діб.
+- Обидві функції зареєстровані в `serve({ functions: [supplierImport, supplierImportScheduler, supplierImportCleanup] })`.
