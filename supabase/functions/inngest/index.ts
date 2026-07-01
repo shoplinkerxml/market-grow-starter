@@ -463,14 +463,18 @@ const supplierImportScheduler = inngest.createFunction(
       const sb = adminClient();
       const { data, error } = await sb
         .from("user_suppliers")
-        .select("id, user_id, xml_feed_url")
+        .select("id, user_id, xml_feed_url, last_import_at, import_frequency_hours")
         .eq("import_enabled", true)
         .gt("import_frequency_hours", 0)
-        .or("last_import_at.is.null,last_import_at.lte.now()-.import_frequency_hours.hours")
         .order("last_import_at", { ascending: true, nullsFirst: true })
         .limit(100);
       if (error) throw error;
-      return (data ?? []) as SupplierImportDue[];
+      const now = Date.now();
+      return (data ?? []).filter((s) => {
+        if (!s.last_import_at) return true;
+        const elapsed = now - new Date(s.last_import_at).getTime();
+        return elapsed >= (s.import_frequency_hours ?? 0) * 3600000;
+      }) as SupplierImportDue[];
     });
 
     const results = await step.run("queue-imports", async () => {
