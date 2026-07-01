@@ -401,4 +401,144 @@ const supplierImport = inngest.createFunction(
   },
 );
 
-export default serve({ client: inngest, functions: [supplierImport] });
+// ---------------------------------------------------------------------------
+// Inngest function: supplier-import-scheduler
+// ---------------------------------------------------------------------------
+
+interface SupplierImportDue {
+  id: number;
+  user_id: string;
+  xml_feed_url: string;
+}
+
+async function queueSupplierImport(
+  supplier: SupplierImportDue,
+  trigger: "manual" | "scheduled",
+): Promise<{ run_id: string } | null> {
+  const sb = adminClient();
+
+  const { data: activeRun } = await sb
+    .from("supplier_import_runs")
+    .select("id")
+    .eq("supplier_id", supplier.id)
+    .in("status", ["queued", "running"])
+    .limit(1)
+    .maybeSingle();
+  if (activeRun) return null;
+
+  const { data: run, error } = await sb
+    .from("supplier_import_runs")
+    .insert({
+      user_id: supplier.user_id,
+      supplier_id: supplier.id,
+      trigger,
+      status: "queued",
+      xml_url: supplier.xml_feed_url,
+    })
+    .select("id")
+    .single();
+  if (error || !run) throw error;
+
+  const minuteIso = new Date().toISOString().slice(0, 16);
+  await inngest.send({
+    id: `import:${supplier.id}:${minuteIso}`,
+    name: "supplier/import.requested",
+    data: {
+      run_id: run.id,
+      user_id: supplier.user_id,
+      supplier_id: supplier.id,
+      xml_url: supplier.xml_feed_url,
+      trigger,
+    },
+  });
+
+  return { run_id: run.id };
+}
+
+const supplierImportScheduler = inngest.createFunction(
+  { id: "supplier-import-scheduler", name: "Supplier import scheduler" },
+  { cron: "*/15 * * * *" },
+  async ({ step }) => {
+    const due = await step.run("scan-suppliers", async () => {
+      const sb = adminClient();
+      const { data, error } = await sb
+        .from("user_suppliers")
+        .select("id, user_id, xml_feed_url, last_import_at, import_frequency_hours")
+        .eq("import_enabled", true)
+        .gt("import_frequency_hours", 0)
+        .order("last_import_at", { ascending: true, nullsFirst: true })
+        .limit(100);
+      if (error) throw error;
+      const now = Date.now();
+      return (data ?? []).filter((s) => {
+        if (!s.last_import_at) return true;
+        const elapsed = now - new Date(s.last_import_at).getTime();
+        return elapsed >= (s.import_frequency_hours ?? 0) * 3600000;
+      }) as SupplierImportDue[];
+    });
+
+    const results = await step.run("queue-imports", async () => {
+      const queued: Array<{ supplier_id: number; run_id: string }> = [];
+      for (const supplier of due) {
+        try {
+          const result = await queueSupplierImport(supplier, "scheduled");
+          if (result) {
+            queued.push({ supplier_id: supplier.id, run_id: result.run_id });
+          }
+        } catch (err) {
+          console.error("scheduler queue failed", supplier.id, err);
+        }
+      }
+      return queued;
+    });
+
+    return { queued: results.length };
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Inngest function: supplier-import-cleanup
+// ---------------------------------------------------------------------------
+
+const supplierImportCleanup = inngest.createFunction(
+  { id: "supplier-import-cleanup", name: "Supplier import cleanup" },
+  { cron: "0 3 * * *" },
+  async ({ step }) => {
+    const cutoffItems = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const cutoffRuns = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { deletedItems } = await step.run("cleanup-items", async () => {
+      const sb = adminClient();
+      const { error } = await sb
+        .from("supplier_import_items")
+        .delete()
+        .lt("created_at", cutoffItems);
+      if (error) throw error;
+      // No RETURNING count via JS client; report by re-querying.
+      const { count } = await sb
+        .from("supplier_import_items")
+        .select("*", { count: "exact", head: true });
+      return { deletedItems: count };
+    });
+
+    const { deletedRuns } = await step.run("cleanup-runs", async () => {
+      const sb = adminClient();
+      const { error } = await sb
+        .from("supplier_import_runs")
+        .delete()
+        .lt("created_at", cutoffRuns);
+      if (error) throw error;
+      const { count } = await sb
+        .from("supplier_import_runs")
+        .select("*", { count: "exact", head: true });
+      return { deletedRuns: count };
+    });
+
+    return { deletedItems, deletedRuns };
+  },
+);
+
+export default serve({
+  client: inngest,
+  functions: [supplierImport, supplierImportScheduler, supplierImportCleanup],
+});
