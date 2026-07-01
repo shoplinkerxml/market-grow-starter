@@ -154,7 +154,7 @@ Unique index `(supplier_id, external_id)` на `store_products`. ENABLE Realtime
 - [x] **Крок 5.** RPC `supplier_import_upsert_batch` + `supplier_import_replace_images` + `supplier_import_replace_params`. Upsert по `(supplier_id, external_id)`, per-row savepoint у `EXCEPTION`-блоку (помилкові рядки → `supplier_import_items`), категорія резолвиться через `store_categories(supplier_id, external_id)`. Зображення/параметри замінюються повністю по фіду; завантажені в R2 картинки (з `r2_key_*`) зберігаються.
 - [x] **Крок 6.** UI в `SupplierForm`: секція "Автоімпорт XML" (switch + select 6/12/24h, збереження в `user_suppliers.import_enabled`/`import_frequency_hours`), кнопка "Імпортувати зараз" (виклик `XmlImportService.startImport`), індикатор останнього run з Realtime-підпискою на `supplier_import_runs` (фільтр по `supplier_id`). Розширено `Supplier` / `UpdateSupplierData` + edge `suppliers-update` приймає нові поля.
 - [x] **Крок 7.** Сторінка `/user/xml-imports`: таблиця runs (постачальник, trigger, час, тривалість, статус, лічильники) з Realtime-оновленням; деталі run через `?run=<id>` — прогрес-бар, статистика (processed/created/updated/skipped/failed), помилки рядків з `supplier_import_items` (Realtime INSERT). `XmlImportService` отримав `listAllRuns` і `listRunItems`. Маршрут зареєстрований у `src/App.tsx`.
-- [ ] **Крок 8.** Inngest cron `supplier-import-scheduler` + `supplier-import-cleanup`.
+- [x] **Крок 8.** Inngest cron `supplier-import-scheduler` + `supplier-import-cleanup`.
 - [ ] **Крок 9.** i18n ключі в `src/i18n/dictionaries/suppliers.ts` (UK/EN).
 - [ ] **Крок 10.** Інвалідація `ProductService`/`PersistentCacheService` + realtime suppress 2-3с після фінішу.
 - [ ] **Крок 11.** Тести: unit (маппер/edge) + e2e (Playwright).
