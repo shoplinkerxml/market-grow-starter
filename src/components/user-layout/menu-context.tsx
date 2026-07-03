@@ -141,7 +141,16 @@ export const UserMenuProvider: React.FC<{
 
   const menuItems: UserMenuItem[] = useMemo(() => {
     const staticItems = getStaticMenuItems(menuItemsDb);
-    return [...staticItems, ...menuItemsDb];
+    const combined = [...staticItems, ...menuItemsDb];
+    // Sort root items by order_index so static entries slot into the correct place
+    // (e.g. "Імпорт XML" order_index 4.5 lands right after "Постачальники").
+    combined.sort((a, b) => {
+      const ap = a.parent_id ?? -1;
+      const bp = b.parent_id ?? -1;
+      if (ap !== bp) return 0;
+      return (a.order_index ?? 0) - (b.order_index ?? 0);
+    });
+    return combined;
   }, [menuItemsDb]);
 
   const refreshMenuItems = useCallback(async () => {
