@@ -155,7 +155,7 @@ Unique index `(supplier_id, external_id)` на `store_products`. ENABLE Realtime
 - [x] **Крок 6.** UI в `SupplierForm`: секція "Автоімпорт XML" (switch + select 6/12/24h, збереження в `user_suppliers.import_enabled`/`import_frequency_hours`), кнопка "Імпортувати зараз" (виклик `XmlImportService.startImport`), індикатор останнього run з Realtime-підпискою на `supplier_import_runs` (фільтр по `supplier_id`). Розширено `Supplier` / `UpdateSupplierData` + edge `suppliers-update` приймає нові поля.
 - [x] **Крок 7.** Сторінка `/user/xml-imports`: таблиця runs (постачальник, trigger, час, тривалість, статус, лічильники) з Realtime-оновленням; деталі run через `?run=<id>` — прогрес-бар, статистика (processed/created/updated/skipped/failed), помилки рядків з `supplier_import_items` (Realtime INSERT). `XmlImportService` отримав `listAllRuns` і `listRunItems`. Маршрут зареєстрований у `src/App.tsx`.
 - [x] **Крок 8.** Inngest cron `supplier-import-scheduler` + `supplier-import-cleanup`.
-- [ ] **Крок 9.** i18n ключі в `src/i18n/dictionaries/suppliers.ts` (UK/EN).
+- [x] **Крок 9.** i18n ключі в `src/i18n/dictionaries/suppliers.ts` (UK/EN).
 - [ ] **Крок 10.** Інвалідація `ProductService`/`PersistentCacheService` + realtime suppress 2-3с після фінішу.
 - [ ] **Крок 11.** Тести: unit (маппер/edge) + e2e (Playwright).
 - [ ] **Крок 12 (v2).** Редактор маппінгу, "позначити відсутні як недоступні", імпорт з файлу, gzip.
@@ -176,3 +176,11 @@ Unique index `(supplier_id, external_id)` на `store_products`. ENABLE Realtime
   - `cleanup-items` — видаляє рядки `supplier_import_items` старші 7 діб.
   - `cleanup-runs` — видаляє рядки `supplier_import_runs` старші 90 діб.
 - Обидві функції зареєстровані в `serve({ functions: [supplierImport, supplierImportScheduler, supplierImportCleanup] })`.
+
+### Зроблено в кроці 9
+
+- Проаудитовано `src/i18n/dictionaries/suppliers.ts` — всі ключі, задіяні на кроках 6–8 (форма постачальника, сторінка `/user/xml-imports`, деталі run), уже мають переклади UK/EN:
+  - Секція форми `xml_import_*` (17 ключів: section/enabled/frequency×4/run_now/no_url/queued/failed_start/last_run/never/status×5/stats).
+  - Сторінка списку/деталей `xml_imports_*` (24 ключі: title/description/empty/колонки таблиці/статистика/помилки/пагінація).
+  - Меню: `menu_xml_imports` + мапінги в `MenuItemWithIcon` та `MenuSection`.
+- Додаткових перекладів на цьому кроці не потрібно; повернемось до словника, якщо в кроці 10 з'являться нові рядки (toasts інвалідації).
