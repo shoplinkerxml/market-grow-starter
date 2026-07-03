@@ -135,15 +135,22 @@ const XmlImports = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="p-6 space-y-6">
       <PageHeader
         title={t("xml_imports_title")}
         description={t("xml_imports_description")}
         breadcrumbItems={breadcrumbs}
+        hideTitleOnMobile
+        mobileActionsInline
         actions={
-          <Button variant="outline" size="sm" onClick={() => void loadRuns()} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            {t("refresh") || "Refresh"}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => void loadRuns()}
+            disabled={loading}
+            title={t("refresh") || "Refresh"}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         }
       />
@@ -264,15 +271,24 @@ function RunDetails({
   const pct = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : run?.status === "succeeded" ? 100 : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="p-6 space-y-6">
       <PageHeader
         title={t("xml_imports_run_details")}
         description={run ? supplierMap.get(run.supplier_id) ?? `#${run.supplier_id}` : ""}
         breadcrumbItems={breadcrumbs}
+        hideTitleOnMobile
+        mobileActionsInline
         actions={
-          <Button variant="outline" size="sm" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("xml_imports_back")}
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="shrink-0 group inline-flex items-center gap-2 hover:bg-transparent focus-visible:bg-transparent active:bg-transparent shadow-none hover:shadow-none"
+            title={t("xml_imports_back")}
+          >
+            <span className="inline sm:hidden">{t("xml_imports_back")}</span>
+            <span className="inline-flex items-center justify-center rounded-full bg-transparent border border-border text-foreground w-8 h-8 transition-colors group-hover:border-emerald-500 group-hover:text-emerald-600 group-active:scale-95 group-active:shadow-inner">
+              <ArrowLeft className="h-4 w-4" />
+            </span>
           </Button>
         }
       />
