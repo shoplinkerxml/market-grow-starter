@@ -23,6 +23,8 @@ import {
 } from "@/lib/xml-import-service";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { handleImportRunFinish } from "@/lib/xml-import-cache";
 
 type OutletCtx = { user: { id?: string } | null };
 
