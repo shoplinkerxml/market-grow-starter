@@ -3,6 +3,7 @@ import { PersistentCacheService } from "@/lib/persistent-cache-service";
 
 const suppressionTtlMs = 15_000;
 const realtimeDeltaSuppressions = new Map<string, { delta: number; ts: number }>();
+const userRealtimeSuppressions = new Map<string, number>(); // userId -> expiresAt (ms)
 
 type ShopCountsSyncEvent =
   | {
@@ -206,6 +207,28 @@ export const ShopCountsService = {
       return true;
     }
     realtimeDeltaSuppressions.set(k, { delta: next, ts: now });
+    return true;
+  },
+  /**
+   * Suppress all realtime-driven counter updates for a user for `ms` milliseconds.
+   * Used after bulk operations (XML import finish) where explicit cache
+   * invalidation happens right after and per-row realtime events would only
+   * cause redundant refetches and UI flicker.
+   */
+  suppressAllRealtimeForUser(userId: string, ms: number = 3000): void {
+    const uid = userId ? String(userId) : "current";
+    const expiresAt = Date.now() + Math.max(0, ms);
+    const prev = userRealtimeSuppressions.get(uid) ?? 0;
+    if (expiresAt > prev) userRealtimeSuppressions.set(uid, expiresAt);
+  },
+  isRealtimeSuppressedForUser(userId: string): boolean {
+    const uid = userId ? String(userId) : "current";
+    const exp = userRealtimeSuppressions.get(uid);
+    if (!exp) return false;
+    if (Date.now() > exp) {
+      userRealtimeSuppressions.delete(uid);
+      return false;
+    }
     return true;
   },
 };

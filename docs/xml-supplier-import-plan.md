@@ -156,7 +156,7 @@ Unique index `(supplier_id, external_id)` на `store_products`. ENABLE Realtime
 - [x] **Крок 7.** Сторінка `/user/xml-imports`: таблиця runs (постачальник, trigger, час, тривалість, статус, лічильники) з Realtime-оновленням; деталі run через `?run=<id>` — прогрес-бар, статистика (processed/created/updated/skipped/failed), помилки рядків з `supplier_import_items` (Realtime INSERT). `XmlImportService` отримав `listAllRuns` і `listRunItems`. Маршрут зареєстрований у `src/App.tsx`.
 - [x] **Крок 8.** Inngest cron `supplier-import-scheduler` + `supplier-import-cleanup`.
 - [x] **Крок 9.** i18n ключі в `src/i18n/dictionaries/suppliers.ts` (UK/EN).
-- [ ] **Крок 10.** Інвалідація `ProductService`/`PersistentCacheService` + realtime suppress 2-3с після фінішу.
+- [x] **Крок 10.** Інвалідація `ProductService`/`PersistentCacheService` + realtime suppress 2-3с після фінішу.
 - [ ] **Крок 11.** Тести: unit (маппер/edge) + e2e (Playwright).
 - [ ] **Крок 12 (v2).** Редактор маппінгу, "позначити відсутні як недоступні", імпорт з файлу, gzip.
 
@@ -184,3 +184,20 @@ Unique index `(supplier_id, external_id)` на `store_products`. ENABLE Realtime
   - Сторінка списку/деталей `xml_imports_*` (24 ключі: title/description/empty/колонки таблиці/статистика/помилки/пагінація).
   - Меню: `menu_xml_imports` + мапінги в `MenuItemWithIcon` та `MenuSection`.
 - Додаткових перекладів на цьому кроці не потрібно; повернемось до словника, якщо в кроці 10 з'являться нові рядки (toasts інвалідації).
+
+### Зроблено в кроці 10
+
+- Додано хелпер `src/lib/xml-import-cache.ts` → `handleImportRunFinish(queryClient, userId, run)`:
+  - Реагує лише на термінальні статуси (`succeeded`/`failed`/`cancelled`), ідемпотентний по `run.id + status` (in-memory `handledRuns` мапа).
+  - Пропускає no-op прогон (`error === "not-modified"` або нульові лічильники created/updated/failed).
+  - Викликає `ShopCountsService.suppressAllRealtimeForUser(uid, 3000)`.
+  - Чистить `ProductCacheManager.clearAllProductsCaches()`, `PersistentCacheService.invalidateShops/Suppliers/AuthMe`.
+  - Інвалідує react-query: `["auth","me"]`, `["user", uid, "shops"|"suppliers"|"dashboard-stats"]`, будь-які ключі, що містять `"products"`.
+  - Викликає `ShopCountsService.invalidate(...)` (broadcast між вкладками).
+- Розширено `src/lib/shop-counts.ts`: `suppressAllRealtimeForUser(userId, ms)` + `isRealtimeSuppressedForUser(userId)` (мапа `userId → expiresAt`).
+- Реалтайм-хендлери тепер пропускають події під час вікна suppress:
+  - `src/hooks/useProductsRealtime.ts` — `schedule()` виходить, якщо suppress активний.
+  - `src/hooks/useShopRealtimeSync.ts` — усі три хендлери (`INSERT`/`DELETE`/`UPDATE` `store_product_links`) — early return.
+- Підписки `supplier_import_runs` тепер викликають `handleImportRunFinish`:
+  - `src/components/user/suppliers/SupplierForm.tsx` (канал `supplier-runs-<id>`).
+  - `src/pages/user/XmlImports.tsx` (канал `xml-imports-list-<uid>`).

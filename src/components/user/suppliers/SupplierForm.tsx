@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useI18n } from "@/i18n";
 import { SupplierService, type Supplier, type CreateSupplierData, type UpdateSupplierData } from '@/lib/supplier-service';
 import { XmlImportService, type SupplierImportRun } from '@/lib/xml-import-service';
+import { handleImportRunFinish } from '@/lib/xml-import-cache';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -87,6 +88,7 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
         (payload) => {
           const row = (payload.new ?? payload.old) as SupplierImportRun | null;
           if (!row) return;
+          handleImportRunFinish(queryClient, uid, row);
           setLastRun((prev) => {
             if (!prev) return row;
             const prevTs = new Date(prev.created_at).getTime();
