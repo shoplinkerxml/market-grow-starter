@@ -18,6 +18,7 @@ export const useShopRealtimeSync = ({ shopId, userId, enabled = true }: UseShopR
     const uid = userId ? String(userId) : "current";
 
     const handleInsert = (payload: any) => {
+      if (ShopCountsService.isRealtimeSuppressedForUser(uid)) return;
       const { store_id, is_active } = payload.new;
       if (String(store_id) !== shopId || is_active === false) return;
       if (ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, +1)) return;
@@ -25,6 +26,7 @@ export const useShopRealtimeSync = ({ shopId, userId, enabled = true }: UseShopR
     };
 
     const handleDelete = (payload: any) => {
+      if (ShopCountsService.isRealtimeSuppressedForUser(uid)) return;
       const { store_id, is_active } = payload.old;
       if (String(store_id) !== shopId || is_active === false) return;
       if (ShopCountsService.consumeRealtimeProductsDelta(uid, shopId, -1)) return;
@@ -32,6 +34,7 @@ export const useShopRealtimeSync = ({ shopId, userId, enabled = true }: UseShopR
     };
 
     const handleUpdate = (payload: any) => {
+      if (ShopCountsService.isRealtimeSuppressedForUser(uid)) return;
       const oldRow = payload?.old || {};
       const newRow = payload?.new || {};
       const sidOld = oldRow?.store_id ? String(oldRow.store_id) : "";
