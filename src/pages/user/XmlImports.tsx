@@ -65,6 +65,7 @@ const XmlImports = () => {
   const breadcrumbs = useBreadcrumbs();
   const { user } = useOutletContext<OutletCtx>();
   const uid = user?.id ? String(user.id) : "current";
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedRunId = searchParams.get("run");
   const navigate = useNavigate();
@@ -103,8 +104,11 @@ const XmlImports = () => {
         "postgres_changes",
         { event: "*", schema: "public", table: "supplier_import_runs", filter: `user_id=eq.${user.id}` },
         (payload) => {
+          const row = (payload.new ?? payload.old) as SupplierImportRun;
+          if (row && payload.eventType !== "DELETE") {
+            handleImportRunFinish(queryClient, uid, row);
+          }
           setRuns((prev) => {
-            const row = (payload.new ?? payload.old) as SupplierImportRun;
             if (!row) return prev;
             if (payload.eventType === "DELETE") return prev.filter((r) => r.id !== row.id);
             const idx = prev.findIndex((r) => r.id === row.id);
