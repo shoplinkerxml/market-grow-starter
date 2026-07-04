@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ShopCountsService } from "@/lib/shop-counts";
 
 export function useProductsRealtime(
   storeId: string | undefined,
@@ -12,6 +13,8 @@ export function useProductsRealtime(
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     const schedule = () => {
       if (scheduled) return;
+      const uid = userId ? String(userId) : "current";
+      if (ShopCountsService.isRealtimeSuppressedForUser(uid)) return;
       scheduled = true;
       timeoutId = setTimeout(() => {
         scheduled = false;
