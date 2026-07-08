@@ -157,8 +157,22 @@ Unique index `(supplier_id, external_id)` на `store_products`. ENABLE Realtime
 - [x] **Крок 8.** Inngest cron `supplier-import-scheduler` + `supplier-import-cleanup`.
 - [x] **Крок 9.** i18n ключі в `src/i18n/dictionaries/suppliers.ts` (UK/EN).
 - [x] **Крок 10.** Інвалідація `ProductService`/`PersistentCacheService` + realtime suppress 2-3с після фінішу.
-- [ ] **Крок 11.** Тести: unit (маппер/edge) + e2e (Playwright).
+- [x] **Крок 11.** Unit-тести для `handleImportRunFinish` (`src/test/xml-import-cache.test.ts`, 8 кейсів). E2E (Playwright) відкладено — потребує live Inngest та реального XML-фіда.
 - [ ] **Крок 12 (v2).** Редактор маппінгу, "позначити відсутні як недоступні", імпорт з файлу, gzip.
+
+### Зроблено в кроці 11
+
+- `src/test/xml-import-cache.test.ts` — 8 кейсів на `handleImportRunFinish`:
+  - non-terminal статус → no-op;
+  - `run == null` → no-op;
+  - `error === "not-modified"` → no-op;
+  - нульові лічильники created/updated/failed → no-op;
+  - термінальний run зі змінами → викликає suppress + очищення `ProductCacheManager` + `PersistentCacheService.invalidateShops/Suppliers/AuthMe` + `ShopCountsService.invalidate`;
+  - ідемпотентність (повторний виклик з тим самим `run.id + status` не дублює інвалідацію);
+  - `failed`-run із частковими записами → інвалідує;
+  - відсутній `userId` → fallback `"current"`.
+- Всі 8 тестів проходять (`vitest run src/test/xml-import-cache.test.ts`).
+- E2E-сценарій (Playwright: створити постачальника з XML → натиснути "Імпортувати зараз" → дочекатись `succeeded` → перевірити оновлення товарів) винесено в бэклог: потребує підключеного Inngest середовища й стабільного тестового XML-фіда — доцільніше зробити разом із CI-інтеграцією.
 
 ### Зроблено в кроці 1
 
