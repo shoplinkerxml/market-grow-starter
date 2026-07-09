@@ -1,34 +1,92 @@
-# Крок 1 з плану імпорту XML: підключення Inngest
+# Крок 12.1: Редактор маппінгу XML
 
-## Що робимо в цьому кроці
+Мета — дати користувачу керувати тим, як XML-фід постачальника перекладається у поля товару, замість hardcoded YML-пресета. Маппінг зберігається у вже існуючій таблиці `supplier_xml_mappings` (версіонована, `is_active`), і використовується Inngest-функцією замість фіксованих імен тегів.
 
-Це найперший пункт із розділу "9. Поетапні задачі" в `docs/xml-supplier-import-plan.md`:
+## 1. Модель маппінгу (jsonb у `supplier_xml_mappings`)
 
-> 1. Підключити Inngest-конектор; додати `supabase/functions/inngest/index.ts` із порожнім сервером.
+Не змінюємо схему БД (колонки вже є: `xpath_item`, `fields`, `images`, `params`, `category`, `currency`, `version`, `is_active`). Формалізуємо структуру:
 
-Окремо: я додам у файл `docs/xml-supplier-import-plan.md` секцію-чеклист "Прогрес виконання" (12 пунктів з v1 + v2), щоб відмічати ✅ після кожного завершеного кроку і не загубити стан між сесіями. І відкрию цей файл, щоб ви бачили його вміст.
+```jsonc
+{
+  "xpath_item": "offer",                    // ім'я тега рядка (case-insensitive)
+  "id_attr": "id",                          // атрибут з external_id
+  "available_attr": "available",            // атрибут з available (опц.)
+  "fields": {
+    "name":         { "tag": "name" },
+    "name_ua":      { "tag": "name_ua" },
+    "description":  { "tag": "description" },
+    "price":        { "tag": "price",     "type": "number" },
+    "price_old":    { "tag": "oldprice",  "type": "number" },
+    "currency_code":{ "tag": "currencyId" },
+    "vendor":       { "tag": "vendor" },
+    "article":      { "tag": "vendorCode" },
+    "stock_quantity":{"tag": "stock_quantity", "type": "number" }
+  },
+  "images":   { "tag": "picture" },
+  "params":   { "tag": "param", "name_attr": "name", "unit_attr": "unit" },
+  "category": { "tag": "categoryId" },
+  "currency": "UAH"                         // fallback
+}
+```
 
-## Дії
+Default (YML-пресет) — константа в `src/lib/xml-mapping-defaults.ts`, використовується і фронтом (плейсхолдери/reset), і бекендом (fallback, якщо активної версії нема).
 
-1. **Підключити конектор Inngest** через `standard_connectors--connect` (connector_id: `inngest`). Після підключення в проєкті стануть доступні `LOVABLE_API_KEY`, `INNGEST_API_KEY`, `INNGEST_SIGNING_KEY` — інших секретів не потрібно.
-2. **Створити edge-функцію `supabase/functions/inngest/index.ts`** — порожній сервер на `inngest/deno`:
-   - Клієнт `new Inngest({ id: "marketgrow" })`.
-   - `serve({ client, functions: [] })` як default export.
-   - `verify_jwt = false` у `supabase/config.toml` для цієї функції (підпис перевіряє SDK через `INNGEST_SIGNING_KEY`).
-3. **Деплой** цієї функції через `supabase--deploy_edge_functions(["inngest"])`.
-4. **Оновити `docs/xml-supplier-import-plan.md`** — додати в кінці секцію "## 12. Прогрес виконання" з чеклистом усіх 12 кроків і відмітити крок 1 як ✅ після успішного деплою.
-5. Дати посилання на edge-функцію в дашборді Supabase, щоб ви могли зробити Sync у Inngest dashboard (один раз).
+## 2. Backend (`supabase/functions/inngest/index.ts`)
 
-## Що НЕ робимо в цьому кроці
+- Перед парсом (у новому `step.run("load-mapping")`) вибрати з `supplier_xml_mappings` активний рядок за `(supplier_id, is_active=true)` з найбільшою `version`. Якщо нема — YML-пресет.
+- `streamParseYml` перейменувати на `streamParseWithMapping(body, mapping, onBatch, onProgress)` і замінити hardcoded `switch (name)` на побудований з `mapping.fields`/`images`/`params`/`category` словник `tagName → handler`. Атрибути `offer.id`/`offer.available` — з `id_attr`/`available_attr`.
+- Логіка батчів/лімітів/таймаутів/суфіксу currency лишається як є.
 
-- Не створюємо таблиці БД (це крок 2).
-- Не пишемо саму функцію імпорту (крок 4).
-- Не змінюємо UI.
+## 3. Клієнтський сервіс (`src/lib/xml-mapping-service.ts`)
 
-## Файли
+- `list(supplierId)` — SELECT з `supplier_xml_mappings` desc by version.
+- `getActive(supplierId)` — активна версія або `null`.
+- `saveDraft(supplierId, payload)` — новий рядок (version = max+1, is_active=false).
+- `activate(supplierId, mappingId)` — транзакційно (одним UPDATE через RPC): `is_active = (id = ?)`.
+- Використовує `supabase` клієнт напряму (RLS вже пише user_id через default або тригер — треба перевірити; якщо ні, передавати `auth.uid()` явно, або додати edge-функцію `supplier-mapping-upsert` для service_role write).
 
-- new: `supabase/functions/inngest/index.ts`
-- edit: `supabase/config.toml` (додати `[functions.inngest] verify_jwt = false`)
-- edit: `docs/xml-supplier-import-plan.md` (додати секцію "Прогрес виконання")
+Технічна нотатка: `supplier_xml_mappings` має RLS, але політик мало. Перевірю через `supabase--read_query` і, якщо нема INSERT/UPDATE політик для `authenticated`, додам їх окремою міграцією.
 
-Підтвердьте — і я виконаю.
+## 4. UI (`src/components/user/suppliers/`)
+
+Нова секція у `SupplierForm` — кнопка "Налаштувати маппінг XML" → відкриває маршрут `/user/suppliers/:id/mapping` (або dialog). Реалізуємо як окрему сторінку `SupplierMapping.tsx`:
+
+- Заголовок: постачальник, поточна активна версія + селектор попередніх версій (read-only перегляд).
+- Форма з полями:
+  - `xpath_item`, `id_attr`, `available_attr`, `currency` (fallback).
+  - Секція "Поля товару" — таблиця (name/name_ua/description/price/price_old/currency_code/vendor/article/stock_quantity): `tag` + `type` (text|number).
+  - Секція "Зображення" — `tag`.
+  - Секція "Параметри" — `tag`, `name_attr`, `unit_attr`.
+  - Секція "Категорія" — `tag`.
+- Кнопки: "Скинути до пресета", "Зберегти чернетку", "Активувати".
+- (Опційно, у цьому кроці не робимо) — превʼю з живого XML.
+
+Дизайн — узгоджений з рештою кабінету: `PageHeader`, `Card`, `Input`, `Select`, `Button`; іконки Lucide; `p-6 space-y-6`.
+
+## 5. i18n
+
+Додати блок `xml_mapping_*` (~25 ключів) у `src/i18n/dictionaries/suppliers.ts` (UK/EN): назви секцій, полів, кнопок, тостів.
+
+## 6. Тести
+
+- Unit: `streamParseWithMapping` (Deno-тест у `supabase/functions/inngest/`) з двома фікстурами — стандартний YML + кастомний (інші імена тегів + `id_attr`), перевірка коректного маппінгу.
+- Unit (vitest): `xml-mapping-service.saveDraft/activate` з мок Supabase.
+
+## 7. Файли
+
+- new: `src/lib/xml-mapping-defaults.ts`
+- new: `src/lib/xml-mapping-service.ts`
+- new: `src/pages/user/SupplierMapping.tsx`
+- edit: `src/App.tsx` (маршрут)
+- edit: `src/components/user/suppliers/SupplierForm.tsx` (кнопка "Маппінг")
+- edit: `supabase/functions/inngest/index.ts` (load-mapping step + generic parser)
+- edit: `src/i18n/dictionaries/suppliers.ts`
+- (можливо) міграція: додати INSERT/UPDATE RLS-політики для `supplier_xml_mappings`, якщо їх нема
+- edit: `docs/xml-supplier-import-plan.md` (позначити 12.1 ✅)
+
+## Поза скоупом цього підкроку
+
+- Live-превʼю парсингу з XML (потребує окремої edge-функції; винесемо в 12.1b).
+- Автоматичне визначення формату при першому імпорті.
+
+Підтвердіть — і я реалізую.
