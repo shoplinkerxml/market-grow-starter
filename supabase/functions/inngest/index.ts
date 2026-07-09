@@ -4,6 +4,77 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { SaxesParser } from "npm:saxes@6";
 
 // ---------------------------------------------------------------------------
+// Mapping types (mirror of src/lib/xml-mapping-defaults.ts)
+// ---------------------------------------------------------------------------
+
+type FieldMap = string | string[];
+interface XmlMapping {
+  xpath_item: string;
+  fields: Record<string, FieldMap | undefined>;
+  images: { tag: string };
+  params: { tag: string; name_attr: string; unit_attr?: string };
+  category: Record<string, unknown>;
+  currency: string | null;
+}
+
+const DEFAULT_MAPPING: XmlMapping = {
+  xpath_item: "offer",
+  fields: {
+    name: "name",
+    name_ua: "name_ua",
+    description: "description",
+    price: "price",
+    price_old: "oldprice",
+    currency_code: "currencyid",
+    vendor: "vendor",
+    article: ["vendorcode", "article"],
+    category_external_id: "categoryid",
+    stock_quantity: ["stock_quantity", "quantity_in_stock"],
+  },
+  images: { tag: "picture" },
+  params: { tag: "param", name_attr: "name", unit_attr: "unit" },
+  category: {},
+  currency: null,
+};
+
+// Build a lowercase XML-tag -> target-field lookup from mapping.fields.
+function buildTagIndex(mapping: XmlMapping): Map<string, keyof OfferRow> {
+  const idx = new Map<string, keyof OfferRow>();
+  for (const [target, tags] of Object.entries(mapping.fields)) {
+    if (!tags) continue;
+    const list = Array.isArray(tags) ? tags : [tags];
+    for (const tag of list) {
+      if (!tag) continue;
+      idx.set(String(tag).toLowerCase(), target as keyof OfferRow);
+    }
+  }
+  return idx;
+}
+
+async function loadMapping(
+  sb: ReturnType<typeof adminClient>,
+  supplierId: number,
+): Promise<XmlMapping> {
+  const { data } = await sb
+    .from("supplier_xml_mappings")
+    .select("xpath_item, fields, images, params, category, currency")
+    .eq("supplier_id", supplierId)
+    .eq("is_active", true)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return DEFAULT_MAPPING;
+  return {
+    xpath_item: data.xpath_item || DEFAULT_MAPPING.xpath_item,
+    fields: (data.fields as XmlMapping["fields"]) || DEFAULT_MAPPING.fields,
+    images: (data.images as XmlMapping["images"]) || DEFAULT_MAPPING.images,
+    params: (data.params as XmlMapping["params"]) || DEFAULT_MAPPING.params,
+    category: (data.category as Record<string, unknown>) || {},
+    currency: (data.currency as string | null) ?? null,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Inngest client + serve endpoint
 // ---------------------------------------------------------------------------
 
@@ -75,6 +146,7 @@ async function streamParseYml(
   body: ReadableStream<Uint8Array>,
   onBatch: (rows: OfferRow[]) => Promise<void>,
   onProgress?: (totalSeen: number) => void,
+  mapping: XmlMapping = DEFAULT_MAPPING,
 ): Promise<{ total: number }> {
   const parser = new SaxesParser({ xmlns: false });
   const decoder = new TextDecoder("utf-8");
@@ -87,6 +159,14 @@ async function streamParseYml(
   let total = 0;
   let bytes = 0;
 
+  const itemTag = (mapping.xpath_item || "offer").toLowerCase();
+  const imageTag = (mapping.images?.tag || "picture").toLowerCase();
+  const paramTag = (mapping.params?.tag || "param").toLowerCase();
+  const paramNameAttr = mapping.params?.name_attr || "name";
+  const paramUnitAttr = mapping.params?.unit_attr || "unit";
+  const tagIndex = buildTagIndex(mapping);
+  const defaultCurrency = mapping.currency || null;
+
   let parseError: Error | null = null;
   parser.on("error", (e) => {
     parseError = e instanceof Error ? e : new Error(String(e));
@@ -96,15 +176,16 @@ async function streamParseYml(
     const name = node.name.toLowerCase();
     path.push(name);
     textBuf = "";
-    if (name === "offer") {
+    if (name === itemTag) {
       current = emptyOffer(
         node.attributes["id"] ?? node.attributes["ID"] ?? "",
         node.attributes["available"] ?? null,
       );
-    } else if (current && name === "param") {
+      if (current && defaultCurrency) current.currency_code = defaultCurrency;
+    } else if (current && name === paramTag) {
       currentParam = {
-        name: node.attributes["name"] ?? "",
-        unit: node.attributes["unit"] ?? null,
+        name: node.attributes[paramNameAttr] ?? "",
+        unit: node.attributes[paramUnitAttr] ?? null,
       };
     }
   });
@@ -129,60 +210,41 @@ async function streamParseYml(
     path.pop();
 
     if (current) {
-      switch (name) {
-        case "name":
-          current.name = value || current.name;
-          break;
-        case "name_ua":
-          current.name_ua = value || null;
-          break;
-        case "description":
-          current.description = value || null;
-          break;
-        case "price":
-          current.price = num(value);
-          break;
-        case "oldprice":
-          current.price_old = num(value);
-          break;
-        case "currencyid":
-          current.currency_code = value || null;
-          break;
-        case "vendor":
-          current.vendor = value || null;
-          break;
-        case "vendorcode":
-        case "article":
-          current.article = value || null;
-          break;
-        case "categoryid":
-          current.category_external_id = value || null;
-          break;
-        case "picture":
-          if (value) current.pictures.push(value);
-          break;
-        case "stock_quantity":
-        case "quantity_in_stock":
-          current.stock_quantity = num(value);
-          break;
-        case "param":
-          if (currentParam && value) {
-            current.params.push({
-              name: currentParam.name,
-              value,
-              unit: currentParam.unit,
-            });
+      if (name === itemTag) {
+        if (current.external_id) {
+          batch.push(current);
+          total += 1;
+          if (onProgress && total % 500 === 0) onProgress(total);
+        }
+        current = null;
+      } else if (name === imageTag) {
+        if (value) current.pictures.push(value);
+      } else if (name === paramTag) {
+        if (currentParam && value) {
+          current.params.push({
+            name: currentParam.name,
+            value,
+            unit: currentParam.unit,
+          });
+        }
+        currentParam = null;
+      } else {
+        const target = tagIndex.get(name);
+        if (target) {
+          switch (target) {
+            case "price":
+            case "price_old":
+            case "stock_quantity":
+              (current as unknown as Record<string, unknown>)[target] = num(value);
+              break;
+            case "available":
+              current.available = value !== "false";
+              break;
+            default:
+              (current as unknown as Record<string, unknown>)[target] = value || null;
+              break;
           }
-          currentParam = null;
-          break;
-        case "offer":
-          if (current.external_id) {
-            batch.push(current);
-            total += 1;
-            if (onProgress && total % 500 === 0) onProgress(total);
-          }
-          current = null;
-          break;
+        }
       }
     }
   });
@@ -356,6 +418,7 @@ const supplierImport = inngest.createFunction(
             .eq("id", run_id);
         },
         (seen) => logger?.info?.("import.progress", { run_id, seen }),
+        await loadMapping(sb, supplier_id),
       );
 
       // --- 4. finalize -----------------------------------------------------
