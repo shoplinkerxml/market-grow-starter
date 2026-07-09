@@ -33,7 +33,7 @@ export const XmlMappingService = {
       .limit(1)
       .maybeSingle();
     if (error) throw error;
-    return (data as SupplierXmlMappingRow) ?? null;
+    return (data as unknown as SupplierXmlMappingRow) ?? null;
   },
 
   async saveMapping(
@@ -63,24 +63,25 @@ export const XmlMappingService = {
         .eq("is_active", true);
     }
 
+    const insertRow = {
+      user_id: uid,
+      supplier_id: supplierId,
+      version: nextVersion,
+      is_active: true,
+      xpath_item: mapping.xpath_item || DEFAULT_YML_MAPPING.xpath_item,
+      fields: mapping.fields ?? DEFAULT_YML_MAPPING.fields,
+      images: mapping.images ?? DEFAULT_YML_MAPPING.images,
+      params: mapping.params ?? DEFAULT_YML_MAPPING.params,
+      category: mapping.category ?? {},
+      currency: mapping.currency ?? null,
+    } as never;
     const { data, error } = await supabase
       .from("supplier_xml_mappings")
-      .insert({
-        user_id: uid,
-        supplier_id: supplierId,
-        version: nextVersion,
-        is_active: true,
-        xpath_item: mapping.xpath_item || DEFAULT_YML_MAPPING.xpath_item,
-        fields: mapping.fields ?? DEFAULT_YML_MAPPING.fields,
-        images: mapping.images ?? DEFAULT_YML_MAPPING.images,
-        params: mapping.params ?? DEFAULT_YML_MAPPING.params,
-        category: mapping.category ?? {},
-        currency: mapping.currency ?? null,
-      })
+      .insert(insertRow)
       .select("*")
       .single();
     if (error) throw error;
-    return data as SupplierXmlMappingRow;
+    return data as unknown as SupplierXmlMappingRow;
   },
 
   toMapping(row: SupplierXmlMappingRow | null): XmlMapping {
