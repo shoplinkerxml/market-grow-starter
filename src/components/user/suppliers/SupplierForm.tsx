@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/input-group';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Building2, Globe, Link, Phone, Loader2, AlertTriangle, Download, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Building2, Globe, Link, Phone, Loader2, AlertTriangle, Download, RefreshCw, CheckCircle2, XCircle, Clock, Settings2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useI18n } from "@/i18n";
 import { SupplierService, type Supplier, type CreateSupplierData, type UpdateSupplierData } from '@/lib/supplier-service';
@@ -18,7 +18,7 @@ import { handleImportRunFinish } from '@/lib/xml-import-cache';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { useOutletContext } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 
 interface SupplierFormProps {
   supplier?: Supplier | null;
@@ -30,6 +30,7 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const { user } = useOutletContext<{ user: { id?: string } | null }>();
+  const navigate = useNavigate();
   const uid = user?.id ? String(user.id) : "current";
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -306,6 +307,16 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
             <div className="space-y-3 pt-4 border-t">
               <div className="flex items-center justify-between gap-3">
                 <h4 className="text-sm font-semibold">{t('xml_import_section')}</h4>
+                <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(`/user/suppliers/${supplier.id}/mapping`)}
+                >
+                  <Settings2 className="h-4 w-4 mr-2" />
+                  {t('xml_map_edit_link')}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -317,6 +328,7 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
                   {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                   {t('xml_import_run_now')}
                 </Button>
+                </div>
               </div>
 
               <div className="flex items-center gap-3">
