@@ -316,12 +316,13 @@ const supplierImport = inngest.createFunction(
     const fetchMeta = await step.run("fetch-headers", async () => {
       const { data: sup } = await sb
         .from("user_suppliers")
-        .select("xml_etag, xml_last_modified")
+        .select("xml_etag, xml_last_modified, mark_missing_unavailable")
         .eq("id", supplier_id)
         .maybeSingle();
       return {
         etag: sup?.xml_etag ?? null,
         lastModified: sup?.xml_last_modified ?? null,
+        markMissingUnavailable: !!sup?.mark_missing_unavailable,
       };
     });
 
@@ -424,6 +425,29 @@ const supplierImport = inngest.createFunction(
       // --- 4. finalize -----------------------------------------------------
       await step.run("finalize", async () => {
         const finishedAt = new Date().toISOString();
+        // Mark products missing from the feed as unavailable (opt-in per supplier).
+        // Guard: only when we actually processed rows and at least one succeeded.
+        if (
+          fetchMeta.markMissingUnavailable &&
+          processed > 0 &&
+          created + updated > 0
+        ) {
+          const { data: runRow } = await sb
+            .from("supplier_import_runs")
+            .select("started_at")
+            .eq("id", run_id)
+            .maybeSingle();
+          const startedAt = runRow?.started_at;
+          if (startedAt) {
+            await sb
+              .from("store_products")
+              .update({ available: false, updated_at: new Date().toISOString() })
+              .eq("user_id", user_id)
+              .eq("supplier_id", supplier_id)
+              .eq("available", true)
+              .lt("updated_at", startedAt);
+          }
+        }
         await sb
           .from("supplier_import_runs")
           .update({
