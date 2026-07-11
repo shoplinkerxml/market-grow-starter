@@ -120,6 +120,11 @@ export const suppliersDictionary: Dictionary = {
   xml_import_status_failed: { uk: "Помилка", en: "Failed" },
   xml_import_status_cancelled: { uk: "Скасовано", en: "Cancelled" },
   xml_import_stats: { uk: "Створено / Оновлено / Помилок", en: "Created / Updated / Failed" },
+  xml_import_mark_missing: { uk: "Позначати відсутні як недоступні", en: "Mark missing as unavailable" },
+  xml_import_mark_missing_hint: {
+    uk: "Після імпорту товари постачальника, яких немає у фіді, стають недоступними (не видаляються).",
+    en: "After import, supplier products missing from the feed become unavailable (not deleted).",
+  },
   // XML Imports page
   xml_imports_title: { uk: "Імпорт XML", en: "XML Imports" },
   menu_xml_imports: { uk: "Імпорт XML", en: "XML Imports" },

@@ -160,7 +160,7 @@ Unique index `(supplier_id, external_id)` на `store_products`. ENABLE Realtime
 - [x] **Крок 11.** Unit-тести для `handleImportRunFinish` (`src/test/xml-import-cache.test.ts`, 8 кейсів). E2E (Playwright) відкладено — потребує live Inngest та реального XML-фіда.
 - [~] **Крок 12 (v2).** Редактор маппінгу, "позначити відсутні як недоступні", імпорт з файлу, gzip.
   - [x] 12.1 Редактор маппінгу XML (форма + JSON, версіонування, парсер читає активний маппінг з БД, посилання зі сторінки постачальника).
-  - [ ] 12.2 Позначати відсутні external_id як `available=false` після імпорту.
+  - [x] 12.2 Позначати відсутні external_id як `available=false` після імпорту (нове поле `user_suppliers.mark_missing_unavailable` + логіка у `finalize` step).
   - [ ] 12.3 Імпорт з локального файлу (upload у storage → тригер).
   - [ ] 12.4 Підтримка gzip / стиснених фідів.
 

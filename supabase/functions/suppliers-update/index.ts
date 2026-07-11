@@ -54,6 +54,7 @@ type Body = {
   is_active?: boolean
   import_enabled?: boolean
   import_frequency_hours?: number
+  mark_missing_unavailable?: boolean
 }
 
 Deno.serve(async (req) => {
@@ -111,6 +112,9 @@ Deno.serve(async (req) => {
     if (body.import_frequency_hours !== undefined && body.import_frequency_hours !== null) {
       const n = Number(body.import_frequency_hours)
       if (Number.isFinite(n) && n >= 0 && n <= 168) patch['import_frequency_hours'] = Math.floor(n)
+    }
+    if (body.mark_missing_unavailable === true || body.mark_missing_unavailable === false) {
+      patch['mark_missing_unavailable'] = body.mark_missing_unavailable
     }
     console.log('[suppliers-update] patch:', JSON.stringify(patch))
     patch['updated_at'] = new Date().toISOString()
