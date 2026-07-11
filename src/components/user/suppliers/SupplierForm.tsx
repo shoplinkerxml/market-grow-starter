@@ -43,6 +43,7 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
     is_active: supplier?.is_active !== false,
     import_enabled: !!supplier?.import_enabled,
     import_frequency_hours: Number(supplier?.import_frequency_hours ?? 0),
+    mark_missing_unavailable: !!supplier?.mark_missing_unavailable,
   });
 
   const [errors, setErrors] = useState({
@@ -140,6 +141,7 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
           is_active: formData.is_active,
           import_enabled: formData.import_enabled,
           import_frequency_hours: formData.import_frequency_hours,
+          mark_missing_unavailable: formData.mark_missing_unavailable,
         };
         const updated = await SupplierService.updateSupplier(supplier.id, updateData);
         queryClient.setQueryData<Supplier[]>(['user', uid, 'suppliers', 'list'], (old) => {
@@ -363,6 +365,18 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
                   </Select>
                 </div>
               )}
+
+              <div className="flex items-start gap-2">
+                <Switch
+                  id="supplier_mark_missing"
+                  checked={formData.mark_missing_unavailable}
+                  onCheckedChange={(val) => setFormData(prev => ({ ...prev, mark_missing_unavailable: val }))}
+                />
+                <div className="grid gap-0.5">
+                  <Label htmlFor="supplier_mark_missing">{t('xml_import_mark_missing')}</Label>
+                  <p className="text-xs text-muted-foreground">{t('xml_import_mark_missing_hint')}</p>
+                </div>
+              </div>
 
               {/* Last run indicator */}
               <div className="rounded-md border bg-muted/30 p-3 text-sm">
