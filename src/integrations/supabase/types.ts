@@ -1497,6 +1497,7 @@ export type Database = {
           is_active: boolean | null
           last_import_at: string | null
           last_import_run_id: string | null
+          mark_missing_unavailable: boolean
           phone: string | null
           supplier_name: string
           updated_at: string | null
@@ -1515,6 +1516,7 @@ export type Database = {
           is_active?: boolean | null
           last_import_at?: string | null
           last_import_run_id?: string | null
+          mark_missing_unavailable?: boolean
           phone?: string | null
           supplier_name: string
           updated_at?: string | null
@@ -1533,6 +1535,7 @@ export type Database = {
           is_active?: boolean | null
           last_import_at?: string | null
           last_import_run_id?: string | null
+          mark_missing_unavailable?: boolean
           phone?: string | null
           supplier_name?: string
           updated_at?: string | null
