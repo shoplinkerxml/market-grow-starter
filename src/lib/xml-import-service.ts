@@ -53,6 +53,52 @@ export class XmlImportService {
     return data;
   }
 
+  /** Max size of a manually uploaded XML file (50 MB). */
+  static readonly MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+
+  /**
+   * Upload an XML file and queue an import for it. Uses the very same mapping,
+   * batching and per-supplier options as the scheduled auto-import job.
+   */
+  static async startImportFromFile(
+    supplierId: number,
+    file: File,
+  ): Promise<StartImportResult> {
+    if (!/\.(xml|yml)$/i.test(file.name)) {
+      throw new Error("Only .xml files are supported");
+    }
+    if (file.size > XmlImportService.MAX_UPLOAD_BYTES) {
+      throw new Error("File is too large");
+    }
+
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth?.user?.id;
+    if (!userId) throw new Error("Not authenticated");
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${userId}/${supplierId}/${Date.now()}-${safeName}`;
+
+    const { error: upErr } = await supabase.storage
+      .from("supplier-xml-uploads")
+      .upload(path, file, {
+        contentType: "application/xml",
+        upsert: false,
+      });
+    if (upErr) throw new Error(upErr.message);
+
+    const { data, error } = await supabase.functions.invoke<StartImportResult>(
+      "supplier-import-start",
+      { body: { supplier_id: supplierId, trigger: "manual", storage_path: path } },
+    );
+    if (error) {
+      // Don't leave orphaned uploads behind when queueing fails.
+      await supabase.storage.from("supplier-xml-uploads").remove([path]);
+      throw new Error(error.message);
+    }
+    if (!data) throw new Error("Empty response from supplier-import-start");
+    return data;
+  }
+
   /** Fetch the most recent import runs for a supplier (default 20). */
   static async listRuns(
     supplierId: number,
