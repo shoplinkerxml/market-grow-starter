@@ -121,6 +121,16 @@ export const suppliersDictionary: Dictionary = {
   xml_import_status_cancelled: { uk: "Скасовано", en: "Cancelled" },
   xml_import_stats: { uk: "Створено / Оновлено / Помилок", en: "Created / Updated / Failed" },
   xml_import_mark_missing: { uk: "Позначати відсутні як недоступні", en: "Mark missing as unavailable" },
+  xml_import_upload_file: { uk: "Завантажити XML-файл", en: "Upload XML file" },
+  xml_import_upload_hint: {
+    uk: "Файл обробляється тим самим мапінгом і налаштуваннями, що й автоімпорт. До 50 МБ, формат .xml",
+    en: "The file is processed with the same mapping and options as auto-import. Up to 50 MB, .xml format",
+  },
+  xml_import_uploading: { uk: "Завантаження файлу…", en: "Uploading file…" },
+  xml_import_upload_queued: { uk: "Файл завантажено, імпорт у черзі", en: "File uploaded, import queued" },
+  xml_import_upload_failed: { uk: "Не вдалося завантажити файл", en: "Failed to upload file" },
+  xml_import_upload_bad_type: { uk: "Підтримуються лише файли .xml", en: "Only .xml files are supported" },
+  xml_import_upload_too_large: { uk: "Файл занадто великий (макс. 50 МБ)", en: "File is too large (max 50 MB)" },
   xml_import_mark_missing_hint: {
     uk: "Після імпорту товари постачальника, яких немає у фіді, стають недоступними (не видаляються).",
     en: "After import, supplier products missing from the feed become unavailable (not deleted).",
