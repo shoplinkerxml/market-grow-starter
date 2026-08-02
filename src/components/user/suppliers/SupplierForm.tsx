@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/input-group';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Building2, Globe, Link, Phone, Loader2, AlertTriangle, Download, RefreshCw, CheckCircle2, XCircle, Clock, Settings2 } from 'lucide-react';
+import { Building2, Globe, Link, Phone, Loader2, AlertTriangle, Download, RefreshCw, CheckCircle2, XCircle, Clock, Settings2, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useI18n } from "@/i18n";
 import { SupplierService, type Supplier, type CreateSupplierData, type UpdateSupplierData } from '@/lib/supplier-service';
@@ -34,6 +34,8 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
   const uid = user?.id ? String(user.id) : "current";
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [lastRun, setLastRun] = useState<SupplierImportRun | null>(null);
   const [formData, setFormData] = useState({
     supplier_name: supplier?.supplier_name || '',
@@ -119,6 +121,32 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
       toast.error(m || t('xml_import_failed_start'));
     } finally {
       setImporting(false);
+    }
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !supplier?.id) return;
+
+    if (!/\.(xml|yml)$/i.test(file.name)) {
+      toast.error(t('xml_import_upload_bad_type'));
+      return;
+    }
+    if (file.size > XmlImportService.MAX_UPLOAD_BYTES) {
+      toast.error(t('xml_import_upload_too_large'));
+      return;
+    }
+
+    setUploading(true);
+    try {
+      await XmlImportService.startImportFromFile(Number(supplier.id), file);
+      toast.success(t('xml_import_upload_queued'));
+    } catch (err) {
+      const m = err instanceof Error ? err.message : '';
+      toast.error(m || t('xml_import_upload_failed'));
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -323,8 +351,18 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
                   type="button"
                   variant="outline"
                   size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || importing}
+                >
+                  {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                  {uploading ? t('xml_import_uploading') : t('xml_import_upload_file')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={handleRunImport}
-                  disabled={importing || !formData.xml_feed_url.trim()}
+                  disabled={importing || uploading || !formData.xml_feed_url.trim()}
                   title={!formData.xml_feed_url.trim() ? t('xml_import_no_url') : ''}
                 >
                   {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
@@ -332,6 +370,15 @@ export const SupplierForm = ({ supplier, onSuccess, onCancel }: SupplierFormProp
                 </Button>
                 </div>
               </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xml,.yml,application/xml,text/xml"
+                className="hidden"
+                onChange={handleFileSelected}
+              />
+              <p className="text-xs text-muted-foreground">{t('xml_import_upload_hint')}</p>
 
               <div className="flex items-center gap-3">
                 <Switch

@@ -12,6 +12,8 @@ const GATEWAY_URL = "https://connector-gateway.lovable.dev/inngest";
 interface StartBody {
   supplier_id: number;
   trigger?: "manual" | "scheduled";
+  /** Optional: path inside the `supplier-xml-uploads` bucket for a manually uploaded file. */
+  storage_path?: string;
 }
 
 function json(status: number, body: unknown) {
@@ -84,6 +86,18 @@ Deno.serve(async (req) => {
       return json(400, { error: "supplier_id (number) is required" });
     }
     const trigger = body.trigger === "scheduled" ? "scheduled" : "manual";
+    const storagePath =
+      typeof body.storage_path === "string" && body.storage_path.trim()
+        ? body.storage_path.trim().replace(/^\/+/, "")
+        : null;
+    if (storagePath) {
+      if (storagePath.includes("..") || !storagePath.startsWith(`${userId}/`)) {
+        return json(403, { error: "Invalid storage path" });
+      }
+      if (!/\.(xml|yml)$/i.test(storagePath)) {
+        return json(400, { error: "Only .xml files are supported" });
+      }
+    }
 
     // Service-role client for privileged DB operations.
     const admin = createClient(
@@ -101,8 +115,22 @@ Deno.serve(async (req) => {
     if (!supplier || supplier.user_id !== userId) {
       return json(404, { error: "Supplier not found" });
     }
-    if (!supplier.xml_feed_url) {
+    if (!storagePath && !supplier.xml_feed_url) {
       return json(400, { error: "Supplier has no xml_feed_url configured" });
+    }
+
+    // Resolve the effective XML source: uploaded file (signed URL) or feed URL.
+    let effectiveXmlUrl = supplier.xml_feed_url as string;
+    if (storagePath) {
+      const { data: signed, error: signErr } = await admin.storage
+        .from("supplier-xml-uploads")
+        .createSignedUrl(storagePath, 60 * 60 * 6);
+      if (signErr || !signed?.signedUrl) {
+        return json(400, {
+          error: signErr?.message || "Uploaded file not found",
+        });
+      }
+      effectiveXmlUrl = signed.signedUrl;
     }
 
     // Check active run guard (queued/running) — prevent duplicates.
@@ -128,7 +156,7 @@ Deno.serve(async (req) => {
         supplier_id: supplier.id,
         trigger,
         status: "queued",
-        xml_url: supplier.xml_feed_url,
+        xml_url: effectiveXmlUrl,
       })
       .select("id")
       .single();
@@ -138,7 +166,9 @@ Deno.serve(async (req) => {
 
     // Idempotency: 1 event per (supplier, minute) to dedupe rapid clicks.
     const minuteIso = new Date().toISOString().slice(0, 16);
-    const eventId = `import:${supplier.id}:${minuteIso}`;
+    const eventId = storagePath
+      ? `import:${supplier.id}:upload:${run.id}`
+      : `import:${supplier.id}:${minuteIso}`;
 
     try {
       await sendInngestEvent(
@@ -147,8 +177,10 @@ Deno.serve(async (req) => {
           run_id: run.id,
           user_id: userId,
           supplier_id: supplier.id,
-          xml_url: supplier.xml_feed_url,
+          xml_url: effectiveXmlUrl,
           trigger,
+          source: storagePath ? "upload" : "url",
+          storage_path: storagePath,
         },
         eventId,
       );
