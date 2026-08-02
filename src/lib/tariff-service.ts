@@ -68,8 +68,10 @@ export class TariffService {
     TariffService.invalidateTariffsCaches();
   }
 
-  static async activateMyTariff(tariffId: number): Promise<{ success: boolean; subscription?: unknown }> {
-    const result = await EdgeClient.invokeWithRetry<{ success: boolean; subscription?: unknown }>(
+  static async activateMyTariff(
+    tariffId: number,
+  ): Promise<{ success: boolean; error?: string; subscription?: unknown }> {
+    const result = await EdgeClient.invokeWithRetry<{ success: boolean; error?: string; subscription?: unknown }>(
       'user-activate-tariff',
       { tariffId },
     );

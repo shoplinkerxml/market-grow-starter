@@ -67,8 +67,11 @@ Deno.serve(async (req) => {
 
     // Only free tariffs can be self-activated. Paid tariffs require a verified
     // payment flow (admin or service role on the server side).
+    // Returned with HTTP 200 on purpose: it is a business rejection, not a
+    // transport error — a non-2xx status makes supabase-js throw and surfaces
+    // this as an app runtime error instead of a handled UI message.
     if (tariff.is_free !== true) {
-      return json({ success: false, error: "payment_required" }, { status: 402 })
+      return json({ success: false, error: "payment_required" }, { status: 200 })
     }
 
     const { error: deactivateError } = await adminClient

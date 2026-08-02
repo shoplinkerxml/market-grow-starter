@@ -428,7 +428,9 @@ const TariffPage = () => {
                       try {
                         setActivatingTariffId(Number(tariff.id));
                         const resp = await TariffService.activateMyTariff(Number(tariff.id));
-                        if (!resp?.success) throw new Error("failed_update_tariff");
+                        if (!resp?.success) {
+                          throw new Error(String((resp as { error?: string })?.error || "failed_update_tariff"));
+                        }
                         UserAuthService.clearAuthMeCache();
                         setActiveTariffId(Number(tariff.id));
                         toast.success(t('tariff_updated_successfully'));
