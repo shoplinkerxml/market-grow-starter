@@ -1,9 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -79,6 +94,42 @@ const XmlImports = () => {
 
   const [runs, setRuns] = useState<SupplierImportRun[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadSupplierId, setUploadSupplierId] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const supplierId = Number(uploadSupplierId);
+    if (!Number.isFinite(supplierId) || supplierId <= 0) {
+      toast.error(t("xml_import_upload_no_supplier"));
+      return;
+    }
+    if (!/\.(xml|yml)$/i.test(file.name)) {
+      toast.error(t("xml_import_upload_bad_type"));
+      return;
+    }
+    if (file.size > XmlImportService.MAX_UPLOAD_BYTES) {
+      toast.error(t("xml_import_upload_too_large"));
+      return;
+    }
+
+    setUploading(true);
+    try {
+      await XmlImportService.startImportFromFile(supplierId, file);
+      toast.success(t("xml_import_upload_queued"));
+      setUploadOpen(false);
+      void loadRuns();
+    } catch (err) {
+      const m = err instanceof Error ? err.message : "";
+      toast.error(m || t("xml_import_upload_failed"));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const loadRuns = async () => {
     setLoading(true);
@@ -149,17 +200,75 @@ const XmlImports = () => {
         hideTitleOnMobile
         mobileActionsInline
         actions={
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => void loadRuns()}
-            disabled={loading}
-            title={t("refresh") || "Refresh"}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              {t("xml_import_upload_file")}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => void loadRuns()}
+              disabled={loading}
+              title={t("refresh") || "Refresh"}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
         }
       />
+
+      <Dialog open={uploadOpen} onOpenChange={(o) => !uploading && setUploadOpen(o)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("xml_import_upload_dialog_title")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>{t("xml_import_upload_select_supplier")}</Label>
+              <Select value={uploadSupplierId} onValueChange={setUploadSupplierId} disabled={uploading}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t("xml_import_upload_select_supplier_ph")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(suppliers ?? []).length === 0 ? (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      {t("xml_import_upload_no_suppliers")}
+                    </div>
+                  ) : (
+                    (suppliers ?? []).map((s: any) => (
+                      <SelectItem key={String(s.id)} value={String(s.id)}>
+                        {s.name ?? `#${s.id}`}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("xml_import_upload_hint")}</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xml,application/xml,text/xml"
+              className="hidden"
+              onChange={handleFileSelected}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || !uploadSupplierId}
+            >
+              {uploading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="h-4 w-4 mr-2" />
+              )}
+              {uploading ? t("xml_import_uploading") : t("xml_import_upload_choose_file")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="rounded-md border">
         <Table>
