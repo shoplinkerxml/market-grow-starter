@@ -436,7 +436,11 @@ const TariffPage = () => {
                       } catch (e) {
                         setActivatingTariffId(null);
                         const msg = String((e as any)?.message || "").trim();
-                        toast.error(msg && msg !== "failed_update_tariff" ? msg : t('failed_update_tariff'));
+                        if (/payment_required|402/i.test(msg)) {
+                          toast.error(t('tariff_payment_required'));
+                        } else {
+                          toast.error(msg && msg !== "failed_update_tariff" ? msg : t('failed_update_tariff'));
+                        }
                       }
                     }}
                   >
