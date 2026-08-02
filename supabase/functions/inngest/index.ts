@@ -282,6 +282,9 @@ interface ImportEvent {
     supplier_id: number;
     xml_url: string;
     trigger: "manual" | "scheduled";
+    /** "upload" when the XML came from a user-uploaded file instead of the feed URL. */
+    source?: "url" | "upload";
+    storage_path?: string | null;
   };
 }
 
@@ -296,6 +299,8 @@ const supplierImport = inngest.createFunction(
   { event: "supplier/import.requested" },
   async ({ event, step, logger }: { event: ImportEvent; step: any; logger: any }) => {
     const { run_id, user_id, supplier_id, xml_url } = event.data;
+    const isUpload = event.data.source === "upload";
+    const storagePath = event.data.storage_path ?? null;
     const sb = adminClient();
 
     // --- 1. acquire-lock: mark run as running ------------------------------
@@ -333,8 +338,10 @@ const supplierImport = inngest.createFunction(
       try {
         res = await fetch(xml_url, {
           headers: {
-            ...(fetchMeta.etag ? { "If-None-Match": fetchMeta.etag } : {}),
-            ...(fetchMeta.lastModified
+            ...(!isUpload && fetchMeta.etag
+              ? { "If-None-Match": fetchMeta.etag }
+              : {}),
+            ...(!isUpload && fetchMeta.lastModified
               ? { "If-Modified-Since": fetchMeta.lastModified }
               : {}),
             "User-Agent": "MarketGrowImport/1.0",
@@ -466,10 +473,19 @@ const supplierImport = inngest.createFunction(
           .update({
             last_import_at: finishedAt,
             last_import_run_id: run_id,
-            xml_etag: newEtag,
-            xml_last_modified: newLastModified,
+            // Uploaded files must not overwrite the feed URL's cache validators.
+            ...(isUpload
+              ? {}
+              : { xml_etag: newEtag, xml_last_modified: newLastModified }),
           })
           .eq("id", supplier_id);
+
+        // Housekeeping: remove the uploaded file once it has been processed.
+        if (isUpload && storagePath) {
+          try {
+            await sb.storage.from("supplier-xml-uploads").remove([storagePath]);
+          } catch (_e) { /* non-fatal */ }
+        }
       });
 
       return { total, created, updated, failed };
