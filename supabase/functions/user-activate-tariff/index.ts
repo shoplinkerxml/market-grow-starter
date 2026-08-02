@@ -49,16 +49,8 @@ Deno.serve(async (req) => {
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     const userId = userRes.user.id
 
-    const { error: deactivateError } = await adminClient
-      .from("user_subscriptions")
-      .update({ is_active: false })
-      .eq("user_id", userId)
-      .eq("is_active", true)
-
-    if (deactivateError) {
-      return json({ success: false, error: deactivateError.message || "deactivate_failed" }, { status: 200 })
-    }
-
+    // Validate the tariff BEFORE touching the current subscription, otherwise a
+    // rejected activation (e.g. paid plan) would leave the user with no plan.
     const { data: tariff, error: tariffError } = await adminClient
       .from("tariffs")
       .select("duration_days,is_lifetime,is_active,is_free")
@@ -77,6 +69,16 @@ Deno.serve(async (req) => {
     // payment flow (admin or service role on the server side).
     if (tariff.is_free !== true) {
       return json({ success: false, error: "payment_required" }, { status: 402 })
+    }
+
+    const { error: deactivateError } = await adminClient
+      .from("user_subscriptions")
+      .update({ is_active: false })
+      .eq("user_id", userId)
+      .eq("is_active", true)
+
+    if (deactivateError) {
+      return json({ success: false, error: deactivateError.message || "deactivate_failed" }, { status: 200 })
     }
 
     const startDate = new Date()

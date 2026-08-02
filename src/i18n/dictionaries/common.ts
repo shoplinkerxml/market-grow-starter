@@ -538,6 +538,10 @@ export const commonDictionary: Dictionary = {
   failed_to_delete_feature: { uk: "Не вдалося видалити можливість", en: "Failed to delete feature" },
   failed_to_delete_limit: { uk: "Не вдалося видалити ліміт", en: "Failed to delete limit" },
   failed_update_tariff: { uk: "Не вдалося оновити тариф", en: "Failed to update tariff" },
+  tariff_payment_required: {
+    uk: "Цей тариф платний — активація можлива лише після оплати",
+    en: "This plan is paid — activation is only possible after payment",
+  },
   feature_deleted_successfully: { uk: "Можливість видалено", en: "Feature deleted" },
   feature_saved_successfully: { uk: "Можливість збережено", en: "Feature saved" },
   feature_updated_successfully: { uk: "Можливість оновлено", en: "Feature updated" },
