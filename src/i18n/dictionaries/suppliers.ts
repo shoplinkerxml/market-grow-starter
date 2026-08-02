@@ -131,6 +131,12 @@ export const suppliersDictionary: Dictionary = {
   xml_import_upload_failed: { uk: "Не вдалося завантажити файл", en: "Failed to upload file" },
   xml_import_upload_bad_type: { uk: "Підтримуються лише файли .xml", en: "Only .xml files are supported" },
   xml_import_upload_too_large: { uk: "Файл занадто великий (макс. 50 МБ)", en: "File is too large (max 50 MB)" },
+  xml_import_upload_dialog_title: { uk: "Імпорт з файлу", en: "Import from file" },
+  xml_import_upload_select_supplier: { uk: "Постачальник", en: "Supplier" },
+  xml_import_upload_select_supplier_ph: { uk: "Виберіть постачальника", en: "Select a supplier" },
+  xml_import_upload_no_supplier: { uk: "Спочатку виберіть постачальника", en: "Select a supplier first" },
+  xml_import_upload_choose_file: { uk: "Вибрати файл", en: "Choose file" },
+  xml_import_upload_no_suppliers: { uk: "Немає постачальників", en: "No suppliers" },
   xml_import_mark_missing_hint: {
     uk: "Після імпорту товари постачальника, яких немає у фіді, стають недоступними (не видаляються).",
     en: "After import, supplier products missing from the feed become unavailable (not deleted).",
