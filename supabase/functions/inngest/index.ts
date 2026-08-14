@@ -641,7 +641,9 @@ const supplierImportCleanup = inngest.createFunction(
   },
 );
 
-export default serve({
+const handler = serve({
   client: inngest,
   functions: [supplierImport, supplierImportScheduler, supplierImportCleanup],
 });
+
+Deno.serve((req) => handler(req));
