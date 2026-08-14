@@ -88,7 +88,7 @@ const XmlImports = () => {
   const { data: suppliers } = useSuppliers(uid);
   const supplierMap = useMemo(() => {
     const m = new Map<number, string>();
-    (suppliers ?? []).forEach((s: any) => m.set(Number(s.id), s.name ?? String(s.id)));
+    (suppliers ?? []).forEach((s: any) => m.set(Number(s.id), s.supplier_name ?? s.name ?? String(s.id)));
     return m;
   }, [suppliers]);
 
@@ -238,7 +238,7 @@ const XmlImports = () => {
                   ) : (
                     (suppliers ?? []).map((s: any) => (
                       <SelectItem key={String(s.id)} value={String(s.id)}>
-                        {s.name ?? `#${s.id}`}
+                        {s.supplier_name ?? s.name ?? `#${s.id}`}
                       </SelectItem>
                     ))
                   )}
