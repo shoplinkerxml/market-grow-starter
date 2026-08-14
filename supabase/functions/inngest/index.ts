@@ -1,5 +1,5 @@
 import { Inngest, NonRetriableError } from "npm:inngest@^3";
-import { serve } from "npm:inngest@^3/deno";
+import { serve } from "npm:inngest@^3/deno/fresh";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SaxesParser } from "npm:saxes@6";
 
