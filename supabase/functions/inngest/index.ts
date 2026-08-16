@@ -644,6 +644,8 @@ const supplierImportCleanup = inngest.createFunction(
 const handler = serve({
   client: inngest,
   functions: [supplierImport, supplierImportScheduler, supplierImportCleanup],
+  serveHost: `https://${Deno.env.get("SUPABASE_URL")?.replace(/^https?:\/\//, "")}`,
+  servePath: "/functions/v1/inngest",
 });
 
 Deno.serve((req) => handler(req));
