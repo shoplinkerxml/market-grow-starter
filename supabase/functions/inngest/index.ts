@@ -250,6 +250,7 @@ async function streamParseYml(
   });
 
   const reader = body.getReader();
+  let isFirstDecodedChunk = true;
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -257,7 +258,15 @@ async function streamParseYml(
     if (bytes > MAX_XML_BYTES) {
       throw new NonRetriableError(`XML feed exceeds ${MAX_XML_BYTES} bytes`);
     }
-    parser.write(decoder.decode(value, { stream: true }));
+    let decoded = decoder.decode(value, { stream: true });
+    if (isFirstDecodedChunk) {
+      // Some supplier exports prepend a UTF-8 BOM and/or blank lines before
+      // the XML declaration. Saxes correctly rejects that as invalid XML, so
+      // normalise only the document preamble before streaming it to the parser.
+      decoded = decoded.replace(/^\uFEFF?\s*(?=<\?xml\b)/i, "");
+      isFirstDecodedChunk = false;
+    }
+    parser.write(decoded);
     if (parseError) throw parseError;
     while (batch.length >= BATCH_SIZE) {
       await flush();
