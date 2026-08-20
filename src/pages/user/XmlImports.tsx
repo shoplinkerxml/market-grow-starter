@@ -325,7 +325,7 @@ const XmlImports = () => {
                 </TableCell>
               </TableRow>
             )}
-            {runs.map((r) => (
+            {pagedRuns.map((r) => (
               <TableRow key={r.id}>
                 <TableCell className="font-medium">
                   {supplierMap.get(r.supplier_id) ?? `#${r.supplier_id}`}
@@ -342,22 +342,74 @@ const XmlImports = () => {
                   {(r.created_count ?? 0)} / {(r.updated_count ?? 0)} / {(r.failed_count ?? 0)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      searchParams.set("run", r.id);
-                      setSearchParams(searchParams, { replace: false });
-                    }}
-                  >
-                    {t("xml_imports_details")}
-                  </Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        searchParams.set("run", r.id);
+                        setSearchParams(searchParams, { replace: false });
+                      }}
+                    >
+                      {t("xml_imports_details")}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      title={t("xml_imports_delete")}
+                      aria-label={t("xml_imports_delete")}
+                      onClick={() => setDeleteId(r.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+
+      {runs.length > PAGE_SIZE && (
+        <div className="flex items-center justify-end gap-2">
+          <span className="text-xs text-muted-foreground">
+            {t("xml_imports_page_of")} {safePageIndex + 1} / {pageCount}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setPageIndex((p) => Math.max(0, p - 1))}
+            disabled={safePageIndex === 0}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setPageIndex((p) => Math.min(pageCount - 1, p + 1))}
+            disabled={safePageIndex >= pageCount - 1}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !deleting && !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("xml_imports_delete")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("xml_imports_delete_confirm")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); void handleDeleteRun(); }} disabled={deleting}>
+              {deleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              {t("xml_imports_delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
