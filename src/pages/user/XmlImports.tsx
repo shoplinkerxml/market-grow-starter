@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, RefreshCw, Upload, Loader2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, Upload, Loader2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -97,7 +107,31 @@ const XmlImports = () => {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadSupplierId, setUploadSupplierId] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const PAGE_SIZE = 10;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const pageCount = Math.max(1, Math.ceil(runs.length / PAGE_SIZE));
+  const safePageIndex = Math.min(pageIndex, pageCount - 1);
+  const pagedRuns = runs.slice(safePageIndex * PAGE_SIZE, safePageIndex * PAGE_SIZE + PAGE_SIZE);
+
+  const handleDeleteRun = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      await XmlImportService.deleteRun(deleteId);
+      setRuns((prev) => prev.filter((r) => r.id !== deleteId));
+      toast.success(t("xml_imports_deleted"));
+      setDeleteId(null);
+    } catch (err) {
+      const m = err instanceof Error ? err.message : "";
+      toast.error(m || t("xml_imports_delete_failed"));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
