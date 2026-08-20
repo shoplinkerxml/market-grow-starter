@@ -250,7 +250,12 @@ async function streamParseYml(
   });
 
   const reader = body.getReader();
-  let isFirstDecodedChunk = true;
+  // Keep the document preamble out of saxes until the first non-whitespace
+  // character arrives. A UTF-8 BOM / blank lines may be split across several
+  // network chunks; writing any of them first makes a later XML declaration
+  // invalid because it is no longer at the start of the document.
+  let preamble = "";
+  let preambleHandled = false;
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -259,12 +264,13 @@ async function streamParseYml(
       throw new NonRetriableError(`XML feed exceeds ${MAX_XML_BYTES} bytes`);
     }
     let decoded = decoder.decode(value, { stream: true });
-    if (isFirstDecodedChunk) {
-      // Some supplier exports prepend a UTF-8 BOM and/or blank lines before
-      // the XML declaration. Saxes correctly rejects that as invalid XML, so
-      // normalise only the document preamble before streaming it to the parser.
-      decoded = decoded.replace(/^\uFEFF?\s*(?=<\?xml\b)/i, "");
-      isFirstDecodedChunk = false;
+    if (!preambleHandled) {
+      preamble += decoded;
+      const normalized = preamble.replace(/^\uFEFF?\s+/, "");
+      if (!normalized.length) continue;
+      decoded = normalized;
+      preamble = "";
+      preambleHandled = true;
     }
     parser.write(decoded);
     if (parseError) throw parseError;
@@ -272,7 +278,13 @@ async function streamParseYml(
       await flush();
     }
   }
-  parser.write(decoder.decode());
+  const tail = decoder.decode();
+  if (!preambleHandled) {
+    const normalized = `${preamble}${tail}`.replace(/^\uFEFF?\s+/, "");
+    if (normalized) parser.write(normalized);
+  } else if (tail) {
+    parser.write(tail);
+  }
   parser.close();
   if (parseError) throw parseError;
   await flush();
