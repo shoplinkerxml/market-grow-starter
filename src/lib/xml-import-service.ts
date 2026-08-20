@@ -137,6 +137,15 @@ export class XmlImportService {
   }
 
   /** List failed item rows for a run. */
+  /** Delete a run (its item rows are removed automatically). */
+  static async deleteRun(runId: string): Promise<void> {
+    const { error } = await supabase
+      .from("supplier_import_runs")
+      .delete()
+      .eq("id", runId);
+    if (error) throw new Error(error.message);
+  }
+
   static async listRunItems(runId: string, limit = 200): Promise<SupplierImportItem[]> {
     const { data, error } = await supabase
       .from("supplier_import_items")
