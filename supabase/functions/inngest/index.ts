@@ -266,7 +266,7 @@ async function streamParseYml(
     let decoded = decoder.decode(value, { stream: true });
     if (!preambleHandled) {
       preamble += decoded;
-      const normalized = preamble.replace(/^\uFEFF?\s+/, "");
+      const normalized = preamble.replace(/^\uFEFF?\s*/, "");
       if (!normalized.length) continue;
       decoded = normalized;
       preamble = "";
@@ -280,7 +280,7 @@ async function streamParseYml(
   }
   const tail = decoder.decode();
   if (!preambleHandled) {
-    const normalized = `${preamble}${tail}`.replace(/^\uFEFF?\s+/, "");
+    const normalized = `${preamble}${tail}`.replace(/^\uFEFF?\s*/, "");
     if (normalized) parser.write(normalized);
   } else if (tail) {
     parser.write(tail);
