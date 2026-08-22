@@ -19,9 +19,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-      // Do not include Authorization or apikey here to avoid conflicts with Edge Functions
+      'Accept': 'application/json'
+      // Content-Type must be selected by each SDK request. Setting JSON here
+      // corrupts Storage uploads because multipart bodies are sent with the
+      // wrong media type and their envelope is persisted inside the object.
     }
   },
   // Enhanced error handling for RLS debugging
