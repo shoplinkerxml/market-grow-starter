@@ -1,4 +1,8 @@
-import { supabase } from "@/integrations/supabase/client";
+import {
+  supabase,
+  SUPABASE_PUBLISHABLE_KEY,
+  SUPABASE_URL,
+} from "@/integrations/supabase/client";
 
 export interface StartImportResult {
   run_id: string;
@@ -71,24 +75,36 @@ export class XmlImportService {
       throw new Error("File is too large");
     }
 
-    const { data: auth } = await supabase.auth.getUser();
-    const userId = auth?.user?.id;
-    if (!userId) throw new Error("Not authenticated");
+    const { data: auth } = await supabase.auth.getSession();
+    const session = auth.session;
+    const userId = session?.user.id;
+    if (!userId || !session.access_token) throw new Error("Not authenticated");
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = `${userId}/${supplierId}/${Date.now()}-${safeName}`;
 
-    // Upload raw bytes instead of a File/Blob. In some browser/storage-client
-    // combinations a File is wrapped in multipart/form-data and the wrapper is
-    // persisted as part of the object, which makes the resulting XML invalid.
+    // Send the XML as the raw request body. This deliberately bypasses the
+    // multipart upload branch: persisting that envelope would place WebKit
+    // boundary headers before the XML declaration and corrupt the document.
     const fileBytes = await file.arrayBuffer();
-    const { error: upErr } = await supabase.storage
-      .from("supplier-xml-uploads")
-      .upload(path, fileBytes, {
-        contentType: "application/xml",
-        upsert: false,
-      });
-    if (upErr) throw new Error(upErr.message);
+    const objectPath = path.split("/").map(encodeURIComponent).join("/");
+    const uploadResponse = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/supplier-xml-uploads/${objectPath}`,
+      {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/xml",
+          "x-upsert": "false",
+        },
+        body: fileBytes,
+      },
+    );
+    if (!uploadResponse.ok) {
+      const details = await uploadResponse.text();
+      throw new Error(details || `Upload failed [${uploadResponse.status}]`);
+    }
 
     const { data, error } = await supabase.functions.invoke<StartImportResult>(
       "supplier-import-start",
