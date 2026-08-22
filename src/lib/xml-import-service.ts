@@ -78,9 +78,13 @@ export class XmlImportService {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = `${userId}/${supplierId}/${Date.now()}-${safeName}`;
 
+    // Upload raw bytes instead of a File/Blob. In some browser/storage-client
+    // combinations a File is wrapped in multipart/form-data and the wrapper is
+    // persisted as part of the object, which makes the resulting XML invalid.
+    const fileBytes = await file.arrayBuffer();
     const { error: upErr } = await supabase.storage
       .from("supplier-xml-uploads")
-      .upload(path, file, {
+      .upload(path, fileBytes, {
         contentType: "application/xml",
         upsert: false,
       });

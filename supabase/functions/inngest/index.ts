@@ -250,12 +250,39 @@ async function streamParseYml(
   });
 
   const reader = body.getReader();
-  // Keep the document preamble out of saxes until the first non-whitespace
-  // character arrives. A UTF-8 BOM / blank lines may be split across several
-  // network chunks; writing any of them first makes a later XML declaration
-  // invalid because it is no longer at the start of the document.
+  // Keep the document preamble out of saxes until the XML itself starts.
+  // Besides BOM/whitespace, older uploads may contain a persisted multipart
+  // wrapper. Detect its boundary and omit both its headers and closing marker.
   let preamble = "";
   let preambleHandled = false;
+  let multipartBoundary: string | null = null;
+  let pending = "";
+
+  const writeDocumentChunk = (chunk: string, final = false) => {
+    pending += chunk;
+    if (!multipartBoundary) {
+      if (pending) parser.write(pending);
+      pending = "";
+      return;
+    }
+
+    const delimiter = `\r\n--${multipartBoundary}`;
+    const boundaryAt = pending.indexOf(delimiter);
+    if (boundaryAt >= 0) {
+      const xmlChunk = pending.slice(0, boundaryAt);
+      if (xmlChunk) parser.write(xmlChunk);
+      pending = "";
+      return;
+    }
+
+    // Retain enough characters to detect a delimiter split across chunks.
+    const safeLength = final ? pending.length : Math.max(0, pending.length - delimiter.length + 1);
+    if (safeLength > 0) {
+      parser.write(pending.slice(0, safeLength));
+      pending = pending.slice(safeLength);
+    }
+  };
+
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -266,13 +293,20 @@ async function streamParseYml(
     let decoded = decoder.decode(value, { stream: true });
     if (!preambleHandled) {
       preamble += decoded;
-      const normalized = preamble.replace(/^\uFEFF?\s*/, "");
-      if (!normalized.length) continue;
-      decoded = normalized;
+      const declarationAt = preamble.indexOf("<?xml");
+      const rootAt = preamble.search(/<[A-Za-z_][\w:.-]*(?:\s|>)/);
+      const xmlAt = declarationAt >= 0 ? declarationAt : rootAt;
+      if (xmlAt < 0) continue;
+
+      const firstLineEnd = preamble.indexOf("\r\n");
+      if (preamble.startsWith("--") && firstLineEnd > 2 && firstLineEnd < xmlAt) {
+        multipartBoundary = preamble.slice(2, firstLineEnd);
+      }
+      decoded = preamble.slice(xmlAt).replace(/^\uFEFF/, "");
       preamble = "";
       preambleHandled = true;
     }
-    parser.write(decoded);
+    writeDocumentChunk(decoded);
     if (parseError) throw parseError;
     while (batch.length >= BATCH_SIZE) {
       await flush();
@@ -280,10 +314,15 @@ async function streamParseYml(
   }
   const tail = decoder.decode();
   if (!preambleHandled) {
-    const normalized = `${preamble}${tail}`.replace(/^\uFEFF?\s*/, "");
-    if (normalized) parser.write(normalized);
+    const remaining = `${preamble}${tail}`;
+    const declarationAt = remaining.indexOf("<?xml");
+    const rootAt = remaining.search(/<[A-Za-z_][\w:.-]*(?:\s|>)/);
+    const xmlAt = declarationAt >= 0 ? declarationAt : rootAt;
+    if (xmlAt >= 0) writeDocumentChunk(remaining.slice(xmlAt).replace(/^\uFEFF/, ""), true);
   } else if (tail) {
-    parser.write(tail);
+    writeDocumentChunk(tail, true);
+  } else {
+    writeDocumentChunk("", true);
   }
   parser.close();
   if (parseError) throw parseError;
